@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SimulatorManifest",
+  "description": "Placeholder contract for safe simulator registration and execution policy.",
+  "type": "object",
+  "required": [
+    "simulator_id",
+    "display_name",
+    "version",
+    "entry_point",
+    "safety_profile"
+  ],
+  "properties": {
+    "simulator_id": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "entry_point": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "safety_profile": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

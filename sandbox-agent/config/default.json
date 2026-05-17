@@ -1,0 +1,39 @@
+{
+  "application": {
+    "name": "Forensics Sandbox Agent",
+    "version": "0.1.0",
+    "environment": "development",
+    "theme": "light"
+  },
+  "paths": {
+    "logs_dir": "../../logs",
+    "exports_dir": "../../exports",
+    "simulator_catalog_dir": "../../simulators"
+  },
+  "logging": {
+    "level": "INFO",
+    "file_name": "agent.log",
+    "format": "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    "categories": [
+      "app",
+      "monitoring",
+      "simulator",
+      "execution",
+      "forensics"
+    ]
+  },
+  "vm": {
+    "provider": "virtualbox",
+    "require_vm_marker": true,
+    "vm_marker_file": "C:/sandbox/guest.marker",
+    "snapshot_name": "CleanBaseline"
+  },
+  "reporting": {
+    "schema_version": "1.0.0",
+    "default_export_format": "json"
+  },
+  "future_integrations": {
+    "api_base_url": "http://localhost:8000",
+    "upload_enabled": false
+  }
+}

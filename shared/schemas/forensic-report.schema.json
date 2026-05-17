@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ForensicReport",
+  "description": "Phase 1 placeholder schema for exported forensic evidence reports.",
+  "type": "object",
+  "required": [
+    "report_metadata",
+    "session",
+    "environment"
+  ],
+  "properties": {
+    "report_metadata": {
+      "type": "object"
+    },
+    "session": {
+      "type": "object"
+    },
+    "environment": {
+      "type": "object"
+    },
+    "process_activity": {
+      "type": "array"
+    },
+    "file_activity": {
+      "type": "array"
+    },
+    "registry_activity": {
+      "type": "array"
+    },
+    "network_activity": {
+      "type": "array"
+    },
+    "behavior_summary": {
+      "type": "object"
+    },
+    "collection_integrity": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

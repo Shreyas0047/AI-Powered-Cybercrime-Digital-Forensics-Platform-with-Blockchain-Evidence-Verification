@@ -1,0 +1,22 @@
+Exception: type object 'DesignTokens' has no attribute 'COLOR_ACCENT_PRIMARY'
+Traceback (most recent call last):
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\main.py", line 12, in main
+    application = create_application()
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\app\bootstrap\app_factory.py", line 20, in create_application
+    return DesktopApplication(runtime=runtime)
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\app\presentation\qt\application.py", line 34, in __init__
+    self._main_window = MainWindow(view_model=self._view_model)
+                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\app\presentation\qt\windows\main_window.py", line 65, in __init__
+    self._build_ui()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\app\presentation\qt\windows\main_window.py", line 105, in _build_ui
+    page = self._build_page(item)
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\app\presentation\qt\windows\main_window.py", line 129, in _build_page
+    return DashboardPage(on_navigate=self._switch_route)
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\app\presentation\qt\widgets\dashboard_page.py", line 33, in __init__
+    self._setup_ui()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\shreyas\Desktop\cybersec projects\gemini virus project\sandbox-agent\src\forensics_sandbox_agent\app\presentation\qt\widgets\dashboard_page.py", line 41, in _setup_ui
+    self._build_metrics_row(layout)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^

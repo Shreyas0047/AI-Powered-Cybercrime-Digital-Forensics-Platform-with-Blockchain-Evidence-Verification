@@ -1,0 +1,74 @@
+# -*- mode: python ; coding: utf-8 -*-
+"""
+Ransomware Simulator - PyInstaller Specification
+Safe educational simulator executable packaging.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+block_cipher = None
+
+root_dir = Path(SPECPATH).parents[3]
+simulator_src = root_dir / 'simulators' / 'ransomware-simulator' / 'src'
+common_src = root_dir / 'simulators' / 'common' / 'src'
+
+a = Analysis(
+    [str(simulator_src / 'ransomware_simulator' / 'runtime.py')],
+    pathex=[
+        str(root_dir / 'simulators' / 'ransomware-simulator' / 'src'),
+        str(common_src),
+    ],
+    binaries=[
+        ('C:\\Windows\\System32\\msvcp140.dll', '.'),
+        ('C:\\Windows\\System32\\vcruntime140.dll', '.'),
+        ('C:\\Windows\\System32\\vcruntime140_1.dll', '.'),
+    ],
+    datas=[],
+    hiddenimports=[
+        'forensics_simulator_common.contracts.manifest',
+        'forensics_simulator_common.safety.guardrails',
+        'forensics_simulator_common.telemetry.events',
+        'forensics_simulator_common.runtime.base',
+        'ransomware_simulator.runtime',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='RansomwareSimulator',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=None,
+    product_name='Ransomware Simulator',
+    product_version='1.0.0',
+    company_name='Forensics Project',
+    file_description='Educational Ransomware Behavior Simulator',
+    copyright='Safe Educational Tool',
+)

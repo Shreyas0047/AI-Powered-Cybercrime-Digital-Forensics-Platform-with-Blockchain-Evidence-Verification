@@ -1,0 +1,16 @@
+[project]
+name = "trojan-simulator"
+version = "0.1.0"
+description = "Phase 1 placeholder for a safe trojan behavior simulator."
+requires-python = ">=3.11"
+dependencies = ["forensics-simulator-common"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

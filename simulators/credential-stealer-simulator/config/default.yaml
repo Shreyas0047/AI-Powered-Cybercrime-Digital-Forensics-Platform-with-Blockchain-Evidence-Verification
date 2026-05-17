@@ -1,0 +1,11 @@
+simulator_id: "credential-stealer-simulator"
+display_name: "Credential Stealer Simulator"
+version: "0.1.0"
+description: "Placeholder safe simulator package."
+entry_point: "credential_stealer_simulator.runtime"
+allowed_directories:
+  - "C:/sandbox/artifacts/credential-stealer"
+allowed_registry_paths:
+  - "HKCU/Software/ForensicsSandbox/CredentialStealerSimulator"
+allowed_network_targets: []
+max_runtime_seconds: 60

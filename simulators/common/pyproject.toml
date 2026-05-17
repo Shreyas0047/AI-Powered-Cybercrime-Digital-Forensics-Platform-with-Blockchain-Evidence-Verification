@@ -1,0 +1,15 @@
+[project]
+name = "forensics-simulator-common"
+version = "0.1.0"
+description = "Shared contracts and safety scaffolding for safe forensic simulators."
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

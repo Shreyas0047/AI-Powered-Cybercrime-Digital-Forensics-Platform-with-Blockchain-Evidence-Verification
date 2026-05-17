@@ -1,0 +1,1 @@
+"""Ransomware simulator package placeholder."""

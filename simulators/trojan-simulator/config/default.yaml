@@ -1,0 +1,11 @@
+simulator_id: "trojan-simulator"
+display_name: "Trojan Simulator"
+version: "0.1.0"
+description: "Placeholder safe simulator package."
+entry_point: "trojan_simulator.runtime"
+allowed_directories:
+  - "C:/sandbox/artifacts/trojan"
+allowed_registry_paths:
+  - "HKCU/Software/ForensicsSandbox/TrojanSimulator"
+allowed_network_targets: []
+max_runtime_seconds: 60

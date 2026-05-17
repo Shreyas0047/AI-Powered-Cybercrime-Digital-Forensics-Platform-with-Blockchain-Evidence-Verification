@@ -1,0 +1,1 @@
+"""Spyware simulator package placeholder."""

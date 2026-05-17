@@ -1,0 +1,11 @@
+simulator_id: "ransomware-simulator"
+display_name: "Ransomware Simulator"
+version: "0.1.0"
+description: "Placeholder safe simulator package."
+entry_point: "ransomware_simulator.runtime"
+allowed_directories:
+  - "C:/sandbox/artifacts/ransomware"
+allowed_registry_paths:
+  - "HKCU/Software/ForensicsSandbox/RansomwareSimulator"
+allowed_network_targets: []
+max_runtime_seconds: 60

@@ -1,0 +1,12 @@
+simulator_id: "botnet-simulator"
+display_name: "Botnet Simulator"
+version: "0.1.0"
+description: "Placeholder safe simulator package."
+entry_point: "botnet_simulator.runtime"
+allowed_directories:
+  - "C:/sandbox/artifacts/botnet"
+allowed_registry_paths:
+  - "HKCU/Software/ForensicsSandbox/BotnetSimulator"
+allowed_network_targets:
+  - "127.0.0.1"
+max_runtime_seconds: 60
