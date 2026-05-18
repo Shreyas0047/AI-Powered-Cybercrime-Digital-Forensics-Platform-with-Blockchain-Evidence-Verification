@@ -93,6 +93,22 @@ class MetricCard(Panel):
 
         layout.addStretch(1)
 
+    def update_values(self, label: str, value: str, delta: str = "") -> None:
+        """Update the metric card values."""
+        layout = self.layout()
+        if layout is None:
+            return
+        label_widget = layout.itemAt(0).layout().itemAt(0).widget()
+        if label_widget:
+            label_widget.setText(label)
+        value_widget = layout.itemAt(1).widget()
+        if value_widget:
+            value_widget.setText(value)
+        if delta:
+            delta_widget = layout.itemAt(2).widget()
+            if delta_widget:
+                delta_widget.setText(delta)
+
     def update_value(self, new_value: str) -> None:
         """Update the displayed value with animation."""
         value_widget = self.layout().itemAt(1).widget()

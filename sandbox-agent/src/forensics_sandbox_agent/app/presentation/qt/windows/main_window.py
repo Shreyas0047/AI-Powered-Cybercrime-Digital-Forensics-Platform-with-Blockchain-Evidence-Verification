@@ -33,6 +33,18 @@ from forensics_sandbox_agent.app.presentation.qt.viewmodels.monitoring_view_mode
 from forensics_sandbox_agent.app.presentation.qt.viewmodels.simulator_manager_view_model import (
     SimulatorManagerViewModel,
 )
+from forensics_sandbox_agent.app.presentation.qt.viewmodels.reports_view_model import (
+    ReportsViewModel,
+)
+from forensics_sandbox_agent.app.presentation.qt.viewmodels.evidence_view_model import (
+    EvidenceViewModel,
+)
+from forensics_sandbox_agent.app.presentation.qt.viewmodels.settings_view_model import (
+    SettingsViewModel,
+)
+from forensics_sandbox_agent.app.presentation.qt.viewmodels.logs_view_model import (
+    LogsViewModel,
+)
 from forensics_sandbox_agent.app.presentation.qt.widgets.dashboard_page import (
     DashboardPage,
 )
@@ -44,6 +56,18 @@ from forensics_sandbox_agent.app.presentation.qt.widgets.monitoring_page import 
 )
 from forensics_sandbox_agent.app.presentation.qt.widgets.simulator_manager_page import (
     SimulatorManagerPage,
+)
+from forensics_sandbox_agent.app.presentation.qt.widgets.reports_page import (
+    ReportsPage,
+)
+from forensics_sandbox_agent.app.presentation.qt.widgets.evidence_page import (
+    EvidencePage,
+)
+from forensics_sandbox_agent.app.presentation.qt.widgets.settings_page import (
+    SettingsPage,
+)
+from forensics_sandbox_agent.app.presentation.qt.widgets.logs_page import (
+    LogsPage,
 )
 from forensics_sandbox_agent.app.presentation.qt.widgets.placeholder_page import (
     PlaceholderPage,
@@ -152,6 +176,26 @@ class MainWindow(QMainWindow):
         elif item.route == "simulator-manager":
             vm = SimulatorManagerViewModel(runtime)
             return SimulatorManagerPage(vm, on_navigate=self._switch_route)
+        elif item.route == "reports":
+            vm = ReportsViewModel(runtime)
+            page = ReportsPage(vm)
+            page.update_from_view_model()
+            return page
+        elif item.route == "evidence":
+            vm = EvidenceViewModel(runtime)
+            page = EvidencePage(vm)
+            page.update_from_view_model()
+            return page
+        elif item.route == "settings":
+            vm = SettingsViewModel(runtime)
+            page = SettingsPage(vm)
+            page.update_from_view_model()
+            return page
+        elif item.route == "logs":
+            vm = LogsViewModel(runtime)
+            page = LogsPage(vm)
+            page.update_from_view_model()
+            return page
 
         return PlaceholderPage(
             title=item.title,

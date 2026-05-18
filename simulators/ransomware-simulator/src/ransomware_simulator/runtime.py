@@ -118,6 +118,7 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
             new_path = file_path.parent / new_name
 
             try:
+                os.rename(str(file_path), str(new_path))
                 self.emit_file_operation("modify", str(new_path))
                 self.emit_suspicious_activity("file_extension_modified", {
                     "original": str(file_path),

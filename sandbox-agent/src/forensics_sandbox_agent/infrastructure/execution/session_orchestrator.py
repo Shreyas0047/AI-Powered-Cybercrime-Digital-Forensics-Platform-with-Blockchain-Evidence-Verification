@@ -22,6 +22,9 @@ from forensics_sandbox_agent.infrastructure.vm.virtualbox_service import Virtual
 from forensics_sandbox_agent.infrastructure.monitoring.monitoring_coordinator import (
     ForensicMonitoringCoordinator,
 )
+from forensics_sandbox_agent.infrastructure.monitoring.vm_telemetry_poller import VmTelemetryPoller
+from forensics_sandbox_agent.infrastructure.monitoring.simulator_log_parser import SimulatorLogParser
+from forensics_sandbox_agent.infrastructure.monitoring.event_pipeline import ForensicEventPipeline
 
 
 @dataclass
@@ -128,16 +131,53 @@ class SessionOrchestrator:
 
         monitoring_started = False
         session: Optional[ForensicSession] = None
+        poller: Optional[VmTelemetryPoller] = None
 
         try:
             if self._monitoring_coordinator:
                 session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+                polling_config = None
+                if hasattr(self._settings, "monitoring") and hasattr(self._settings.monitoring, "vm_polling"):
+                    polling_config = self._settings.monitoring.vm_polling
+
+                if polling_config and polling_config.enabled:
+                    vbox = getattr(self._vm_service, "_vbox", None)
+                    vm_name = getattr(self._vm_service, "vm_name", None)
+                    if vbox and vm_name:
+                        pipeline = getattr(self._monitoring_coordinator, "_pipeline", None)
+                        if pipeline:
+                            poller = VmTelemetryPoller(
+                                vbox=vbox,
+                                vm_name=vm_name,
+                                coordinator=self._monitoring_coordinator,
+                                config=polling_config,
+                                simulator_id=simulator.id,
+                                logger=self._logger,
+                            )
+                            poller.start()
+                            self._logger.info(f"VM telemetry poller started for session {session_id}")
+
                 self._monitoring_coordinator.start_monitoring(session_id, simulator.id)
                 monitoring_started = True
 
             session = self._vm_service.execute_simulator(simulator, auto_rollback=auto_rollback)
-            return session
+
         finally:
+            if poller:
+                poller.stop()
+                self._logger.info(f"VM telemetry poller stopped ({poller.polls_completed} polls)")
+
+                if self._monitoring_coordinator:
+                    log_content = self._fetch_simulator_log(simulator.id)
+                    if log_content:
+                        pipeline = getattr(self._monitoring_coordinator, "_pipeline", None)
+                        if pipeline:
+                            parser = SimulatorLogParser(pipeline=pipeline, logger=self._logger)
+                            current_session = getattr(self._monitoring_coordinator, "_current_session_id", "unknown")
+                            parser.parse_log(log_content, simulator.id, current_session)
+                            self._logger.info(f"Simulator log parsed for {simulator.id}")
+
             if self._monitoring_coordinator and monitoring_started:
                 monitoring_summary = self._monitoring_coordinator.stop_monitoring()
                 if session is not None:
@@ -159,6 +199,31 @@ class SessionOrchestrator:
     def get_execution_history(self) -> list[ForensicSession]:
         """Get all execution history."""
         return self._execution_history.copy()
+
+    def _fetch_simulator_log(self, simulator_id: str) -> Optional[str]:
+        """Fetch simulator telemetry log from VM guest."""
+        vbox = getattr(self._vm_service, "_vbox", None)
+        vm_name = getattr(self._vm_service, "vm_name", None)
+        if not vbox or not vm_name:
+            return None
+
+        guest_log_path = f"C:\\sandbox\\tmp\\tmp\\simulator_safe\\{simulator_id}.log"
+        try:
+            exit_code, stdout, stderr = vbox.guest_control_exec(
+                vm_name,
+                r"C:\Windows\System32\cmd.exe",
+                ["/c", "type", guest_log_path],
+                timeout=15,
+            )
+            if exit_code == 0 and stdout.strip():
+                self._logger.info(f"Fetched simulator log for {simulator_id}: {len(stdout)} chars")
+                return stdout
+            else:
+                self._logger.debug(f"No simulator log found (exit {exit_code}): {stderr[:100]}")
+        except Exception as e:
+            self._logger.debug(f"Failed to fetch simulator log: {e}")
+
+        return None
 
     def get_vm_status(self) -> dict:
         """Get VM status information."""

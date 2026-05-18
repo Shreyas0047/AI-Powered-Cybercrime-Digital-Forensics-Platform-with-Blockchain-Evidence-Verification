@@ -70,6 +70,18 @@ class BehaviorDetectionConfig:
 
 
 @dataclass(slots=True)
+class VmPollingConfig:
+    enabled: bool = True
+    poll_interval_seconds: int = 2
+    track_processes: bool = True
+    track_network: bool = True
+    track_files: bool = True
+    poll_directories: list[str] = field(default_factory=lambda: ["C:\\sandbox\\tmp\\tmp"])
+    max_poll_duration_seconds: int = 300
+    parse_simulator_log: bool = True
+
+
+@dataclass(slots=True)
 class MonitoringConfig:
     process: ProcessMonitoringConfig = field(default_factory=ProcessMonitoringConfig)
     file_system: FileMonitoringConfig = field(default_factory=FileMonitoringConfig)
@@ -77,3 +89,4 @@ class MonitoringConfig:
     network: NetworkMonitoringConfig = field(default_factory=NetworkMonitoringConfig)
     storage: ForensicStorageConfig = field(default_factory=ForensicStorageConfig)
     behavior_detection: BehaviorDetectionConfig = field(default_factory=BehaviorDetectionConfig)
+    vm_polling: VmPollingConfig = field(default_factory=VmPollingConfig)

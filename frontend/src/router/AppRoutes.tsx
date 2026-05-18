@@ -13,6 +13,10 @@ import SystemHealthPage from '../pages/SystemHealthPage';
 import BlockchainOperationsPage from '../pages/BlockchainOperationsPage';
 import ThreatIntelligencePage from '../pages/ThreatIntelligencePage';
 import ForensicAnalyticsPage from '../pages/ForensicAnalyticsPage';
+import ReportsPage from '../pages/ReportsPage';
+import SettingsPage from '../pages/SettingsPage';
+import LogsPage from '../pages/LogsPage';
+import EvidenceArtifactsPage from '../pages/EvidenceArtifactsPage';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -99,19 +103,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'reports',
-        element: <PlaceholderPage title="Reports" />,
-      },
-      {
-        path: 'users',
-        element: <PlaceholderPage title="User Management" />,
+        element: <ReportsPage />,
       },
       {
         path: 'settings',
-        element: <PlaceholderPage title="Settings" />,
+        element: <SettingsPage />,
       },
       {
         path: 'audit',
-        element: <PlaceholderPage title="Audit Log" />,
+        element: <LogsPage />,
+      },
+      {
+        path: 'evidence-artifacts',
+        element: <EvidenceArtifactsPage />,
       },
       {
         path: 'health',

@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -34,6 +35,7 @@ from forensics_sandbox_agent.infrastructure.vm.vbox_communication import (
     VBoxCommandError,
     VBoxNotFoundError,
 )
+from forensics_sandbox_agent.infrastructure.monitoring.event_models import EventCategory, ForensicEvent
 
 
 class ExecutionStatus(Enum):
@@ -328,6 +330,66 @@ class SandboxExecutionManager:
 
         return metadata
 
+    def generate_forensic_report(
+        self,
+        session_id: str,
+        simulator_id: str,
+        monitoring_summary: dict,
+        events: list[ForensicEvent],
+        execution_metadata: ExecutionMetadata,
+    ) -> dict:
+        """Generate structured forensic report matching backend /sync/reports/ingest schema."""
+        process_events = [e.to_dict() for e in events if e.category == EventCategory.PROCESS]
+        file_events = [e.to_dict() for e in events if e.category == EventCategory.FILE_SYSTEM]
+        registry_events = [e.to_dict() for e in events if e.category == EventCategory.REGISTRY]
+        network_events = [e.to_dict() for e in events if e.category == EventCategory.NETWORK]
+        behavior_events = [e.to_dict() for e in events if e.category == EventCategory.BEHAVIOR]
+
+        suspicious_activities = []
+        for sa_data in monitoring_summary.get("suspicious_activities", []):
+            if isinstance(sa_data, dict):
+                suspicious_activities.append(sa_data)
+            elif hasattr(sa_data, "indicator_type"):
+                suspicious_activities.append({
+                    "indicator": sa_data.indicator_type.value if hasattr(sa_data.indicator_type, "value") else str(sa_data.indicator_type),
+                    "severity": sa_data.severity.value if hasattr(sa_data.severity, "value") else str(sa_data.severity),
+                    "description": getattr(sa_data, "description", ""),
+                    "evidence": getattr(sa_data, "evidence", []),
+                })
+
+        return {
+            "sessionId": session_id,
+            "simulatorId": simulator_id,
+            "timestamp": datetime.now().isoformat(),
+            "execution": {
+                "exitCode": execution_metadata.exit_code,
+                "stdout": execution_metadata.stdout[:5000] if execution_metadata.stdout else "",
+                "stderr": execution_metadata.stderr[:2000] if execution_metadata.stderr else "",
+                "startTime": execution_metadata.execution_start.isoformat() if execution_metadata.execution_start else None,
+                "endTime": execution_metadata.execution_end.isoformat() if execution_metadata.execution_end else None,
+                "errorMessage": execution_metadata.error_message,
+                "extractedArtifacts": execution_metadata.extracted_artifacts,
+            },
+            "telemetry": {
+                "processEvents": process_events,
+                "fileEvents": file_events,
+                "registryEvents": registry_events,
+                "networkEvents": network_events,
+                "behaviorAlerts": behavior_events,
+                "totalEvents": len(events),
+            },
+            "summary": {
+                "totalEvents": monitoring_summary.get("total_events", 0),
+                "processCount": monitoring_summary.get("process_count", 0),
+                "fileOperationsCount": monitoring_summary.get("file_operations_count", 0),
+                "registryOperationsCount": monitoring_summary.get("registry_operations_count", 0),
+                "networkOperationsCount": monitoring_summary.get("network_operations_count", 0),
+                "eventsBySeverity": monitoring_summary.get("events_by_severity", {}),
+                "eventsByCategory": monitoring_summary.get("events_by_category", {}),
+                "suspiciousActivities": suspicious_activities,
+            },
+        }
+
     def extract_artifacts(
         self,
         simulator: SimulatorDescriptor,
@@ -417,6 +479,36 @@ class SandboxExecutionManager:
 
         self._logger.info(f"Artifact extraction complete: {len(extracted_paths)} files extracted")
         return extracted_paths
+
+    def save_forensic_report(
+        self,
+        session_id: str,
+        simulator_id: str,
+        monitoring_summary: dict,
+        events: list[ForensicEvent],
+        execution_metadata: ExecutionMetadata,
+        output_dir: Path,
+    ) -> Optional[Path]:
+        """Generate and save a structured forensic report JSON to disk."""
+        try:
+            report = self.generate_forensic_report(
+                session_id=session_id,
+                simulator_id=simulator_id,
+                monitoring_summary=monitoring_summary,
+                events=events,
+                execution_metadata=execution_metadata,
+            )
+
+            report_path = output_dir / f"forensic_report_{session_id}.json"
+            with open(report_path, "w", encoding="utf-8") as f:
+                json.dump(report, f, indent=2)
+
+            self._logger.info(f"Saved forensic report: {report_path} ({len(events)} events)")
+            return report_path
+
+        except Exception as e:
+            self._logger.warning(f"Failed to generate forensic report: {e}")
+            return None
 
     def perform_rollback(self) -> None:
         """Execute rollback to clean snapshot."""

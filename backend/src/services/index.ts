@@ -13,3 +13,7 @@ export { forensicIngestionService } from './forensic-ingestion.service';
 export { telemetryIngestionService } from './telemetry-ingestion.service';
 export { syncStorageService } from './sync-storage.service';
 export { aiAnalysisService } from './ai-analysis.service';
+export { reportsService } from './reports.service';
+export { logsService } from './logs.service';
+export { settingsService } from './settings.service';
+export { evidenceArtifactsService } from './evidence-artifacts.service';

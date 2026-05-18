@@ -10,6 +10,10 @@ import type {
   BlockchainAuditEntry, EvidenceIntegrityRecord, TamperAlert,
   HashGenerationResult, HashVerificationResult
 } from '../types/blockchain';
+import type {
+  ForensicReportSummary, ForensicReportDetail, LogEntry,
+  AppSettings, EvidenceArtifact, ForensicEvidenceDetail
+} from '../types/reports';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -283,8 +287,84 @@ class ApiService {
     return response.data;
   }
 
-  async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<HashVerificationResult>> {
+async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<HashVerificationResult>> {
     const response = await this.client.post('/blockchain/hash/verify', { filePath, expectedHash });
+    return response.data;
+  }
+
+  // Reports
+  async getReports(params?: {
+    page?: number; limit?: number; simulator?: string;
+    severity?: string; dateFrom?: string; dateTo?: string; search?: string;
+  }): Promise<ApiResponse<ForensicReportSummary[]>> {
+    const response = await this.client.get('/reports', { params });
+    return response.data;
+  }
+
+  async getReport(id: string): Promise<ApiResponse<ForensicReportDetail>> {
+    const response = await this.client.get(`/reports/${id}`);
+    return response.data;
+  }
+
+  async exportReport(id: string, format: 'json' | 'text' = 'json'): Promise<Blob> {
+    const response = await this.client.get(`/reports/${id}/export`, {
+      params: { format },
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // Logs
+  async getLogs(params?: {
+    page?: number; limit?: number; level?: string;
+    category?: string; search?: string; since?: number;
+  }): Promise<ApiResponse<LogEntry[]>> {
+    const response = await this.client.get('/logs', { params });
+    return response.data;
+  }
+
+  async getLogStats(): Promise<ApiResponse<{
+    totalLines: number;
+    byLevel: Record<string, number>;
+    byCategory: Record<string, number>;
+    files: string[];
+  }>> {
+    const response = await this.client.get('/logs/stats');
+    return response.data;
+  }
+
+  // Settings
+  async getSettings(): Promise<ApiResponse<AppSettings>> {
+    const response = await this.client.get('/settings');
+    return response.data;
+  }
+
+  async updateSettings(settings: Partial<AppSettings>): Promise<ApiResponse<AppSettings>> {
+    const response = await this.client.put('/settings', settings);
+    return response.data;
+  }
+
+  async resetSettings(): Promise<ApiResponse<AppSettings>> {
+    const response = await this.client.post('/settings/reset');
+    return response.data;
+  }
+
+  // Evidence Artifacts
+  async getEvidenceArtifacts(params?: {
+    page?: number; limit?: number; category?: string; search?: string; source?: string;
+  }): Promise<ApiResponse<EvidenceArtifact[]>> {
+    const response = await this.client.get('/evidence/artifacts', { params });
+    return response.data;
+  }
+
+  async getEvidenceArtifact(id: string): Promise<ApiResponse<ForensicEvidenceDetail>> {
+    const response = await this.client.get(`/evidence/artifacts/${id}`);
+    return response.data;
+  }
+
+  // Generic HTTP methods for flexibility
+  async get<T = any>(path: string, params?: Record<string, unknown>): Promise<ApiResponse<T>> {
+    const response = await this.client.get<ApiResponse<T>>(path, { params });
     return response.data;
   }
 

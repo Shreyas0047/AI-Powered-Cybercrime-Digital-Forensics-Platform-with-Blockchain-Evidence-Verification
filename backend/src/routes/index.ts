@@ -17,6 +17,10 @@ import custodyRoutes from './custody.routes';
 import threatRoutes from './threat.routes';
 import analyticsRoutes from './analytics.routes';
 import operationsRoutes from './operations.routes';
+import reportsRoutes from './reports.routes';
+import logsRoutes from './logs.routes';
+import settingsRoutes from './settings.routes';
+import evidenceArtifactsRoutes from './evidence-artifacts.routes';
 
 const router = Router();
 
@@ -36,6 +40,10 @@ router.use(`${API_PREFIX}/custody`, custodyRoutes);
 router.use(`${API_PREFIX}/threat`, threatRoutes);
 router.use(`${API_PREFIX}/analytics`, analyticsRoutes);
 router.use(`${API_PREFIX}/operations`, operationsRoutes);
+router.use(`${API_PREFIX}/reports`, reportsRoutes);
+router.use(`${API_PREFIX}/logs`, logsRoutes);
+router.use(`${API_PREFIX}/settings`, settingsRoutes);
+router.use(`${API_PREFIX}/evidence/artifacts`, evidenceArtifactsRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
