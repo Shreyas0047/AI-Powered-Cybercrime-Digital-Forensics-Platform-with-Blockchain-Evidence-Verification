@@ -18,6 +18,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Optional
+import ntpath
 
 from forensics_sandbox_agent.app.config.execution_models import (
     SandboxExecutionConfig,
@@ -125,16 +126,27 @@ class SandboxExecutionManager:
     def validate_simulator(self, simulator: SimulatorDescriptor) -> None:
         """Validate simulator is safe for execution."""
         self._logger.info(f"Validating simulator: {simulator.id}")
+        self._logger.info(f"  - display_name: {simulator.display_name}")
+        self._logger.info(f"  - executable_path: '{simulator.executable_path}'")
+        self._logger.info(f"  - executable_path exists: {Path(simulator.executable_path).exists() if simulator.executable_path else 'N/A'}")
 
-        if simulator.id not in ("ransomware-simulator", "spyware-simulator",
-                                 "trojan-simulator", "botnet-simulator",
-                                 "credential-stealer-simulator"):
+        valid_ids = ("system_service_1", "system_monitor", "update_service",
+                     "runtime_helper", "windows_patch")
+
+        if simulator.id not in valid_ids:
+            self._logger.error(f"REJECTED: Unknown simulator id: {simulator.id}")
             raise SimulatorValidationError(f"Unknown simulator: {simulator.id}")
 
-        if not simulator.executable_path or not Path(simulator.executable_path).exists():
+        if not simulator.executable_path:
+            self._logger.error(f"REJECTED: Empty executable path for {simulator.id}")
+            raise SimulatorValidationError(f"Simulator executable path is empty")
+
+        if not Path(simulator.executable_path).exists():
+            self._logger.error(f"REJECTED: File not found: {simulator.executable_path}")
             raise SimulatorValidationError(f"Simulator executable not found: {simulator.executable_path}")
 
-        self._logger.info(f"Simulator validated: {simulator.id}")
+        self._logger.info(f"APPROVED: Simulator {simulator.id} is valid")
+        return
 
     def prepare_vm_for_execution(self) -> None:
         """Prepare VM for sandbox execution (start if needed, ensure ready)."""
@@ -163,8 +175,12 @@ class SandboxExecutionManager:
     def transfer_simulator(self, simulator: SimulatorDescriptor) -> str:
         """Transfer simulator executable to VM."""
         self._logger.info(f"Transferring simulator: {simulator.id}")
+        self._logger.info(f"  - Source path: {simulator.executable_path}")
 
-        guest_path = f"{self._execution_config.simulator_transfer_path}/{simulator.id}.exe"
+        import os
+        exe_name = os.path.basename(simulator.executable_path)
+        guest_path = f"{self._execution_config.simulator_transfer_path}/{exe_name}"
+        self._logger.info(f"  - Guest path: {guest_path}")
 
         try:
             self._vbox.ensure_guest_directory(
@@ -216,7 +232,7 @@ class SandboxExecutionManager:
             transfer_path=self._execution_config.simulator_transfer_path,
         )
 
-        guest_executable = f"{self._execution_config.simulator_transfer_path}/{simulator.id}.exe"
+        guest_executable = f"{self._execution_config.simulator_transfer_path}/{ntpath.basename(simulator.executable_path)}"
         guest_executable_win = guest_executable.replace("/", "\\")
         guest_cwd = self._execution_config.simulator_transfer_path.replace("/", "\\")
         guest_temp_dir = f"{guest_cwd}\\tmp"

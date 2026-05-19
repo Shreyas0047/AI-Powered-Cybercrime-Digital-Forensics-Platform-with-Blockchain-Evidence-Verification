@@ -107,7 +107,6 @@ const investigationSchema = new Schema({
     unique: true,
     uppercase: true,
     trim: true,
-    index: true,
   },
   title: {
     type: String,

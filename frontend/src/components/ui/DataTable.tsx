@@ -1,29 +1,31 @@
 /**
- * Data Table Component
- * Enterprise data table with sorting, filtering, and pagination
+ * Enterprise Data Table Component
+ * Professional table with sorting, filtering, and expandable rows
  */
 
-import React, { useState } from 'react';
-import { clsx } from 'clsx';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   ChevronUp,
   ChevronDown,
-  ChevronsUpDown,
-  Search,
-  Filter,
-  X,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  MoreHorizontal,
 } from 'lucide-react';
+import { useTheme } from '../../providers/ThemeProvider';
+import { cn } from '../../design-system';
 
 interface Column<T> {
-  key: keyof T | string;
-  header: string;
+  key: string;
+  label: string;
   sortable?: boolean;
   width?: string;
-  render?: (item: T) => React.ReactNode;
+  render?: (item: T, index: number) => React.ReactNode;
+  align?: 'left' | 'center' | 'right';
 }
 
 interface DataTableProps<T> {
@@ -33,219 +35,291 @@ interface DataTableProps<T> {
   pageSize?: number;
   searchable?: boolean;
   searchPlaceholder?: string;
-  emptyMessage?: string;
+  onSearch?: (query: string) => void;
+  expandable?: boolean;
+  expandRender?: (item: T) => React.ReactNode;
   onRowClick?: (item: T) => void;
-  className?: string;
+  emptyMessage?: string;
+  loading?: boolean;
 }
 
-type SortDirection = 'asc' | 'desc' | null;
-
-export function DataTable<T extends Record<string, any>>({
+export function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
   keyField,
   pageSize = 10,
-  searchable = true,
+  searchable = false,
   searchPlaceholder = 'Search...',
-  emptyMessage = 'No data available',
+  onSearch,
+  expandable = false,
+  expandRender,
   onRowClick,
-  className,
+  emptyMessage = 'No data available',
+  loading = false,
 }: DataTableProps<T>) {
-  const [currentPage, setCurrentPage] = useState(1);
+  const { isDark } = useTheme();
   const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  // Handle sorting
   const handleSort = (key: string) => {
     if (sortKey === key) {
-      if (sortDirection === 'asc') {
-        setSortDirection('desc');
-      } else if (sortDirection === 'desc') {
-        setSortDirection(null);
-        setSortKey(null);
-      }
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortKey(key);
       setSortDirection('asc');
     }
   };
 
-  // Filter data
-  let filteredData = data;
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filteredData = data.filter((item) =>
-      columns.some((col) => {
-        const value = item[col.key as keyof T];
-        return value && String(value).toLowerCase().includes(query);
-      })
+  const filteredData = useMemo(() => {
+    if (!searchQuery) return data;
+    return data.filter((item) =>
+      Object.values(item).some((value) =>
+        String(value).toLowerCase().includes(searchQuery.toLowerCase())
+      )
     );
-  }
+  }, [data, searchQuery]);
 
-  // Sort data
-  if (sortKey && sortDirection) {
-    filteredData = [...filteredData].sort((a, b) => {
+  const sortedData = useMemo(() => {
+    if (!sortKey) return filteredData;
+    return [...filteredData].sort((a, b) => {
       const aVal = a[sortKey];
       const bVal = b[sortKey];
       if (aVal === bVal) return 0;
-      const comparison = aVal > bVal ? 1 : -1;
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+      const comparison = aVal < bVal ? -1 : 1;
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }
+  }, [filteredData, sortKey, sortDirection]);
 
-  // Paginate data
-  const totalPages = Math.ceil(filteredData.length / pageSize);
+  const totalPages = Math.ceil(sortedData.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
-
-  // Reset to page 1 on search
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+  const paginatedData = sortedData.slice(startIndex, startIndex + pageSize);
 
   const getSortIcon = (key: string) => {
-    if (sortKey !== key) {
-      return <ChevronsUpDown className="w-4 h-4 text-slate-400" />;
-    }
-    if (sortDirection === 'asc') {
-      return <ChevronUp className="w-4 h-4 text-slate-600 dark:text-slate-400" />;
-    }
-    if (sortDirection === 'desc') {
-      return <ChevronDown className="w-4 h-4 text-slate-600 dark:text-slate-400" />;
-    }
-    return <ChevronsUpDown className="w-4 h-4 text-slate-400" />;
+    if (sortKey !== key) return <ArrowUpDown className="w-3 h-3 opacity-40" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3 h-3" />
+    ) : (
+      <ArrowDown className="w-3 h-3" />
+    );
   };
 
   return (
-    <div className={clsx('flex flex-col', className)}>
-      {/* Search */}
+    <div className={cn(
+      'rounded-xl border overflow-hidden',
+      isDark ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-slate-200'
+    )}>
+      {/* Search Bar */}
       {searchable && (
-        <div className="mb-4 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder={searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div className={cn(
+          'flex items-center px-4 py-3 border-b',
+          isDark ? 'border-slate-700/50' : 'border-slate-200'
+        )}>
+          <input
+            type="text"
+            placeholder={searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+              onSearch?.(e.target.value);
+            }}
+            className={cn(
+              'flex-1 px-3 py-2 text-sm rounded-lg border outline-none',
+              'bg-transparent transition-colors',
+              isDark
+                ? 'border-slate-600 focus:border-blue-500 text-slate-200 placeholder:text-slate-500'
+                : 'border-slate-200 focus:border-blue-500 text-slate-700 placeholder:text-slate-400'
             )}
-          </div>
-          <button className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">
-            <Filter className="w-4 h-4" />
-          </button>
+          />
         </div>
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-slate-800/50">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className={cn(
+              isDark ? 'bg-slate-800/50' : 'bg-slate-50'
+            )}>
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  className={cn(
+                    'px-4 py-3 text-xs font-semibold uppercase tracking-wider',
+                    'transition-colors',
+                    isDark ? 'text-slate-400' : 'text-slate-500',
+                    column.sortable && 'cursor-pointer hover:text-slate-600 dark:hover:text-slate-300',
+                    column.align === 'right' && 'text-right',
+                    column.align === 'center' && 'text-center',
+                    column.width && column.width
+                  )}
+                  style={column.width ? { width: column.width } : undefined}
+                  onClick={() => column.sortable && handleSort(column.key)}
+                >
+                  <div className={cn(
+                    'flex items-center gap-1',
+                    column.align === 'right' && 'justify-end',
+                    column.align === 'center' && 'justify-center'
+                  )}>
+                    {column.label}
+                    {column.sortable && getSortIcon(column.key)}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700/50">
+            {loading ? (
               <tr>
-                {columns.map((col) => (
-                  <th
-                    key={col.key as string}
-                    className={clsx(
-                      'px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider',
-                      col.sortable && 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700'
-                    )}
-                    style={{ width: col.width }}
-                    onClick={() => col.sortable && handleSort(col.key as string)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {col.header}
-                      {col.sortable && getSortIcon(col.key as string)}
-                    </div>
-                  </th>
-                ))}
+                <td colSpan={columns.length} className="px-4 py-12 text-center">
+                  <div className="flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800">
-              {paginatedData.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400"
-                  >
+            ) : paginatedData.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-12 text-center">
+                  <p className={cn(
+                    'text-sm',
+                    isDark ? 'text-slate-500' : 'text-slate-400'
+                  )}>
                     {emptyMessage}
-                  </td>
-                </tr>
-              ) : (
-                paginatedData.map((item, idx) => (
-                  <tr
-                    key={String(item[keyField]) || idx}
-                    className={clsx(
-                      'transition-colors',
-                      onRowClick && 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                    )}
-                    onClick={() => onRowClick?.(item)}
+                  </p>
+                </td>
+              </tr>
+            ) : (
+              paginatedData.map((item, index) => {
+                const key = String(item[keyField]);
+                const isExpanded = expandedRow === key;
+                const isClickable = onRowClick || (expandable && expandRender);
+
+                return (
+                  <motion.tbody
+                    key={key}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.02 }}
                   >
-                    {columns.map((col) => (
-                      <td
-                        key={col.key as string}
-                        className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300"
-                      >
-                        {col.render
-                          ? col.render(item)
-                          : String(item[col.key as keyof T] ?? '-')}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    <tr
+                      className={cn(
+                        'transition-colors',
+                        isClickable && 'cursor-pointer',
+                        isDark
+                          ? 'hover:bg-slate-800/50'
+                          : 'hover:bg-slate-50'
+                      )}
+                      onClick={() => {
+                        if (onRowClick) {
+                          onRowClick(item);
+                        } else if (expandable && expandRender) {
+                          setExpandedRow(isExpanded ? null : key);
+                        }
+                      }}
+                    >
+                      {columns.map((column) => (
+                        <td
+                          key={column.key}
+                          className={cn(
+                            'px-4 py-3 text-sm',
+                            isDark ? 'text-slate-300' : 'text-slate-600',
+                            column.align === 'right' && 'text-right',
+                            column.align === 'center' && 'text-center'
+                          )}
+                        >
+                          {column.render
+                            ? column.render(item, startIndex + index)
+                            : String(item[column.key] ?? '-')}
+                        </td>
+                      ))}
+                    </tr>
+
+                    {/* Expanded Row */}
+                    {expandable && expandRender && isExpanded && (
+                      <tr>
+                        <td colSpan={columns.length} className="p-0">
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className={cn(
+                              'p-4',
+                              isDark ? 'bg-slate-800/30' : 'bg-slate-50'
+                            )}
+                          >
+                            {expandRender(item)}
+                          </motion.div>
+                        </td>
+                      </tr>
+                    )}
+                  </motion.tbody>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredData.length)} of{' '}
-            {filteredData.length} results
-          </p>
-          <div className="flex items-center gap-1">
+        <div className={cn(
+          'flex items-center justify-between px-4 py-3 border-t',
+          isDark ? 'border-slate-700/50' : 'border-slate-200'
+        )}>
+          <span className={cn(
+            'text-sm',
+            isDark ? 'text-slate-500' : 'text-slate-400'
+          )}>
+            Showing {startIndex + 1} to {Math.min(startIndex + pageSize, sortedData.length)} of {sortedData.length}
+          </span>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentPage(1)}
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronsLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cn(
+                'p-2 rounded-lg transition-colors',
+                isDark
+                  ? 'hover:bg-slate-700 disabled:opacity-40'
+                  : 'hover:bg-slate-100 disabled:opacity-40'
+              )}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-3 text-sm text-slate-600 dark:text-slate-400">
-              Page {currentPage} of {totalPages}
-            </span>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const page = i + 1;
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={cn(
+                    'w-8 h-8 rounded-lg text-sm font-medium transition-colors',
+                    currentPage === page
+                      ? 'bg-blue-500 text-white'
+                      : isDark
+                        ? 'hover:bg-slate-700 text-slate-400'
+                        : 'hover:bg-slate-100 text-slate-600'
+                  )}
+                >
+                  {page}
+                </button>
+              );
+            })}
             <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cn(
+                'p-2 rounded-lg transition-colors',
+                isDark
+                  ? 'hover:bg-slate-700 disabled:opacity-40'
+                  : 'hover:bg-slate-100 disabled:opacity-40'
+              )}
             >
               <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronsRight className="w-4 h-4" />
             </button>
           </div>
         </div>

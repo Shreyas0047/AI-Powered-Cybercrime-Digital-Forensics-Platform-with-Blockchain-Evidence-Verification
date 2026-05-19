@@ -30,7 +30,7 @@ class ApiService {
 
     // Request interceptor for auth token
     this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -43,6 +43,8 @@ class ApiService {
       (error: AxiosError) => {
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -51,10 +53,16 @@ class ApiService {
   }
 
   // Auth
-  async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: User; token: string }>> {
+  async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: User; tokens: { accessToken: string; refreshToken: string } }>> {
     const response = await this.client.post('/auth/login', credentials);
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
+    const accessToken = response.data?.data?.tokens?.accessToken;
+    const refreshToken = response.data?.data?.tokens?.refreshToken;
+    if (accessToken) {
+      localStorage.setItem('token', accessToken);
+      localStorage.setItem('accessToken', accessToken);
+    }
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
     }
     return response.data;
   }
@@ -62,9 +70,12 @@ class ApiService {
   async logout(): Promise<void> {
     await this.client.post('/auth/logout');
     localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
   }
 
-  async getCurrentUser(): Promise<ApiResponse<User>> {
+  async getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
     const response = await this.client.get('/auth/me');
     return response.data;
   }
@@ -359,12 +370,6 @@ async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<Ha
 
   async getEvidenceArtifact(id: string): Promise<ApiResponse<ForensicEvidenceDetail>> {
     const response = await this.client.get(`/evidence/artifacts/${id}`);
-    return response.data;
-  }
-
-  // Generic HTTP methods for flexibility
-  async get<T = any>(path: string, params?: Record<string, unknown>): Promise<ApiResponse<T>> {
-    const response = await this.client.get<ApiResponse<T>>(path, { params });
     return response.data;
   }
 

@@ -72,12 +72,7 @@ export function errorHandler(
       userId: (req as any).user?.id,
     });
   } else {
-    logger.error({
-      message: err.message,
-      stack: err.stack,
-      path: req.path,
-      method: req.method,
-    });
+    logger.error(`Unhandled error: ${err.message}\nStack: ${err.stack}\nPath: ${req.path}\nMethod: ${req.method}`);
   }
 
   // Handle specific error types

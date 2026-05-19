@@ -165,7 +165,7 @@ export class ReportsService {
         // Apply filters
         if (options.simulator && summary.simulatorName.toLowerCase() !== options.simulator.toLowerCase()) continue;
         if (options.severity) {
-          const sevCount = (summary.severityCounts as Record<string, number>)[options.severity] || 0;
+          const sevCount = (summary.severityCounts as unknown as Record<string, number>)[options.severity] || 0;
           if (sevCount === 0) continue;
         }
         if (options.dateFrom && new Date(summary.generatedAt) < new Date(options.dateFrom)) continue;

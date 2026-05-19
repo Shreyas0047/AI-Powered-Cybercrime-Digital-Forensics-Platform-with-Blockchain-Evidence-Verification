@@ -1,0 +1,62 @@
+"use strict";
+/**
+ * Synchronization Routes
+ * /api/v1/sync
+ *
+ * Handles all sandbox-to-server synchronization endpoints
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const controllers_1 = require("../controllers");
+const middleware_1 = require("../middleware");
+const types_1 = require("../types");
+const router = (0, express_1.Router)();
+// All sync routes require authentication
+router.use(middleware_1.authenticate);
+// ============================================
+// EVIDENCE UPLOAD
+// ============================================
+// Single evidence upload
+router.post('/evidence/upload', (0, middleware_1.requirePermission)(types_1.Permission.EVIDENCE_UPLOAD), (req, res, next) => {
+    controllers_1.syncController.uploadEvidenceMiddleware(req, res, next);
+}, (0, middleware_1.asyncHandler)(controllers_1.syncController.handleEvidenceUpload));
+// Chunk upload for large files
+router.post('/evidence/upload-chunk', (0, middleware_1.requirePermission)(types_1.Permission.EVIDENCE_UPLOAD), (req, res, next) => {
+    controllers_1.syncController.uploadChunkMiddleware(req, res, next);
+}, (0, middleware_1.asyncHandler)(controllers_1.syncController.handleChunkUpload));
+// Batch upload multiple files
+router.post('/evidence/batch', (0, middleware_1.requirePermission)(types_1.Permission.EVIDENCE_UPLOAD), (req, res, next) => {
+    controllers_1.syncController.uploadBatchMiddleware(req, res, next);
+}, (0, middleware_1.asyncHandler)(controllers_1.syncController.handleBatchUpload));
+// ============================================
+// FORENSIC REPORT INGESTION
+// ============================================
+// Ingest forensic report
+router.post('/reports/ingest', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (req, res, next) => {
+    controllers_1.syncController.uploadEvidenceMiddleware(req, res, next);
+}, (0, middleware_1.asyncHandler)(controllers_1.syncController.ingestReport));
+// Ingest execution summary
+router.post('/reports/execution-summary', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.ingestExecutionSummary));
+// ============================================
+// TELEMETRY INGESTION
+// ============================================
+// Ingest forensic events (batch)
+router.post('/telemetry/events', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.ingestTelemetry));
+// Ingest real-time event stream
+router.post('/telemetry/stream', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.ingestEventStream));
+// Get telemetry summary
+router.get('/telemetry/:sessionId', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.SECURITY_REVIEWER, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.getTelemetrySummary));
+// ============================================
+// SANDBOX SESSION SYNC
+// ============================================
+// Session heartbeat
+router.post('/sessions/:sessionId/heartbeat', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.sessionHeartbeat));
+// Rollback status report
+router.post('/sessions/:sessionId/rollback', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.reportRollback));
+// ============================================
+// HEALTH & STATUS
+// ============================================
+// Get sync system health
+router.get('/health', (0, middleware_1.asyncHandler)(controllers_1.syncController.getHealth));
+exports.default = router;
+//# sourceMappingURL=sync.routes.js.map

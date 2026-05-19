@@ -3,6 +3,7 @@
  * Modernized SOC-style dashboard with cohesive design system
  */
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -18,33 +19,14 @@ import { Button } from '../components/ui/Button';
 import { SeverityBadge, CountBadge } from '../components/ui/Badge';
 import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardGrid, DashboardCard, DashboardHeader, DashboardStat, DashboardList } from '../components/enterprise/DashboardGrid';
+import { useInvestigationStore } from '../stores/investigationStore';
+import { useAlertStore } from '../stores/alertStore';
+import { useSandboxStore } from '../stores/sandboxStore';
 import { cn, formatDate } from '../design-system';
 
-// Mock data
-const mockStats = {
-  activeInvestigations: 23,
-  criticalAlerts: 8,
-  totalEvidence: 458,
-  sandboxSessions: 12,
-};
-
-const mockInvestigations = [
-  { id: '1', caseNumber: 'INV-2024-5A3B', title: 'Ransomware Incident Analysis', status: 'analyzing', priority: 'critical', updatedAt: new Date().toISOString() },
-  { id: '2', caseNumber: 'INV-2024-5A2C', title: 'Phishing Campaign Investigation', status: 'active', priority: 'high', updatedAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: '3', caseNumber: 'INV-2024-5A1D', title: 'Data Breach Assessment', status: 'pending', priority: 'medium', updatedAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: '4', caseNumber: 'INV-2024-5A0E', title: 'Malware Detection Analysis', status: 'resolved', priority: 'low', updatedAt: new Date(Date.now() - 10800000).toISOString() },
-];
-
-const mockAlerts = [
-  { id: '1', title: 'Suspicious PowerShell Execution', severity: 'critical', status: 'new', detectedAt: new Date().toISOString(), source: 'sandbox' },
-  { id: '2', title: 'Unusual Network Behavior Detected', severity: 'high', status: 'acknowledged', detectedAt: new Date(Date.now() - 1800000).toISOString(), source: 'siem' },
-  { id: '3', title: 'Multiple Failed Login Attempts', severity: 'medium', status: 'in_progress', detectedAt: new Date(Date.now() - 3600000).toISOString(), source: 'endpoint' },
-  { id: '4', title: 'Registry Modification Detected', severity: 'high', status: 'new', detectedAt: new Date(Date.now() - 5400000).toISOString(), source: 'sandbox' },
-];
-
 const mockActivity = [
-  { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'Investigation INV-2024-5A3B resolved', time: '2 min ago' },
-  { icon: FileText, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/20', text: 'New evidence uploaded to INV-2024-5A2C', time: '15 min ago' },
+  { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'Investigation resolved', time: '2 min ago' },
+  { icon: FileText, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/20', text: 'New evidence uploaded', time: '15 min ago' },
   { icon: Activity, color: 'text-cyan-500', bg: 'bg-cyan-50 dark:bg-cyan-900/20', text: 'Sandbox session completed', time: '30 min ago' },
   { icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'New critical alert generated', time: '45 min ago' },
 ];
@@ -60,6 +42,21 @@ const severityDistribution = [
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 
 export function EnhancedDashboardPage() {
+  const { investigations, fetchInvestigations } = useInvestigationStore();
+  const { alerts, fetchAlerts } = useAlertStore();
+  const { stats: sandboxStats, fetchSessions, fetchStats } = useSandboxStore();
+
+  useEffect(() => {
+    fetchInvestigations({ page: 1, limit: 5 });
+    fetchAlerts({ page: 1, limit: 5 });
+    fetchSessions({ page: 1, limit: 20 });
+    fetchStats();
+  }, [fetchInvestigations, fetchAlerts, fetchSessions, fetchStats]);
+
+  const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
+  const activeInvestigations = investigations.length;
+  const totalEvidence = investigations.reduce((acc, inv) => acc + (inv.evidenceCount || 0), 0);
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
       {/* Page Header */}
@@ -85,7 +82,7 @@ export function EnhancedDashboardPage() {
         <DashboardCard>
           <DashboardStat
             label="Active Investigations"
-            value={mockStats.activeInvestigations}
+            value={activeInvestigations}
             change={{ value: 12, type: 'increase' }}
             icon={<Search className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />}
           />
@@ -94,7 +91,7 @@ export function EnhancedDashboardPage() {
         <DashboardCard>
           <DashboardStat
             label="Critical Alerts"
-            value={mockStats.criticalAlerts}
+            value={criticalAlerts}
             change={{ value: 3, type: 'decrease' }}
             icon={<AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />}
           />
@@ -103,7 +100,7 @@ export function EnhancedDashboardPage() {
         <DashboardCard>
           <DashboardStat
             label="Total Evidence"
-            value={mockStats.totalEvidence}
+            value={totalEvidence}
             change={{ value: 28, type: 'increase' }}
             icon={<FileText className="w-5 h-5 text-violet-600 dark:text-violet-400" />}
           />
@@ -112,7 +109,7 @@ export function EnhancedDashboardPage() {
         <DashboardCard>
           <DashboardStat
             label="Sandbox Sessions"
-            value={mockStats.sandboxSessions}
+            value={sandboxStats?.total || 0}
             change={{ value: 5, type: 'increase' }}
             icon={<Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
           />
@@ -131,7 +128,7 @@ export function EnhancedDashboardPage() {
               action={<Button variant="ghost" size="sm">View All</Button>}
             />
             <DashboardList
-              items={mockInvestigations.map((inv) => ({
+              items={investigations.slice(0, 5).map((inv) => ({
                 id: inv.id,
                 title: inv.title,
                 subtitle: inv.caseNumber,
@@ -209,10 +206,10 @@ export function EnhancedDashboardPage() {
           <DashboardCard>
             <DashboardHeader
               title="Active Alerts"
-              action={<CountBadge count={mockStats.criticalAlerts} variant="danger" />}
+              action={<CountBadge count={criticalAlerts} variant="danger" />}
             />
             <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {mockAlerts.map((alert) => (
+              {alerts.slice(0, 5).map((alert) => (
                 <div key={alert.id} className="px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
                   <div className="flex items-start gap-3">
                     <div className={cn(
@@ -231,9 +228,9 @@ export function EnhancedDashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-900 dark:text-white">{alert.title}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{alert.source}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{alert.source || 'unknown'}</span>
                         <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
-                        <span className="text-xs text-slate-400 dark:text-slate-500">{formatDate(alert.detectedAt, 'relative')}</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">{formatDate(alert.createdAt || alert.detectedAt || new Date().toISOString(), 'relative')}</span>
                       </div>
                     </div>
                     <SeverityBadge severity={alert.severity as any} size="sm" />

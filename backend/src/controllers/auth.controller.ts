@@ -23,7 +23,7 @@ export class AuthController {
         firstName,
         lastName,
         role: role as UserRole,
-        createdBy: req.user?.id || 'system',
+        createdBy: req.user?.id || undefined,
       },
       req.ip
     );

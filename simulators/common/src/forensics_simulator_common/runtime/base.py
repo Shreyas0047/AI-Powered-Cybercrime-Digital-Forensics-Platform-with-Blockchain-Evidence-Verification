@@ -67,15 +67,15 @@ class BaseSimulatorRuntime(ABC):
         if self._logger:
             self._logger.emit_file_operation(operation, path)
 
-    def emit_registry_operation(self, key_path: str, modify: bool = False, value: str = "synthetic") -> None:
+    def emit_registry_operation(self, key_path: str, modify: bool = False, value: str = "synthetic", technique: str = "") -> None:
         """Emit a registry operation event."""
         if self._logger:
-            self._logger.emit_registry_operation(key_path, modify, value)
+            self._logger.emit_registry_operation(key_path, modify, value, technique)
 
-    def emit_network_activity(self, host: str, port: int, protocol: str = "TCP") -> None:
-        """Emit network activity event."""
+def emit_network_activity(self, host: str, port: int, protocol: str = "TCP", technique: str = "") -> None:
+        """Emit a network activity event."""
         if self._logger:
-            self._logger.emit_network_activity(host, port, protocol)
+            self._logger.emit_network_activity(host, port, protocol, technique)
 
     def emit_suspicious_activity(self, description: str, details: dict = None) -> None:
         """Emit suspicious behavior event."""

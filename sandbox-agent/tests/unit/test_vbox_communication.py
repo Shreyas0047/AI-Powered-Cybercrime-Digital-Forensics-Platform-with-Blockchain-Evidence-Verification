@@ -79,8 +79,8 @@ def test_copy_to_guest_uses_direct_destination_without_separator(monkeypatch):
 
     vbox.file_copy_to_guest(
         "ForensicsSandbox",
-        r"C:\host\RansomwareSimulator.exe",
-        "C:/sandbox/simulators/ransomware-simulator.exe",
+        r"C:\host\threat_file_1.exe",
+        "C:/sandbox/simulators/threat_file_1.exe",
     )
 
     args, _, _ = calls[0]
@@ -88,8 +88,8 @@ def test_copy_to_guest_uses_direct_destination_without_separator(monkeypatch):
     assert "--" not in args
     assert "--target-directory=C:/sandbox/simulators" not in args
     assert args[-2:] == [
-        r"C:\host\RansomwareSimulator.exe",
-        "C:/sandbox/simulators/ransomware-simulator.exe",
+        r"C:\host\threat_file_1.exe",
+        "C:/sandbox/simulators/threat_file_1.exe",
     ]
 
 

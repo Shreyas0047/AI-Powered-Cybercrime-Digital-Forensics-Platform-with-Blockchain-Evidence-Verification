@@ -247,6 +247,68 @@ class SandboxControlViewModel:
         finally:
             self._is_executing = False
 
+    def execute_full_workflow_sync(self, simulator: SimulatorDescriptor) -> None:
+        """Execute full workflow: power off -> restore -> start -> execute."""
+        self._is_executing = True
+        self.append_output(f"Starting full workflow for: {simulator.display_name}")
+
+        try:
+            services = self._require_services()
+            orchestrator = services.session_orchestrator
+            vm_service = services.vm_service
+
+            # Step 1: Power off if running
+            self.append_output("Step 1: Ensuring VM is powered off...")
+            vm_controller = vm_service._vm_controller
+            if vm_controller.get_vm_state().value == "running":
+                self.append_output("  - Stopping VM...")
+                vm_service.stop_vm(force=True)
+                import time
+                time.sleep(3)
+            self.append_output("  - VM powered off")
+
+            # Step 2: Restore snapshot
+            self.append_output("Step 2: Restoring clean snapshot...")
+            orchestrator.restore_snapshot()
+            self.append_output("  - Snapshot restored")
+            import time
+            time.sleep(2)
+
+            # Step 3: Start VM
+            self.append_output("Step 3: Starting VM...")
+            orchestrator.start_vm()
+            self.append_output("  - VM started")
+            import time
+            time.sleep(5)  # Wait for boot
+
+            # Step 4: Execute simulator (skip guest additions wait to avoid hanging)
+            self.append_output("Step 4: Executing simulator...")
+            session = orchestrator.execute_simulator(simulator)
+            self._current_session = session
+
+            status_text = f"Completed" if session.status == SessionStatus.COMPLETED else str(session.status.value)
+            out_msg = f"Execution {status_text}"
+            if session.exit_code is not None:
+                out_msg += f" (exit code: {session.exit_code})"
+            self.append_output(out_msg)
+
+            if session.metadata.get("stdout"):
+                self.append_output("--- Simulation Output ---")
+                stdout = session.metadata.get("stdout", "")
+                if stdout:
+                    for line in stdout.split("\n")[:50]:
+                        if line.strip():
+                            self.append_output(line)
+
+            if session.error_message:
+                self.append_output(f"Error: {session.error_message}")
+
+        except Exception as e:
+            self._logger.error(f"Full workflow execution failed: {e}")
+            self.append_output(f"WORKFLOW FAILED: {e}")
+        finally:
+            self._is_executing = False
+
     def execute_simulator(self, simulator: SimulatorDescriptor) -> bool:
         """Execute a simulator."""
         if not self.can_execute:

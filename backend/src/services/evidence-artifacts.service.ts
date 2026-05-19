@@ -220,12 +220,14 @@ export class EvidenceArtifactsService {
         for (const ev of [...processEvents, ...fileEvents, ...regEvents, ...netEvents]) {
           if (!ev || typeof ev !== 'object') continue;
           const e = ev as Record<string, unknown>;
+          const severityValue = (e.severity as string) || 'info';
+          const categoryValue = (e.category as string) || 'system';
           timeline.push({
             eventId: (e.event_id as string) || 'unknown',
             timestamp: (e.timestamp as string) || new Date().toISOString(),
-            category: (e.category as ForensicEvidenceDetail['processActivity'][0]['category']) || 'system',
+            category: categoryValue as 'process' | 'file' | 'registry' | 'network' | 'system',
             operation: (e.operation as string) || '',
-            severity: (e.severity as ForensicEvidenceDetail['processActivity'][0]['severity']) || 'info',
+            severity: severityValue as 'critical' | 'high' | 'medium' | 'low' | 'info',
             source: (e.source as string) || artifact.source,
             details: (e.details as Record<string, unknown>) || {},
           });

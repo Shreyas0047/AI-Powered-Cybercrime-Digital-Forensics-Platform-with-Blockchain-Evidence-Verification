@@ -34,6 +34,7 @@ from forensics_sandbox_agent.infrastructure.execution.sandbox_execution_manager 
     SandboxExecutionManager,
     ExecutionSession,
     ExecutionStatus,
+    ExecutionError,
 )
 
 
@@ -181,6 +182,7 @@ class VirtualBoxVmService:
             ForensicSession with execution results
         """
         self._logger.info(f"Executing simulator: {simulator.id}")
+        self._logger.info(f"Simulator executable path: {simulator.executable_path}")
         self._execution_manager.validate_simulator(simulator)
 
         session = ForensicSession(
@@ -193,35 +195,41 @@ class VirtualBoxVmService:
         self._current_forensic_session = session
 
         try:
-            # 1. Ensure VM is powered off for clean restoration
+            self._logger.info("Step 1: Ensuring VM is powered off")
             session.execution_phase = ExecutionPhase.VM_READY
             self._vm_controller.ensure_powered_off()
+            self._logger.info("Step 1 complete: VM powered off")
 
-            # 2. Restore the clean snapshot
+            self._logger.info("Step 2: Restoring clean snapshot")
             session.execution_phase = ExecutionPhase.SNAPSHOT_RESTORED
             self._snapshot_manager.restore_clean_snapshot()
+            self._logger.info("Step 2 complete: Snapshot restored")
 
-            # Stabilization delay: allow VirtualBox to settle after restoration.
+            self._logger.info("Step 3: Waiting for snapshot restoration to complete...")
             import time
             time.sleep(3)
+            self._logger.info("Step 3 complete")
 
-            # 3. Start VM for execution
+            self._logger.info("Step 4: Starting VM for execution")
             self._vm_controller.ensure_running(headless=self._execution_config.start_headless)
+            self._logger.info("Step 4 complete: VM started")
 
-            # Stabilization delay: allow VM process to initialize hardware.
-            time.sleep(2)
+            self._logger.info("Step 5: Waiting for VM hardware initialization...")
+            time.sleep(10)
+            self._logger.info("Step 5 complete")
 
-            # 4. Wait for Guest OS to boot and Guest Additions to be ready
-            session.execution_phase = ExecutionPhase.VM_READY
-            if not self._vbox.wait_for_guest_additions(
-                self.vm_name,
-                timeout=self._execution_config.guest_additions_timeout_seconds,
-            ):
-                raise ValueError("Guest Additions not ready. Please ensure they are installed and the VM is booted.")
+            self._logger.info("Step 6: Waiting for Guest Additions to be ready...")
+            if not self._vbox.wait_for_guest_additions(self._vm_controller.vm_name, timeout=300):
+                raise ExecutionError("Guest Additions not ready - cannot transfer simulator to VM")
+            self._logger.info("Step 6 complete: Guest Additions ready")
 
+            self._logger.info("Step 7: Transferring simulator to VM")
+            self._logger.info(f"  - Source: {simulator.executable_path}")
             session.execution_phase = ExecutionPhase.TRANSFERRING_SIMULATOR
             self._execution_manager.transfer_simulator(simulator)
+            self._logger.info("Step 7 complete: Simulator transferred")
 
+            self._logger.info("Step 8: Executing simulator")
             session.execution_phase = ExecutionPhase.EXECUTING
             session.start_execution()
 
@@ -230,6 +238,10 @@ class VirtualBoxVmService:
             session.metadata["stdout"] = exec_session.stdout
             session.metadata["stderr"] = exec_session.stderr
             session.metadata["telemetry_log"] = exec_session.telemetry_log
+
+            self._logger.info(f"Simulator execution completed with exit code: {session.exit_code}")
+            self._logger.info(f"STDOUT length: {len(exec_session.stdout) if exec_session.stdout else 0}")
+            self._logger.info(f"STDERR: {exec_session.stderr[:500] if exec_session.stderr else 'None'}")
 
             if session.exit_code == 0:
                 session.complete(session.exit_code)

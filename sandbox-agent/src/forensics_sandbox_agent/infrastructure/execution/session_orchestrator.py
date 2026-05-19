@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Optional
 
 from forensics_sandbox_agent.app.config.models import AppSettings
-from forensics_sandbox_agent.domain.entities.forensic_session import ForensicSession
+from forensics_sandbox_agent.domain.entities.forensic_session import ForensicSession, SessionStatus
 from forensics_sandbox_agent.domain.entities.simulator_descriptor import SimulatorDescriptor
 from forensics_sandbox_agent.domain.contracts.execution import (
     ReportServicePort,
@@ -191,6 +191,12 @@ class SessionOrchestrator:
                     f"Simulator execution completed: {simulator.id} | status={session.status.value} | "
                     f"exit_code={session.exit_code}"
                 )
+
+            return session if session is not None else ForensicSession(
+                session_id="unknown",
+                simulator_id=simulator.id,
+                status=SessionStatus.FAILED,
+            )
 
     def get_current_session(self) -> Optional[ForensicSession]:
         """Get the current active session."""

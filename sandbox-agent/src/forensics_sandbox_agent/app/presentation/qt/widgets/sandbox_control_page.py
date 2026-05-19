@@ -189,7 +189,7 @@ class SandboxControlPage(QWidget):
         self._simulator_list.clear()
 
         for sim in self._view_model.available_simulators:
-            item = QListWidgetItem(f"{sim.display_name} ({sim.category})")
+            item = QListWidgetItem(sim.display_name)
             item.setData(Qt.ItemDataRole.UserRole, sim)
             self._simulator_list.addItem(item)
 
@@ -270,7 +270,10 @@ class SandboxControlPage(QWidget):
 
     def _on_worker_finished(self, success: bool, message: str) -> None:
         """Handle worker completion."""
-        self._vm_worker = None
+        if self._vm_worker:
+            self._vm_worker.quit()
+            self._vm_worker.wait()
+            self._vm_worker = None
         if self._view_model:
             status = "SUCCESS" if success else "FAILED"
             self._view_model.append_output(f"{status}: {message}")
@@ -314,8 +317,8 @@ class SandboxControlPage(QWidget):
         self.update_from_view_model()
         
         self._vm_worker = VmWorker(
-            self._view_model.execute_simulator_sync,
-            "Simulator Execution",
+            self._view_model.execute_full_workflow_sync,
+            "Full Execution",
             self._view_model._logger,
             simulator
         )

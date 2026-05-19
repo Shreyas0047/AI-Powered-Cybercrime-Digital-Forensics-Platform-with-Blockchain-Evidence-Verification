@@ -96,7 +96,6 @@ const evidenceSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Investigation',
     required: true,
-    index: true,
   },
 
   // Basic info
@@ -152,7 +151,6 @@ const evidenceSchema = new Schema({
   hash: {
     sha256: {
       type: String,
-      index: true,
     },
     md5: String,
     sha1: String,

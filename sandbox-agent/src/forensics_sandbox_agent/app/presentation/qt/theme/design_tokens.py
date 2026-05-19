@@ -36,21 +36,23 @@ class DesignTokens:
     CAPTION_SIZE = 12
     SMALL_SIZE = 11
 
-    # Enterprise Light Theme - Primary Palette
+    # Light Theme - Clean Professional Palette
     COLOR_BG = "#f8fafc"
     COLOR_BG_SECONDARY = "#f1f5f9"
+    COLOR_BG_TERTIARY = "#e2e8f0"
     COLOR_SURFACE = "#ffffff"
+    COLOR_ELEVATED = "#ffffff"
 
     # Glassmorphism & Transparency
-    COLOR_GLASS = "rgba(255, 255, 255, 0.72)"
-    COLOR_GLASS_LIGHT = "rgba(255, 255, 255, 0.85)"
-    COLOR_GLASS_BORDER = "rgba(148, 163, 184, 0.15)"
-    COLOR_OVERLAY = "rgba(15, 23, 42, 0.04)"
+    COLOR_GLASS = "rgba(255, 255, 255, 0.85)"
+    COLOR_GLASS_LIGHT = "rgba(255, 255, 255, 0.95)"
+    COLOR_GLASS_BORDER = "rgba(148, 163, 184, 0.2)"
+    COLOR_OVERLAY = "rgba(248, 250, 252, 0.8)"
 
     # Borders
-    COLOR_BORDER = "rgba(148, 163, 184, 0.2)"
-    COLOR_BORDER_HOVER = "rgba(59, 130, 246, 0.4)"
-    COLOR_BORDER_ACTIVE = "rgba(59, 130, 246, 0.6)"
+    COLOR_BORDER = "rgba(148, 163, 184, 0.25)"
+    COLOR_BORDER_HOVER = "rgba(59, 130, 246, 0.5)"
+    COLOR_BORDER_ACTIVE = "rgba(59, 130, 246, 0.7)"
 
     # Text hierarchy
     COLOR_TEXT_PRIMARY = "#0f172a"
@@ -61,34 +63,34 @@ class DesignTokens:
     # Cybersecurity accent colors
     COLOR_PRIMARY = "#3b82f6"
     COLOR_PRIMARY_HOVER = "#2563eb"
-    COLOR_PRIMARY_SOFT = "rgba(59, 130, 246, 0.1)"
-    COLOR_PRIMARY_GLOW = "rgba(59, 130, 246, 0.25)"
+    COLOR_PRIMARY_SOFT = "rgba(59, 130, 246, 0.08)"
+    COLOR_PRIMARY_GLOW = "rgba(59, 130, 246, 0.2)"
 
     COLOR_SECONDARY = "#10b981"
     COLOR_SECONDARY_HOVER = "#059669"
-    COLOR_SECONDARY_SOFT = "rgba(16, 185, 129, 0.1)"
+    COLOR_SECONDARY_SOFT = "rgba(16, 185, 129, 0.08)"
 
     COLOR_ACCENT = "#8b5cf6"
     COLOR_ACCENT_HOVER = "#7c3aed"
-    COLOR_ACCENT_SOFT = "rgba(139, 92, 246, 0.1)"
+    COLOR_ACCENT_SOFT = "rgba(139, 92, 246, 0.08)"
     COLOR_ACCENT_PRIMARY = COLOR_ACCENT
     COLOR_ACCENT_SECONDARY = COLOR_PRIMARY
 
     # Status colors
     COLOR_SUCCESS = "#10b981"
-    COLOR_SUCCESS_SOFT = "rgba(16, 185, 129, 0.12)"
+    COLOR_SUCCESS_SOFT = "rgba(16, 185, 129, 0.08)"
     COLOR_SUCCESS_BG = "#d1fae5"
 
     COLOR_WARNING = "#f59e0b"
-    COLOR_WARNING_SOFT = "rgba(245, 158, 11, 0.12)"
+    COLOR_WARNING_SOFT = "rgba(245, 158, 11, 0.08)"
     COLOR_WARNING_BG = "#fef3c7"
 
     COLOR_DANGER = "#ef4444"
-    COLOR_DANGER_SOFT = "rgba(239, 68, 68, 0.12)"
+    COLOR_DANGER_SOFT = "rgba(239, 68, 68, 0.08)"
     COLOR_DANGER_BG = "#fee2e2"
 
     COLOR_INFO = "#06b6d4"
-    COLOR_INFO_SOFT = "rgba(6, 182, 212, 0.12)"
+    COLOR_INFO_SOFT = "rgba(6, 182, 212, 0.08)"
 
     # Threat severity colors
     COLOR_CRITICAL = "#dc2626"
@@ -113,12 +115,12 @@ class DesignTokens:
     GRADIENT_SUCCESS_START = "#10b981"
     GRADIENT_SUCCESS_END = "#06b6d4"
 
-    GRADIENT_CARD_START = "rgba(255, 255, 255, 0.9)"
-    GRADIENT_CARD_END = "rgba(248, 250, 252, 0.7)"
+    GRADIENT_CARD_START = "rgba(255, 255, 255, 0.95)"
+    GRADIENT_CARD_END = "rgba(255, 255, 255, 0.85)"
 
     # Cyber grid pattern
-    COLOR_GRID = "rgba(59, 130, 246, 0.03)"
-    COLOR_GRID_LINES = "rgba(148, 163, 184, 0.08)"
+    COLOR_GRID = "rgba(59, 130, 246, 0.02)"
+    COLOR_GRID_LINES = "rgba(148, 163, 184, 0.05)"
 
     # Animation durations (ms)
     ANIMATION_FAST = 150

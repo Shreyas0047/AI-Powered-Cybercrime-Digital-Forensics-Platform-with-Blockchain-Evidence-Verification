@@ -77,6 +77,13 @@ class BuildSystem:
 
             if result.returncode == 0:
                 print("Agent build successful!")
+
+                config_src = self.sandbox_agent_dir / "config"
+                config_dst = self.dist_dir / "sandbox-agent" / "config"
+                if config_src.exists():
+                    shutil.copytree(config_src, config_dst, dirs_exist_ok=True)
+                    print(f"  Copied config to: {config_dst}")
+
                 return True
             else:
                 print(f"Build failed: {result.stderr}")
@@ -177,9 +184,9 @@ class BuildSystem:
 
         simulators_dir = self.dist_dir / "simulators"
         if simulators_dir.exists():
-            for sim in ["RansomwareSimulator.exe", "SpywareSimulator.exe",
-                        "TrojanSimulator.exe", "BotnetSimulator.exe",
-                        "CredentialStealerSimulator.exe"]:
+            for sim in ["threat_file_1.exe", "threat_file_2.exe",
+                        "windows_patch.exe", "updater_service.exe",
+                        "runtime_helper.exe"]:
                 exe_path = simulators_dir / sim
                 validation["simulators"][sim] = exe_path.exists()
 

@@ -90,7 +90,7 @@ class SimulatorManagerPage(QWidget):
             row = self._table.rowCount()
             self._table.insertRow(row)
             self._set_item(row, 0, simulator.display_name, simulator)
-            self._set_item(row, 1, simulator.category, simulator)
+            self._set_item(row, 1, "Analyzed", simulator)
             self._set_item(row, 2, simulator.version, simulator)
             self._set_item(row, 3, simulator.executable_path or "Not resolved", simulator)
             self._set_item(row, 4, "Ready" if simulator.executable_exists else "Missing executable", simulator)

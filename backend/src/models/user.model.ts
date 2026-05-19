@@ -7,8 +7,8 @@ import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { UserRole, RoleHierarchy, RolePermissions, Permission } from '../types';
 
-// Password validation regex - Enterprise grade
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+// Password validation: min 8 chars, at least 1 number
+const PASSWORD_REGEX = /^(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
 
 const userSchema = new Schema({
   email: {
@@ -17,7 +17,6 @@ const userSchema = new Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    index: true,
   },
   password: {
     type: String,
@@ -30,7 +29,7 @@ const userSchema = new Schema({
         if (!this.isModified('password') || this.isNew) return true;
         return PASSWORD_REGEX.test(v);
       },
-      message: 'Password must contain uppercase, lowercase, number, and special character',
+      message: 'Password must be at least 8 characters with at least one number',
     },
   },
   firstName: {

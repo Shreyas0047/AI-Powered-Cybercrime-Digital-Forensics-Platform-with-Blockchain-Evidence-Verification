@@ -85,12 +85,15 @@ export function Button({
   fullWidth = false,
   disabled,
   className,
+  type = 'button',
+  ...props
 }: ButtonProps) {
   return (
     <motion.button
       whileHover={{ scale: disabled || loading ? 1 : 1.02 }}
       whileTap={{ scale: disabled || loading ? 1 : 0.98 }}
       disabled={disabled || loading}
+      type={type}
       className={cn(
         'inline-flex items-center justify-center font-medium rounded-lg',
         'transition-all duration-150',
@@ -101,6 +104,7 @@ export function Button({
         fullWidth && 'w-full',
         className
       )}
+      {...props}
     >
       {loading ? (
         <Loader2 className="w-4 h-4 animate-spin" />

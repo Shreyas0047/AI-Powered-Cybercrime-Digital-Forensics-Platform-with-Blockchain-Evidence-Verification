@@ -9,7 +9,7 @@ const DEMO_USERS: Record<string, User> = {
     id: '1',
     email: 'admin@forensics.ai',
     name: 'Admin User',
-    role: 'super_admin',
+    role: 'admin',
     department: 'Security Operations',
     createdAt: new Date().toISOString(),
   },
@@ -17,7 +17,7 @@ const DEMO_USERS: Record<string, User> = {
     id: '2',
     email: 'analyst@forensics.ai',
     name: 'Sarah Johnson',
-    role: 'forensic_analyst',
+    role: 'analyst',
     department: 'Threat Investigation',
     createdAt: new Date().toISOString(),
   },
@@ -25,7 +25,7 @@ const DEMO_USERS: Record<string, User> = {
     id: '3',
     email: 'demo@forensics.ai',
     name: 'Demo User',
-    role: 'forensic_analyst',
+    role: 'analyst',
     department: 'Demo Department',
     createdAt: new Date().toISOString(),
   },
@@ -52,7 +52,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
 
-      login: async (credentials: LoginCredentials) => {
+      login: async (credentials: LoginCredentials): Promise<{ user: User } | null> => {
         set({ isLoading: true, error: null });
 
         // Demo mode: allow login with demo credentials even without backend
@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
-          return;
+          return { user: demoUser };
         }
 
         // Try backend login
@@ -77,11 +77,14 @@ export const useAuthStore = create<AuthState>()(
           if (response.success && response.data) {
             set({
               user: response.data.user,
-              token: response.data.token,
+              token: response.data.tokens.accessToken,
               isAuthenticated: true,
               isLoading: false,
             });
+            return { user: response.data.user };
           }
+          set({ isLoading: false, error: response.message || 'Login failed' });
+          return null;
         } catch (error) {
           // Fallback to demo mode if backend unavailable
           set({ isLoading: false, error: 'Server unavailable. Try demo@forensics.ai or admin@forensics.ai' });
@@ -104,6 +107,10 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isAuthenticated: false,
         });
+        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
       },
 
       checkAuth: async () => {
@@ -129,8 +136,15 @@ export const useAuthStore = create<AuthState>()(
           const response = await api.getCurrentUser();
           if (response.success && response.data) {
             set({
-              user: response.data,
+              user: response.data.user,
               isAuthenticated: true,
+              isLoading: false,
+            });
+          } else {
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
               isLoading: false,
             });
           }

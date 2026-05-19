@@ -4,6 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+import { Types } from 'mongoose';
 import { config } from '../config';
 import logger from '../config/logger';
 import { securityLogger } from '../config/logger';
@@ -42,7 +43,7 @@ export class AuthService {
     }
 
     // Validate role assignment permissions
-    if (data.role && data.createdBy) {
+    if (data.role && data.createdBy && Types.ObjectId.isValid(data.createdBy)) {
       const creator: any = await User.findById(data.createdBy);
       if (creator && !creator.canAssignRole(data.role)) {
         throw new ForbiddenError('Insufficient permissions to assign this role');

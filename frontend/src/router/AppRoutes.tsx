@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import MainLayout from '../layouts/MainLayout';
 import LoginPage from '../pages/LoginPage';
+import RegisterPage from '../pages/RegisterPage';
 import EnhancedDashboardPage from '../pages/EnhancedDashboardPage';
 import InvestigationsPage from '../pages/InvestigationsPage';
 import InvestigationDetailPage from '../pages/InvestigationDetailPage';
@@ -58,6 +59,14 @@ export const router = createBrowserRouter([
     element: (
       <PublicRoute>
         <LoginPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: '/register',
+    element: (
+      <PublicRoute>
+        <RegisterPage />
       </PublicRoute>
     ),
   },

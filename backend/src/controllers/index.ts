@@ -10,3 +10,8 @@ export { evidenceController } from './evidence.controller';
 export { sandboxController } from './sandbox.controller';
 export { syncController } from './sync.controller';
 export { aiController } from './ai-analysis.controller';
+export { threatAnalysisController } from './threat-analysis.controller';
+export { reportsController } from './reports.controller';
+export { logsController } from './logs.controller';
+export { settingsController } from './settings.controller';
+export { evidenceArtifactsController } from './evidence-artifacts.controller';
