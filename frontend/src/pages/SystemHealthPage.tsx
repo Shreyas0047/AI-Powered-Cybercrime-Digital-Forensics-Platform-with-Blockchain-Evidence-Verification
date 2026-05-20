@@ -34,45 +34,32 @@ interface SystemMetrics {
   activeConnections: number;
 }
 
-// Mock service statuses for demonstration
-const mockServices: ServiceStatus[] = [
-  { name: 'API Server', status: 'healthy', responseTime: 45, lastCheck: new Date().toISOString(), details: 'All endpoints operational' },
-  { name: 'WebSocket Server', status: 'healthy', responseTime: 12, lastCheck: new Date().toISOString(), details: 'Real-time streaming active' },
-  { name: 'Database', status: 'healthy', responseTime: 23, lastCheck: new Date().toISOString(), details: 'MongoDB connected' },
-  { name: 'AI Analysis Engine', status: 'healthy', responseTime: 156, lastCheck: new Date().toISOString(), details: 'Model loaded and ready' },
-  { name: 'Evidence Storage', status: 'healthy', responseTime: 8, lastCheck: new Date().toISOString(), details: 'Local storage accessible' },
-  { name: 'Sandbox Sync', status: 'healthy', responseTime: 34, lastCheck: new Date().toISOString(), details: 'Synchronization active' },
-  { name: 'Telemetry Ingestion', status: 'healthy', responseTime: 5, lastCheck: new Date().toISOString(), details: 'Processing events' },
-  { name: 'Authentication', status: 'healthy', responseTime: 18, lastCheck: new Date().toISOString(), details: 'JWT tokens valid' },
-];
+const emptyServices: ServiceStatus[] = [];
 
-const mockMetrics: SystemMetrics = {
-  uptime: '4d 12h 35m',
-  cpu: 23,
-  memory: 47,
-  storage: 68,
-  activeConnections: 12,
+const defaultMetrics: SystemMetrics = {
+  uptime: '0d 0h 0m',
+  cpu: 0,
+  memory: 0,
+  storage: 0,
+  activeConnections: 0,
 };
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 
 export function SystemHealthPage() {
-  const [_services, setServices] = useState<ServiceStatus[]>(mockServices);
-  const [metrics] = useState<SystemMetrics>(mockMetrics);
+  const [services, setServices] = useState<ServiceStatus[]>(emptyServices);
+  const [metrics] = useState<SystemMetrics>(defaultMetrics);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   const refreshStatus = () => {
     setLastRefresh(new Date());
-    setServices(mockServices.map(s => ({
-      ...s,
-      lastCheck: new Date().toISOString(),
-    })));
+    setServices([]);
   };
 
-  const healthyCount = mockServices.filter(s => s.status === 'healthy').length;
-  const degradedCount = mockServices.filter(s => s.status === 'degraded').length;
-  const offlineCount = mockServices.filter(s => s.status === 'offline').length;
+  const healthyCount = 0;
+  const degradedCount = 0;
+  const offlineCount = 0;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -184,7 +171,7 @@ export function SystemHealthPage() {
         <DashboardCard>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Service Status</h2>
           <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-            {mockServices.map((service) => (
+            {services.map((service) => (
               <div
                 key={service.name}
                 className="px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"

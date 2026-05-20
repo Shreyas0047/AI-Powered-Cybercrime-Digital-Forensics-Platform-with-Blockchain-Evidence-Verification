@@ -50,15 +50,15 @@ export const ReconciliationPanel: React.FC = () => {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-red-500/10 text-red-400 border-red-500/30';
       case 'high':
-        return 'bg-orange-100 text-orange-800 border-orange-300';
+        return 'bg-orange-500/10 text-orange-400 border-orange-500/30';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
       case 'low':
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-slate-700/30 text-slate-300 border-slate-600';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-slate-700/30 text-slate-300 border-slate-600';
     }
   };
 
@@ -84,22 +84,22 @@ export const ReconciliationPanel: React.FC = () => {
     : reconciliationIssues.filter(i => !i.resolved);
 
   return (
-    <div className="bg-white rounded-lg shadow-md">
+    <div className="bg-slate-800/50 rounded-lg shadow-md border border-slate-700">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-slate-700 p-4">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-white">
               Blockchain Reconciliation
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-slate-400 mt-1">
               Detect and resolve inconsistencies in blockchain records
             </p>
           </div>
           <button
             onClick={() => runReconciliation()}
             disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
+            className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 disabled:opacity-50 text-sm"
           >
             Run Full Reconciliation
           </button>
@@ -108,41 +108,41 @@ export const ReconciliationPanel: React.FC = () => {
 
       {/* Stats */}
       {reconciliationStats && (
-        <div className="border-b border-gray-200 p-4 bg-gray-50">
+        <div className="border-b border-slate-700 p-4 bg-slate-800/50">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold text-gray-900">{reconciliationStats.totalIssues}</div>
-              <div className="text-xs text-gray-500">Total Issues</div>
+              <div className="text-2xl font-bold text-white">{reconciliationStats.totalIssues}</div>
+              <div className="text-xs text-slate-400">Total Issues</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-red-600">{reconciliationStats.bySeverity?.critical ?? 0}</div>
-              <div className="text-xs text-gray-500">Critical</div>
+              <div className="text-2xl font-bold text-red-400">{reconciliationStats.bySeverity?.critical ?? 0}</div>
+              <div className="text-xs text-slate-400">Critical</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-orange-600">{reconciliationStats.bySeverity?.high ?? 0}</div>
-              <div className="text-xs text-gray-500">High</div>
+              <div className="text-2xl font-bold text-orange-400">{reconciliationStats.bySeverity?.high ?? 0}</div>
+              <div className="text-xs text-slate-400">High</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-green-600">{reconciliationStats.resolvedToday}</div>
-              <div className="text-xs text-gray-500">Resolved Today</div>
+              <div className="text-2xl font-bold text-green-400">{reconciliationStats.resolvedToday}</div>
+              <div className="text-xs text-slate-400">Resolved Today</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-blue-600">{reconciliationStats.autoResolved}</div>
-              <div className="text-xs text-gray-500">Auto-Resolved</div>
+              <div className="text-2xl font-bold text-cyan-400">{reconciliationStats.autoResolved}</div>
+              <div className="text-xs text-slate-400">Auto-Resolved</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Filters */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-slate-700">
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Severity Filter:</label>
+            <label className="text-sm text-slate-400">Severity Filter:</label>
             <select
               value={selectedSeverity}
               onChange={(e) => setSelectedSeverity(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+              className="border border-slate-600 bg-slate-700 rounded-md px-3 py-1 text-sm text-slate-200"
             >
               <option value="">All</option>
               <option value="critical">Critical</option>
@@ -159,7 +159,7 @@ export const ReconciliationPanel: React.FC = () => {
               onChange={(e) => setShowResolved(e.target.checked)}
               className="rounded"
             />
-            <label htmlFor="showResolved" className="text-sm text-gray-600">
+            <label htmlFor="showResolved" className="text-sm text-slate-400">
               Show Resolved
             </label>
           </div>
@@ -169,7 +169,7 @@ export const ReconciliationPanel: React.FC = () => {
       {/* Issues List */}
       <div className="p-4">
         {filteredIssues.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-slate-400">
             No reconciliation issues found
           </div>
         ) : (
@@ -177,40 +177,45 @@ export const ReconciliationPanel: React.FC = () => {
             {filteredIssues.map((issue) => (
               <div
                 key={issue.id}
-                className={`border rounded-lg p-4 ${getSeverityColor(issue.severity)}`}
+                className={`border rounded-lg p-4 ${
+                  issue.severity === 'critical' ? 'bg-red-500/10 border-red-500/30' :
+                  issue.severity === 'high' ? 'bg-orange-500/10 border-orange-500/30' :
+                  issue.severity === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30' :
+                  'bg-slate-700/30 border-slate-600'
+                }`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`px-2 py-0.5 text-xs font-medium rounded uppercase ${
-                        issue.severity === 'critical' ? 'bg-red-200' :
-                        issue.severity === 'high' ? 'bg-orange-200' :
-                        issue.severity === 'medium' ? 'bg-yellow-200' : 'bg-gray-200'
+                        issue.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
+                        issue.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                        issue.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-slate-600 text-slate-300'
                       }`}>
                         {issue.severity}
                       </span>
-                      <span className="text-sm font-medium">{getTypeLabel(issue.type)}</span>
+                      <span className="text-sm font-medium text-white">{getTypeLabel(issue.type)}</span>
                       {issue.resolved && (
-                        <span className="px-2 py-0.5 text-xs font-medium rounded bg-green-200 text-green-800">
+                        <span className="px-2 py-0.5 text-xs font-medium rounded bg-green-500/20 text-green-400">
                           Resolved
                         </span>
                       )}
                     </div>
-                    <p className="text-sm">{issue.description}</p>
+                    <p className="text-sm text-slate-300">{issue.description}</p>
                     {issue.evidenceId && (
-                      <p className="text-xs mt-1 opacity-75">Evidence ID: {issue.evidenceId}</p>
+                      <p className="text-xs mt-1 text-slate-400">Evidence ID: {issue.evidenceId}</p>
                     )}
-                    <p className="text-xs mt-1 opacity-75">
+                    <p className="text-xs mt-1 text-slate-500">
                       Detected: {new Date(issue.detectedAt).toLocaleString()}
                     </p>
                     {issue.resolution && (
-                      <p className="text-sm mt-2 font-medium">Resolution: {issue.resolution}</p>
+                      <p className="text-sm mt-2 font-medium text-slate-300">Resolution: {issue.resolution}</p>
                     )}
                   </div>
                   {!issue.resolved && (
                     <button
                       onClick={() => setResolveModal(issue)}
-                      className="ml-4 px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50"
+                      className="ml-4 px-3 py-1 bg-slate-700 border border-slate-600 rounded text-sm text-slate-200 hover:bg-slate-600"
                     >
                       Resolve
                     </button>
@@ -224,17 +229,17 @@ export const ReconciliationPanel: React.FC = () => {
 
       {/* Resolve Modal */}
       {resolveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">Resolve Issue</h3>
-            <p className="text-sm text-gray-600 mb-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-slate-800 rounded-lg p-6 w-full max-w-md border border-slate-700">
+            <h3 className="text-lg font-medium mb-4 text-white">Resolve Issue</h3>
+            <p className="text-sm text-slate-400 mb-4">
               Issue: {resolveModal.description}
             </p>
             <textarea
               value={resolutionText}
               onChange={(e) => setResolutionText(e.target.value)}
               placeholder="Enter resolution description..."
-              className="w-full border border-gray-300 rounded-md p-3 text-sm mb-4"
+              className="w-full border border-slate-600 bg-slate-700 rounded-md p-3 text-sm text-slate-200 mb-4"
               rows={3}
             />
             <div className="flex justify-end gap-2">
@@ -243,14 +248,14 @@ export const ReconciliationPanel: React.FC = () => {
                   setResolveModal(null);
                   setResolutionText('');
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+                className="px-4 py-2 border border-slate-600 rounded-md text-sm text-slate-300 hover:bg-slate-700"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResolve}
                 disabled={!resolutionText}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-cyan-600 text-white rounded-md text-sm hover:bg-cyan-700 disabled:opacity-50"
               >
                 Resolve
               </button>

@@ -15,14 +15,14 @@ export const BlockchainOperationsPage: React.FC = () => {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-slate-900">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-white">
             Blockchain Operations
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-slate-400">
             Monitor and manage blockchain synchronization, verification queues, and system health
           </p>
         </div>
@@ -39,15 +39,15 @@ export const BlockchainOperationsPage: React.FC = () => {
         </div>
 
         {/* Info Section */}
-        <div className="mt-6 bg-blue-50 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">
+        <div className="mt-6 bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+          <h3 className="text-sm font-medium text-cyan-400 mb-2">
             About Blockchain Operations
           </h3>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• <strong>Synchronization:</strong> Manages the registration and verification of evidence on the blockchain</li>
-            <li>• <strong>Verification Queue:</strong> Processes distributed verification jobs for evidence integrity</li>
-            <li>• <strong>System Health:</strong> Monitors blockchain connection and data integrity metrics</li>
-            <li>• <strong>Reconciliation:</strong> Detects and resolves inconsistencies between database and blockchain records</li>
+          <ul className="text-sm text-slate-400 space-y-1">
+            <li>• <strong className="text-slate-300">Synchronization:</strong> Manages the registration and verification of evidence on the blockchain</li>
+            <li>• <strong className="text-slate-300">Verification Queue:</strong> Processes distributed verification jobs for evidence integrity</li>
+            <li>• <strong className="text-slate-300">System Health:</strong> Monitors blockchain connection and data integrity metrics</li>
+            <li>• <strong className="text-slate-300">Reconciliation:</strong> Detects and resolves inconsistencies between database and blockchain records</li>
           </ul>
         </div>
       </div>

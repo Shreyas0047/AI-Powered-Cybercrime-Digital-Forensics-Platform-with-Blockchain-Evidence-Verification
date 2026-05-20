@@ -1,35 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, LoginCredentials } from '../types';
+import type { User, LoginCredentials, UserRole } from '../types';
+import { RolePermissions as BackendRolePermissions } from '../types';
 import api from '../services/api';
 
-// Demo users for offline mode
-const DEMO_USERS: Record<string, User> = {
-  'admin@forensics.ai': {
-    id: '1',
-    email: 'admin@forensics.ai',
-    name: 'Admin User',
-    role: 'admin',
-    department: 'Security Operations',
-    createdAt: new Date().toISOString(),
-  },
-  'analyst@forensics.ai': {
-    id: '2',
-    email: 'analyst@forensics.ai',
-    name: 'Sarah Johnson',
-    role: 'analyst',
-    department: 'Threat Investigation',
-    createdAt: new Date().toISOString(),
-  },
-  'demo': {
-    id: '3',
-    email: 'demo@forensics.ai',
-    name: 'Demo User',
-    role: 'analyst',
-    department: 'Demo Department',
-    createdAt: new Date().toISOString(),
-  },
-};
+// Permission type
+type Permission = string;
 
 interface AuthState {
   user: User | null;
@@ -37,10 +13,14 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  permissions: Permission[];
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   clearError: () => void;
+  hasPermission: (permission: string) => boolean;
+  hasRole: (role: UserRole | UserRole[]) => boolean;
+  isAdmin: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -51,56 +31,44 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      permissions: [],
+
+      // Helper to get permissions based on user role
+      getPermissionsForRole: (role: UserRole): Permission[] => {
+        const permissions = BackendRolePermissions[role] || [];
+        return [...permissions];
+      },
 
       login: async (credentials: LoginCredentials): Promise<{ user: User } | null> => {
         set({ isLoading: true, error: null });
 
-        // Demo mode: allow login with demo credentials even without backend
-        const email = credentials.email.toLowerCase();
-        if (DEMO_USERS[email] || email === 'demo') {
-          // Simulate network delay
-          await new Promise(resolve => setTimeout(resolve, 500));
-
-          const demoUser = DEMO_USERS[email] || DEMO_USERS['demo'];
-          set({
-            user: demoUser,
-            token: 'demo-token-' + Date.now(),
-            isAuthenticated: true,
-            isLoading: false,
-          });
-          return { user: demoUser };
-        }
-
-        // Try backend login
         try {
           const response = await api.login(credentials);
           if (response.success && response.data) {
+            const user = response.data.user;
+            const permissions = BackendRolePermissions[user.role as UserRole] || [];
             set({
-              user: response.data.user,
+              user: user,
               token: response.data.tokens.accessToken,
               isAuthenticated: true,
               isLoading: false,
+              permissions: permissions,
             });
-            return { user: response.data.user };
+            return { user: user };
           }
           set({ isLoading: false, error: response.message || 'Login failed' });
           return null;
         } catch (error) {
-          // Fallback to demo mode if backend unavailable
-          set({ isLoading: false, error: 'Server unavailable. Try demo@forensics.ai or admin@forensics.ai' });
+          set({ isLoading: false, error: 'Login failed. Please check your credentials.' });
           throw error;
         }
       },
 
       logout: async () => {
-        const token = get().token;
-        // Only try API logout if it's a real token (not demo)
-        if (token && !token.startsWith('demo-')) {
-          try {
-            await api.logout();
-          } catch {
-            // Ignore logout errors
-          }
+        try {
+          await api.logout();
+        } catch {
+          // Ignore logout errors
         }
         set({
           user: null,
@@ -116,18 +84,8 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: async () => {
         const token = get().token;
 
-        // Check if it's a demo token
-        if (token?.startsWith('demo-')) {
-          // Restore demo user from stored user
-          const user = get().user;
-          if (user) {
-            set({ isAuthenticated: true });
-          }
-          return;
-        }
-
         if (!token) {
-          set({ isAuthenticated: false });
+          set({ isAuthenticated: false, permissions: [] });
           return;
         }
 
@@ -135,10 +93,13 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await api.getCurrentUser();
           if (response.success && response.data) {
+            const user = response.data.user;
+            const permissions = BackendRolePermissions[user.role as UserRole] || [];
             set({
-              user: response.data.user,
+              user: user,
               isAuthenticated: true,
               isLoading: false,
+              permissions: permissions,
             });
           } else {
             set({
@@ -146,6 +107,7 @@ export const useAuthStore = create<AuthState>()(
               token: null,
               isAuthenticated: false,
               isLoading: false,
+              permissions: [],
             });
           }
         } catch {
@@ -154,15 +116,39 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             isAuthenticated: false,
             isLoading: false,
+            permissions: [],
           });
         }
       },
 
       clearError: () => set({ error: null }),
+
+      hasPermission: (permission: string): boolean => {
+        const { user, permissions } = get();
+        // Admin has all permissions
+        if (user?.role === 'admin' || user?.role === 'super_admin') {
+          return true;
+        }
+        return permissions.includes(permission);
+      },
+
+      hasRole: (role: UserRole | UserRole[]): boolean => {
+        const { user } = get();
+        if (!user) return false;
+        if (Array.isArray(role)) {
+          return role.includes(user.role as UserRole);
+        }
+        return user.role === role;
+      },
+
+      isAdmin: (): boolean => {
+        const { user } = get();
+        return user?.role === 'admin' || user?.role === 'super_admin';
+      },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ token: state.token, user: state.user }),
+      partialize: (state) => ({ token: state.token, user: state.user, permissions: state.permissions }),
     }
   )
 );

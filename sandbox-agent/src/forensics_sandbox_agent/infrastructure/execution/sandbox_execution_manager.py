@@ -130,8 +130,8 @@ class SandboxExecutionManager:
         self._logger.info(f"  - executable_path: '{simulator.executable_path}'")
         self._logger.info(f"  - executable_path exists: {Path(simulator.executable_path).exists() if simulator.executable_path else 'N/A'}")
 
-        valid_ids = ("system_service_1", "system_monitor", "update_service",
-                     "runtime_helper", "windows_patch")
+        valid_ids = ("ransomware-simulator", "spyware-simulator", "trojan-simulator",
+                     "botnet-simulator", "credential-stealer")
 
         if simulator.id not in valid_ids:
             self._logger.error(f"REJECTED: Unknown simulator id: {simulator.id}")
@@ -152,7 +152,7 @@ class SandboxExecutionManager:
         """Prepare VM for sandbox execution (start if needed, ensure ready)."""
         self._logger.info("Preparing VM for execution")
 
-        self._vm_controller.ensure_running()
+        self._vm_controller.ensure_running(headless=self._execution_config.start_headless)
 
         readiness = self._vm_controller.verify_vm_ready()
         if not readiness.is_ready:

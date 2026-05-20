@@ -100,7 +100,6 @@ const investigationSchema = new mongoose_1.Schema({
         unique: true,
         uppercase: true,
         trim: true,
-        index: true,
     },
     title: {
         type: String,

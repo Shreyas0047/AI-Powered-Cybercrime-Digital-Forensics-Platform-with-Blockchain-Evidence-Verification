@@ -24,55 +24,6 @@ import { DashboardCard, DashboardStat } from '../components/enterprise/Dashboard
 import { useRealtimeStore } from '../stores/realtimeStore';
 import { formatRelativeTime, cn } from '../utils/helpers';
 
-// Mock telemetry events for demonstration
-const generateMockTelemetry = () => {
-  const eventTypes = ['process', 'file', 'registry', 'network', 'module', 'behavior', 'anomaly'];
-  const sources = ['sandbox', 'endpoint', 'network', 'ai'];
-  const processes = ['powershell.exe', 'cmd.exe', 'svchost.exe', 'explorer.exe', 'notepad.exe', 'malware.exe'];
-  const actions: Record<string, string[]> = {
-    process: ['execute', 'terminate', 'create', 'inject'],
-    file: ['create', 'read', 'write', 'delete', 'rename'],
-    registry: ['write', 'delete', 'read', 'enumerate'],
-    network: ['connect', 'listen', 'send', 'receive'],
-    module: ['load', 'unload', 'inject'],
-    behavior: ['persistence', 'privilege_escalation', 'defense_evasion'],
-    anomaly: ['suspicious_pattern', 'anomalous_behavior', 'threat_indicator'],
-  };
-
-  const type = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-  const source = sources[Math.floor(Math.random() * sources.length)];
-
-  return {
-    id: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    timestamp: new Date().toISOString(),
-    type,
-    source,
-    details: {
-      ...(type === 'process' && {
-        processName: processes[Math.floor(Math.random() * processes.length)],
-        action: actions[type][Math.floor(Math.random() * actions[type].length)],
-        pid: Math.floor(Math.random() * 65535),
-      }),
-      ...(type === 'file' && {
-        action: actions[type][Math.floor(Math.random() * actions[type].length)],
-        path: `C:\\Windows\\System32\\${Math.random().toString(36).substr(2, 8)}.dll`,
-      }),
-      ...(type === 'network' && {
-        action: actions[type][Math.floor(Math.random() * actions[type].length)],
-        destination: `192.168.1.${Math.floor(Math.random() * 255)}`,
-        port: Math.floor(Math.random() * 65535),
-        protocol: ['TCP', 'UDP', 'HTTP'][Math.floor(Math.random() * 3)],
-      }),
-      ...(type === 'registry' && {
-        action: actions[type][Math.floor(Math.random() * actions[type].length)],
-        key: 'HKLM\\Software\\Microsoft\\Windows\\Run',
-        value: 'malware.exe',
-      }),
-    },
-    suspiciousScore: Math.floor(Math.random() * 100),
-  };
-};
-
 const eventTypeColors: Record<string, string> = {
   process: 'bg-blue-500',
   file: 'bg-orange-500',
@@ -101,26 +52,21 @@ export function LiveTelemetryPage() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [autoScroll, setAutoScroll] = useState(true);
 
-  // Simulate live telemetry for demonstration
-  const [events, setEvents] = useState(() => {
-    const initialEvents = [];
-    for (let i = 0; i < 15; i++) {
-      const event = generateMockTelemetry();
-      event.timestamp = new Date(Date.now() - i * 5000).toISOString();
-      initialEvents.push(event);
-    }
-    return initialEvents;
-  });
+  const [events, setEvents] = useState<Array<{
+    id: string;
+    timestamp: string;
+    type: string;
+    source: string;
+    details: Record<string, unknown>;
+    suspiciousScore?: number;
+  }>>([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (autoScroll) {
-        setEvents((prev) => [generateMockTelemetry(), ...prev].slice(0, 100));
-      }
     }, 1500);
 
     return () => clearInterval(interval);
-  }, [autoScroll]);
+  }, []);
 
   const filteredEvents = events.filter((event) => {
     const matchesType = typeFilter === 'all' || event.type === typeFilter;

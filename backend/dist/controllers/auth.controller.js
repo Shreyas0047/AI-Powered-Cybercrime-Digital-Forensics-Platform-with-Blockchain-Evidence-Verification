@@ -19,7 +19,7 @@ class AuthController {
             firstName,
             lastName,
             role: role,
-            createdBy: req.user?.id || 'system',
+            createdBy: req.user?.id || undefined,
         }, req.ip);
         const response = {
             success: true,

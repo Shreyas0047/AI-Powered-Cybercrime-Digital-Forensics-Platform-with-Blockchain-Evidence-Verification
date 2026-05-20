@@ -16,30 +16,23 @@ import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardCard, DashboardStat } from '../components/enterprise/DashboardGrid';
 import { formatRelativeTime, cn } from '../utils/helpers';
 
-const mockAlerts = [
-  { id: '1', alertId: 'ALT-2024-5A3B-001', title: 'Suspicious PowerShell Execution', description: 'Encoded PowerShell command detected in process', type: 'security', severity: 'critical', status: 'new', source: 'sandbox', detectedAt: '2024-01-16T14:30:00Z', investigationId: '1' },
-  { id: '2', alertId: 'ALT-2024-5A3B-002', title: 'Unusual Network Behavior', description: 'Multiple connections to suspicious IP addresses', type: 'network', severity: 'high', status: 'acknowledged', source: 'siem', detectedAt: '2024-01-16T13:45:00Z', investigationId: '1' },
-  { id: '3', alertId: 'ALT-2024-5A2C-001', title: 'Failed Login Attempts', description: 'Multiple failed login attempts from external IP', type: 'security', severity: 'medium', status: 'in_progress', source: 'endpoint', detectedAt: '2024-01-16T12:00:00Z', investigationId: '2' },
-  { id: '4', alertId: 'ALT-2024-5A2C-002', title: 'Registry Modification Detected', description: 'Suspicious registry keys added for persistence', type: 'endpoint', severity: 'high', status: 'new', source: 'sandbox', detectedAt: '2024-01-16T11:30:00Z', investigationId: '2' },
-  { id: '5', alertId: 'ALT-2024-5A1D-001', title: 'File Download Activity', description: 'Large file download from untrusted source', type: 'network', severity: 'low', status: 'resolved', source: 'firewall', detectedAt: '2024-01-15T16:20:00Z', investigationId: '3' },
-];
-
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 
 export function AlertsPage() {
   const [severityFilter, setSeverityFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const filteredAlerts = mockAlerts.filter(alert => {
+  const alerts: Array<{id: string; alertId: string; title: string; description: string; type: string; severity: string; status: string; source: string; detectedAt: string; investigationId: string}> = [];
+
+  const filteredAlerts = alerts.filter(alert => {
     const matchesSeverity = severityFilter === 'all' || alert.severity === severityFilter;
     const matchesStatus = statusFilter === 'all' || alert.status === statusFilter;
     return matchesSeverity && matchesStatus;
   });
 
-  // Stats
-  const criticalCount = mockAlerts.filter(a => a.severity === 'critical' && a.status === 'new').length;
-  const highCount = mockAlerts.filter(a => a.severity === 'high' && a.status === 'new').length;
-  const totalActive = mockAlerts.filter(a => a.status !== 'resolved' && a.status !== 'closed').length;
+  const criticalCount = 0;
+  const highCount = 0;
+  const totalActive = 0;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">

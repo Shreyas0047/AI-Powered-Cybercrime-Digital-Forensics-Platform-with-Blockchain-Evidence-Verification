@@ -53,7 +53,6 @@ const userSchema = new mongoose_1.Schema({
         unique: true,
         lowercase: true,
         trim: true,
-        index: true,
     },
     password: {
         type: String,

@@ -19,77 +19,43 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { StatusBadge, SeverityBadge } from '../components/ui/Badge';
 import { DashboardCard } from '../components/enterprise/DashboardGrid';
-import { useTimelineStore, mockTelemetryEvents, mockAnalystNotes } from '../stores/timelineStore';
+import { useTimelineStore } from '../stores/timelineStore';
 import { formatRelativeTime, cn } from '../utils/helpers';
 
-// Mock investigation data for demonstration
-const mockInvestigation = {
-  id: '1',
-  caseNumber: 'INV-2024-5A3B',
-  title: 'Ransomware Incident Analysis - Finance Server',
-  description: 'Comprehensive analysis of ransomware attack on company finance servers. Initial compromise through phishing email leading to lateral movement and encryption of critical financial data.',
-  status: 'analyzing' as const,
-  priority: 'critical' as const,
-  category: 'ransomware',
-  phase: 'containment' as const,
-  createdAt: '2024-01-15T10:30:00Z',
-  updatedAt: '2024-01-16T14:20:00Z',
-  createdBy: { id: '1', name: 'John Smith', email: 'john@company.com', role: 'forensic_analyst' as const, createdAt: '' },
-  leadAnalyst: { id: '2', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'forensic_analyst' as const, createdAt: '' },
-  assignedAnalysts: [
-    { userId: '2', role: 'lead' as const, assignedAt: '2024-01-15T10:30:00Z', user: { id: '2', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'forensic_analyst' as const, createdAt: '' } },
-    { userId: '3', role: 'contributor' as const, assignedAt: '2024-01-15T14:00:00Z', user: { id: '3', name: 'Mike Chen', email: 'mike@company.com', role: 'forensic_analyst' as const, createdAt: '' } },
-  ],
-  evidenceCount: 12,
-  alertCount: 3,
-  tags: ['ransomware', 'phishing', 'lateral-movement', 'finance', 'critical'],
-};
-
-const mockAIAnalysis = {
-  threatType: 'Ransomware - LockBit Variant',
-  confidence: 92,
-  severityScore: 95,
-  severityLevel: 'critical',
-  keyFindings: [
-    'Encoded PowerShell execution detected - likely initial compromise vector',
-    'Registry persistence mechanism identified - Run key modification',
-    'Network beaconing pattern consistent with C2 communication',
-    'File encryption behavior with .encrypted extension pattern',
-    'Lateral movement indicators via SMB enumeration',
-  ],
-  behavioralSummary: 'The analyzed sample exhibits classic ransomware behavior including file encryption, persistence mechanisms, and command-and-control communication. The execution pattern suggests automated ransomware delivery with manual lateral movement.',
-  recommendations: [
-    'Immediate isolation of affected systems from network',
-    'Block communication with 192.168.1.100 (known C2)',
-    'Reset compromised credentials for affected users',
-    'Implement endpoint detection on remaining finance servers',
-    'Review email gateway for phishing campaign indicators',
-  ],
-};
-
-const mockEvidence = [
-  { id: '1', name: 'suspicious_email.eml', type: 'email', size: 24576, status: 'verified', collectedAt: '2024-01-15T11:00:00Z' },
-  { id: '2', name: 'malware_sample.exe', type: 'malware_sample', size: 153600, status: 'analyzing', collectedAt: '2024-01-15T12:30:00Z' },
-  { id: '3', name: 'network_capture.pcap', type: 'network_capture', size: 5242880, status: 'ready', collectedAt: '2024-01-15T14:00:00Z' },
-  { id: '4', name: 'memory_dump.raw', type: 'memory_dump', size: 8192000, status: 'ready', collectedAt: '2024-01-15T15:30:00Z' },
-];
-
-const mockAlerts = [
-  { id: '1', title: 'Suspicious PowerShell Execution', severity: 'critical', status: 'in_progress', detectedAt: '2024-01-16T14:30:00Z' },
-  { id: '2', title: 'Network Connection to Suspicious IP', severity: 'high', status: 'acknowledged', detectedAt: '2024-01-16T14:35:00Z' },
-  { id: '3', title: 'Registry Modification for Persistence', severity: 'high', status: 'new', detectedAt: '2024-01-16T14:40:00Z' },
-];
-
-const mockTimeline = [
-  { timestamp: '2024-01-15T10:30:00Z', action: 'Investigation created', user: 'John Smith', details: 'Initial case opened' },
-  { timestamp: '2024-01-15T11:00:00Z', action: 'Evidence collected', user: 'John Smith', details: 'Suspicious email extracted from mailbox' },
-  { timestamp: '2024-01-15T12:30:00Z', action: 'Malware sample obtained', user: 'Sarah Johnson', details: 'Binary retrieved from endpoint' },
-  { timestamp: '2024-01-15T14:00:00Z', action: 'Network capture initiated', user: 'Mike Chen', details: 'PCAP started on affected server' },
-  { timestamp: '2024-01-16T09:00:00Z', action: 'Status updated', user: 'Sarah Johnson', details: 'Investigation moved to analyzing phase' },
-  { timestamp: '2024-01-16T14:30:00Z', action: 'AI analysis completed', user: 'System', details: 'Automated threat classification completed' },
-];
-
 type TabType = 'overview' | 'evidence' | 'timeline' | 'analysis' | 'notes';
+
+const emptyInvestigation = {
+  id: '',
+  caseNumber: '',
+  title: 'No Investigation Selected',
+  description: 'Select an investigation from the list to view details.',
+  status: 'new' as const,
+  priority: 'low' as const,
+  category: '',
+  phase: 'identification' as const,
+  createdAt: '',
+  updatedAt: '',
+  createdBy: { id: '', name: '', email: '', role: 'forensic_analyst' as const, createdAt: '' },
+  leadAnalyst: { id: '', name: '', email: '', role: 'forensic_analyst' as const, createdAt: '' },
+  assignedAnalysts: [],
+  evidenceCount: 0,
+  alertCount: 0,
+  tags: [],
+};
+
+const emptyAIAnalysis = {
+  threatType: 'No Analysis',
+  confidence: 0,
+  severityScore: 0,
+  severityLevel: 'unknown',
+  keyFindings: [],
+  behavioralSummary: 'No analysis data available.',
+  recommendations: [],
+};
+
+const emptyEvidence: Array<{id: string; name: string; type: string; size: number; status: string; collectedAt: string}> = [];
+const emptyAlerts: Array<{id: string; title: string; severity: string; status: string; detectedAt: string}> = [];
+const emptyTimeline: Array<{timestamp: string; action: string; user: string; details: string}> = [];
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
@@ -99,10 +65,10 @@ export function InvestigationDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [_showNoteModal, setShowNoteModal] = useState(false);
 
-  const { setEvents } = useTimelineStore();
+  const { setEvents, events, notes } = useTimelineStore();
 
   useEffect(() => {
-    setEvents(mockTelemetryEvents);
+    setEvents([]);
   }, [setEvents]);
 
   const tabs = [
@@ -125,11 +91,11 @@ export function InvestigationDetailPage() {
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">{mockInvestigation.caseNumber}</p>
-            <SeverityBadge severity={mockInvestigation.priority as any} size="sm" />
-            <StatusBadge status={mockInvestigation.status} size="sm" />
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">{emptyInvestigation.caseNumber}</p>
+            <SeverityBadge severity={emptyInvestigation.priority as any} size="sm" />
+            <StatusBadge status={emptyInvestigation.status} size="sm" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{mockInvestigation.title}</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{emptyInvestigation.title}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
@@ -175,20 +141,20 @@ export function InvestigationDetailPage() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Description</p>
-                    <p className="text-slate-700 dark:text-slate-300">{mockInvestigation.description}</p>
+                    <p className="text-slate-700 dark:text-slate-300">{emptyInvestigation.description}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Category</p>
-                      <span className="text-slate-700 dark:text-slate-300 capitalize">{mockInvestigation.category}</span>
+                      <span className="text-slate-700 dark:text-slate-300 capitalize">{emptyInvestigation.category}</span>
                     </div>
                     <div>
                       <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Phase</p>
-                      <span className="text-slate-700 dark:text-slate-300 capitalize">{mockInvestigation.phase?.replace('_', ' ')}</span>
+                      <span className="text-slate-700 dark:text-slate-300 capitalize">{emptyInvestigation.phase?.replace('_', ' ')}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {mockInvestigation.tags.map((tag) => (
+                    {emptyInvestigation.tags.map((tag) => (
                       <span key={tag} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-full">
                         {tag}
                       </span>
@@ -205,7 +171,7 @@ export function InvestigationDetailPage() {
                       <FileText className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{mockInvestigation.evidenceCount}</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{emptyInvestigation.evidenceCount}</p>
                       <p className="text-sm text-slate-500 dark:text-slate-400">Evidence</p>
                     </div>
                   </div>
@@ -216,7 +182,7 @@ export function InvestigationDetailPage() {
                       <AlertTriangle className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{mockInvestigation.alertCount}</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{emptyInvestigation.alertCount}</p>
                       <p className="text-sm text-slate-500 dark:text-slate-400">Alerts</p>
                     </div>
                   </div>
@@ -240,7 +206,7 @@ export function InvestigationDetailPage() {
               <DashboardCard>
                 <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Team</h3>
                 <div className="space-y-3">
-                  {mockInvestigation.assignedAnalysts.map((analyst) => (
+                  {emptyInvestigation.assignedAnalysts.map((analyst) => (
                     <div key={analyst.userId} className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-violet-500 flex items-center justify-center text-white text-sm font-medium">
                         {analyst.user?.name.charAt(0)}
@@ -260,7 +226,7 @@ export function InvestigationDetailPage() {
               <DashboardCard>
                 <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Linked Alerts</h3>
                 <div className="space-y-3">
-                  {mockAlerts.map((alert) => (
+                  {emptyAlerts.map((alert) => (
                     <div key={alert.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                       <div className={cn(
                         'w-8 h-8 rounded-lg flex items-center justify-center',
@@ -288,11 +254,11 @@ export function InvestigationDetailPage() {
               <DashboardCard>
                 <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Timeline</h3>
                 <div className="space-y-3">
-                  {mockTimeline.slice(0, 5).map((entry, index) => (
+                  {emptyTimeline.slice(0, 5).map((entry, index) => (
                     <div key={index} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div className="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400" />
-                        {index < mockTimeline.length - 1 && <div className="w-px h-full bg-slate-200 dark:bg-slate-700 mt-1" />}
+                        {index < emptyTimeline.length - 1 && <div className="w-px h-full bg-slate-200 dark:bg-slate-700 mt-1" />}
                       </div>
                       <div className="flex-1 pb-3">
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{entry.action}</p>
@@ -317,7 +283,7 @@ export function InvestigationDetailPage() {
               </Button>
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {mockEvidence.map((evidence) => (
+              {emptyEvidence.map((evidence) => (
                 <div key={evidence.id} className="px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/20 flex items-center justify-center">
@@ -355,7 +321,7 @@ export function InvestigationDetailPage() {
               </div>
             </div>
             <div className="p-6 space-y-4">
-              {mockTelemetryEvents.map((event, index) => {
+              {events.map((event, index) => {
                 const eventColors: Record<string, { bg: string; border: string }> = {
                   process: { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800' },
                   file: { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800' },
@@ -378,7 +344,7 @@ export function InvestigationDetailPage() {
                         event.type === 'behavior' && 'border-amber-500 dark:border-amber-400',
                         event.type === 'anomaly' && 'border-rose-500 dark:border-rose-400'
                       )} />
-                      {index < mockTelemetryEvents.length - 1 && <div className="w-px h-16 bg-slate-200 dark:bg-slate-700 mt-1" />}
+                      {index < events.length - 1 && <div className="w-px h-16 bg-slate-200 dark:bg-slate-700 mt-1" />}
                     </div>
                     <div className={cn('flex-1 p-4 rounded-xl border', colors.bg, colors.border)}>
                       <div className="flex items-center justify-between mb-2">
@@ -420,22 +386,22 @@ export function InvestigationDetailPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                     <p className="text-sm text-slate-500 dark:text-slate-400">Threat Type</p>
-                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{mockAIAnalysis.threatType}</p>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{emptyAIAnalysis.threatType}</p>
                   </div>
                   <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                     <p className="text-sm text-slate-500 dark:text-slate-400">Severity Score</p>
-                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{mockAIAnalysis.severityScore}</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{emptyAIAnalysis.severityScore}</p>
                   </div>
                   <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                     <p className="text-sm text-slate-500 dark:text-slate-400">Severity Level</p>
-                    <p className="text-lg font-semibold text-red-600 dark:text-red-400">{mockAIAnalysis.severityLevel}</p>
+                    <p className="text-lg font-semibold text-red-600 dark:text-red-400">{emptyAIAnalysis.severityLevel}</p>
                   </div>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Key Findings</h3>
                   <ul className="space-y-2">
-                    {mockAIAnalysis.keyFindings.map((finding, index) => (
+                    {emptyAIAnalysis.keyFindings.map((finding, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
                         <CheckCircle className="w-4 h-4 text-cyan-500 mt-0.5 flex-shrink-0" />
                         {finding}
@@ -447,14 +413,14 @@ export function InvestigationDetailPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Behavioral Summary</h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                    {mockAIAnalysis.behavioralSummary}
+                    {emptyAIAnalysis.behavioralSummary}
                   </p>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Recommended Actions</h3>
                   <div className="space-y-2">
-                    {mockAIAnalysis.recommendations.map((rec, index) => (
+                    {emptyAIAnalysis.recommendations.map((rec, index) => (
                       <div key={index} className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
                         <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         <span className="text-sm text-amber-800 dark:text-amber-300">{rec}</span>
@@ -478,7 +444,7 @@ export function InvestigationDetailPage() {
             </div>
 
             <div className="space-y-4">
-              {mockAnalystNotes.map((note) => {
+              {notes.map((note) => {
                 const noteTypeStyles: Record<string, string> = {
                   observation: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50',
                   finding: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800/50',

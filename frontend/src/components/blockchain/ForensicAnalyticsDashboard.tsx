@@ -107,12 +107,12 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
 
   const getSeverityColor = (severity: string) => {
     const colors: Record<string, string> = {
-      critical: 'bg-red-100 text-red-800 border-red-300',
-      high: 'bg-orange-100 text-orange-800 border-orange-300',
-      medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      low: 'bg-green-100 text-green-800 border-green-300',
+      critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+      high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      low: 'bg-green-500/20 text-green-400 border-green-500/30',
     };
-    return colors[severity] || 'bg-gray-100 text-gray-800 border-gray-300';
+    return colors[severity] || 'bg-slate-600/30 text-slate-300 border-slate-500';
   };
 
   const getCategoryIcon = (category: string) => {
@@ -139,22 +139,22 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md">
+    <div className="bg-slate-800/50 rounded-lg shadow-md border border-slate-700">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-slate-700">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-white">
               Forensic Analytics
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-slate-400 mt-1">
               Behavioral intelligence and investigation correlation
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={fetchDashboardData}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm"
             >
               Refresh
             </button>
@@ -164,44 +164,44 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
 
       {/* Summary Cards */}
       {dashboardData && (
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
+        <div className="p-4 border-b border-slate-700 bg-slate-800/50">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
-              <div className="text-3xl font-bold text-blue-700">
+            <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/30 rounded-lg p-4">
+              <div className="text-3xl font-bold text-cyan-400">
                 {dashboardData.summary.totalClusters}
               </div>
-              <div className="text-sm text-blue-600 mt-1">Investigation Clusters</div>
+              <div className="text-sm text-cyan-300 mt-1">Investigation Clusters</div>
             </div>
-            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4">
-              <div className="text-3xl font-bold text-red-700">
+            <div className="bg-gradient-to-br from-red-500/20 to-red-600/30 rounded-lg p-4">
+              <div className="text-3xl font-bold text-red-400">
                 {dashboardData.summary.highSeverityInsights}
               </div>
-              <div className="text-sm text-red-600 mt-1">High Severity Insights</div>
+              <div className="text-sm text-red-300 mt-1">High Severity Insights</div>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4">
-              <div className="text-3xl font-bold text-purple-700">
+            <div className="bg-gradient-to-br from-violet-500/20 to-violet-600/30 rounded-lg p-4">
+              <div className="text-3xl font-bold text-violet-400">
                 {dashboardData.summary.totalPatterns}
               </div>
-              <div className="text-sm text-purple-600 mt-1">Behavioral Patterns</div>
+              <div className="text-sm text-violet-300 mt-1">Behavioral Patterns</div>
             </div>
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4">
-              <div className="text-3xl font-bold text-orange-700">
+            <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/30 rounded-lg p-4">
+              <div className="text-3xl font-bold text-orange-400">
                 {dashboardData.summary.criticalPatterns}
               </div>
-              <div className="text-sm text-orange-600 mt-1">Critical Patterns</div>
+              <div className="text-sm text-orange-300 mt-1">Critical Patterns</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-slate-700">
         <button
           onClick={() => setActiveTab('overview')}
           className={`px-4 py-3 text-sm font-medium ${
             activeTab === 'overview'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'border-b-2 border-cyan-500 text-cyan-400'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           Overview
@@ -210,8 +210,8 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
           onClick={() => setActiveTab('patterns')}
           className={`px-4 py-3 text-sm font-medium ${
             activeTab === 'patterns'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'border-b-2 border-cyan-500 text-cyan-400'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           Behavioral Patterns
@@ -220,8 +220,8 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
           onClick={() => setActiveTab('clusters')}
           className={`px-4 py-3 text-sm font-medium ${
             activeTab === 'clusters'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'border-b-2 border-cyan-500 text-cyan-400'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           Investigation Clusters
@@ -230,8 +230,8 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
           onClick={() => setActiveTab('anomalies')}
           className={`px-4 py-3 text-sm font-medium ${
             activeTab === 'anomalies'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'border-b-2 border-cyan-500 text-cyan-400'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           Anomalies
@@ -244,7 +244,7 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
           <div className="space-y-6">
             {/* High Severity Insights */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">High Priority Insights</h3>
+              <h3 className="text-sm font-medium text-slate-300 mb-3">High Priority Insights</h3>
               <div className="space-y-2">
                 {dashboardData.insights
                   .filter(i => i.severity === 'critical' || i.severity === 'high')
@@ -256,14 +256,14 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{insight.title}</p>
-                          <p className="text-sm mt-1 opacity-80">{insight.description}</p>
+                          <p className="font-medium text-sm text-slate-200">{insight.title}</p>
+                          <p className="text-sm mt-1 text-slate-400">{insight.description}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs opacity-75">
+                            <span className="text-xs text-slate-500">
                               {insight.investigations.length} linked investigations
                             </span>
-                            <span className="text-xs opacity-75">•</span>
-                            <span className="text-xs opacity-75">
+                            <span className="text-xs text-slate-500">•</span>
+                            <span className="text-xs text-slate-500">
                               {insight.confidence}% confidence
                             </span>
                           </div>
@@ -272,7 +272,7 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
                     </div>
                   ))}
                 {dashboardData.insights.filter(i => i.severity === 'critical' || i.severity === 'high').length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
+                  <div className="text-center py-4 text-slate-500">
                     No high severity insights at this time
                   </div>
                 )}
@@ -281,12 +281,12 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
 
             {/* MITRE ATT&CK Tactics */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">MITRE ATT&CK Tactics Coverage</h3>
+              <h3 className="text-sm font-medium text-slate-300 mb-3">MITRE ATT&CK Tactics Coverage</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {['reconnaissance', 'execution', 'persistence', 'privilege_escalation',
                   'defense_evasion', 'credential_access', 'discovery', 'lateral_movement'].map((tactic) => (
-                  <div key={tactic} className="bg-gray-50 rounded-lg p-2 text-center">
-                    <span className="text-sm text-gray-700 capitalize">{tactic.replace(/_/g, ' ')}</span>
+                  <div key={tactic} className="bg-slate-700/30 rounded-lg p-2 text-center">
+                    <span className="text-sm text-slate-400 capitalize">{tactic.replace(/_/g, ' ')}</span>
                   </div>
                 ))}
               </div>
@@ -299,22 +299,22 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
             {dashboardData.patterns.map((pattern) => (
               <div
                 key={pattern.patternId}
-                className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                className="border border-slate-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-slate-800/30"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
                     <span className="text-2xl">{getCategoryIcon(pattern.category)}</span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">{pattern.name}</span>
+                        <span className="font-medium text-slate-200">{pattern.name}</span>
                         <span className={`px-2 py-0.5 text-xs font-medium rounded ${getSeverityColor(pattern.severity)}`}>
                           {pattern.severity}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{pattern.description}</p>
+                      <p className="text-sm text-slate-400 mt-1">{pattern.description}</p>
                       <div className="flex items-center gap-2 mt-2">
                         {pattern.mitreTactics.map((tactic) => (
-                          <span key={tactic} className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">
+                          <span key={tactic} className="px-2 py-0.5 text-xs bg-violet-500/20 text-violet-400 rounded">
                             {tactic.replace(/_/g, ' ')}
                           </span>
                         ))}
@@ -330,30 +330,30 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
         {activeTab === 'clusters' && dashboardData && (
           <div className="space-y-4">
             {dashboardData.clusters.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <p className="text-lg mb-2">🔗 Investigation Clusters</p>
+              <div className="text-center py-12 text-slate-500">
+                <p className="text-lg mb-2">Investigation Clusters</p>
                 <p className="text-sm">Clusters will appear when related investigations share evidence or IOCs</p>
               </div>
             ) : (
               dashboardData.clusters.map((cluster) => (
-                <div key={cluster.clusterId} className="border rounded-lg p-4">
+                <div key={cluster.clusterId} className="border border-slate-700 rounded-lg p-4 bg-slate-800/30">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">{cluster.label}</p>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="font-medium text-slate-200">{cluster.label}</p>
+                      <p className="text-sm text-slate-400 mt-1">
                         {cluster.investigationIds.length} linked investigations
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {cluster.sharedIndicators.slice(0, 3).map((indicator, idx) => (
-                          <span key={idx} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-mono">
+                          <span key={idx} className="px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded font-mono">
                             {indicator.substring(0, 16)}...
                           </span>
                         ))}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600">{cluster.strength}%</div>
-                      <div className="text-xs text-gray-500">Correlation Strength</div>
+                      <div className="text-2xl font-bold text-cyan-400">{cluster.strength}%</div>
+                      <div className="text-xs text-slate-500">Correlation Strength</div>
                     </div>
                   </div>
                 </div>
@@ -372,16 +372,16 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">{anomaly.title}</span>
-                      <span className="px-2 py-0.5 text-xs font-medium rounded bg-white/50">
+                      <span className="font-medium text-slate-200">{anomaly.title}</span>
+                      <span className="px-2 py-0.5 text-xs font-medium rounded bg-slate-700/50 text-slate-300">
                         {anomaly.confidence}% confidence
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{anomaly.description}</p>
+                    <p className="text-sm text-slate-400 mt-1">{anomaly.description}</p>
                     <div className="flex items-center gap-4 mt-2">
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">Threat Score:</span>
-                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <span className="text-xs text-slate-500">Threat Score:</span>
+                        <div className="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
                           <div
                             className={`h-full ${
                               anomaly.threatScore >= 70 ? 'bg-red-500' :
@@ -390,7 +390,7 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
                             style={{ width: `${anomaly.threatScore}%` }}
                           ></div>
                         </div>
-                        <span className="text-xs font-medium">{anomaly.threatScore}</span>
+                        <span className="text-xs font-medium text-slate-300">{anomaly.threatScore}</span>
                       </div>
                     </div>
                   </div>

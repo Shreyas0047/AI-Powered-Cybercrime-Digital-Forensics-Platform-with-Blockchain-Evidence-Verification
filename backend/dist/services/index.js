@@ -4,7 +4,7 @@
  * Central export for all services
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evidenceArtifactsService = exports.settingsService = exports.logsService = exports.reportsService = exports.aiAnalysisService = exports.syncStorageService = exports.telemetryIngestionService = exports.forensicIngestionService = exports.evidenceValidationService = exports.sandboxSyncService = exports.evidenceService = exports.investigationService = exports.userService = exports.authService = void 0;
+exports.evidenceArtifactsService = exports.settingsService = exports.logsService = exports.reportsService = exports.aiAnalysisService = exports.syncStorageService = exports.telemetryIngestionService = exports.forensicIngestionService = exports.evidenceValidationService = exports.sandboxRuntimeService = exports.sandboxSyncService = exports.evidenceService = exports.investigationService = exports.userService = exports.authService = void 0;
 var auth_service_1 = require("./auth.service");
 Object.defineProperty(exports, "authService", { enumerable: true, get: function () { return auth_service_1.authService; } });
 var user_service_1 = require("./user.service");
@@ -15,6 +15,8 @@ var evidence_service_1 = require("./evidence.service");
 Object.defineProperty(exports, "evidenceService", { enumerable: true, get: function () { return evidence_service_1.evidenceService; } });
 var sandbox_sync_service_1 = require("./sandbox-sync.service");
 Object.defineProperty(exports, "sandboxSyncService", { enumerable: true, get: function () { return sandbox_sync_service_1.sandboxSyncService; } });
+var sandbox_runtime_service_1 = require("./sandbox-runtime.service");
+Object.defineProperty(exports, "sandboxRuntimeService", { enumerable: true, get: function () { return sandbox_runtime_service_1.sandboxRuntimeService; } });
 var evidence_validation_service_1 = require("./evidence-validation.service");
 Object.defineProperty(exports, "evidenceValidationService", { enumerable: true, get: function () { return evidence_validation_service_1.evidenceValidationService; } });
 var forensic_ingestion_service_1 = require("./forensic-ingestion.service");

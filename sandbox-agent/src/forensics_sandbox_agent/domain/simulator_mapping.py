@@ -10,39 +10,39 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 SIMULATOR_ID_TO_GENERIC: Dict[str, str] = {
-    "system_service_1": "system_service_1",
-    "system_monitor": "system_monitor",
-    "update_service": "update_service",
-    "runtime_helper": "runtime_helper",
-    "windows_patch": "windows_patch",
+    "system_service_1": "ransomware-simulator",
+    "system_service_2": "spyware-simulator",
+    "system_service_3": "trojan-simulator",
+    "system_service_4": "botnet-simulator",
+    "system_service_5": "credential-stealer",
 }
 
 GENERIC_TO_SIMULATOR_ID: Dict[str, str] = {v: k for k, v in SIMULATOR_ID_TO_GENERIC.items()}
 
 GENERIC_TO_BEHAVIORAL_PROFILE: Dict[str, str] = {
-    "system_service_1": "ransomware",
-    "system_monitor": "spyware",
-    "windows_patch": "credential-stealer",
-    "update_service": "trojan",
-    "runtime_helper": "botnet",
+    "ransomware-simulator": "ransomware",
+    "spyware-simulator": "spyware",
+    "credential-stealer": "credential-stealer",
+    "trojan-simulator": "trojan",
+    "botnet-simulator": "botnet",
 }
 
 BEHAVIORAL_PROFILE_TO_GENERIC: Dict[str, str] = {v: k for k, v in GENERIC_TO_BEHAVIORAL_PROFILE.items()}
 
 GENERIC_DISPLAY_NAMES: Dict[str, str] = {
-    "system_service_1": "System Service 1",
-    "system_monitor": "System Monitor",
-    "windows_patch": "Windows Patch",
-    "update_service": "Update Service",
-    "runtime_helper": "Runtime Helper",
+    "ransomware-simulator": "Ransomware Simulator",
+    "spyware-simulator": "Spyware Simulator",
+    "credential-stealer": "Credential Stealer Simulator",
+    "trojan-simulator": "Trojan Simulator",
+    "botnet-simulator": "Botnet Simulator",
 }
 
 GENERIC_EXECUTABLE_NAMES: Dict[str, str] = {
-    "system_service_1": "system_service_1.exe",
-    "system_monitor": "system_monitor.exe",
-    "windows_patch": "windows_patch.exe",
-    "update_service": "update_service.exe",
-    "runtime_helper": "runtime_helper.exe",
+    "ransomware-simulator": "ransomware_simulator.exe",
+    "spyware-simulator": "spyware_simulator.exe",
+    "credential-stealer": "credential_stealer_simulator.exe",
+    "trojan-simulator": "trojan_simulator.exe",
+    "botnet-simulator": "botnet_simulator.exe",
 }
 
 

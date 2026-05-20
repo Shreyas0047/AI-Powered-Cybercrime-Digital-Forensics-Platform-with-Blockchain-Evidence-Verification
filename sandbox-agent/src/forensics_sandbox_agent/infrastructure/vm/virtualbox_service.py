@@ -151,10 +151,9 @@ class VirtualBoxVmService:
 
     def start_vm(self, headless: Optional[bool] = None) -> None:
         """Start the VM."""
-        self._logger.info("Starting VM")
-        self._vm_controller.start_vm(
-            headless=self._execution_config.start_headless if headless is None else headless
-        )
+        headless_mode = self._execution_config.start_headless if headless is None else headless
+        self._logger.info(f"Starting VM (headless={headless_mode})")
+        self._vm_controller.start_vm(headless=headless_mode)
 
     def stop_vm(self, force: bool = False) -> None:
         """Stop the VM."""

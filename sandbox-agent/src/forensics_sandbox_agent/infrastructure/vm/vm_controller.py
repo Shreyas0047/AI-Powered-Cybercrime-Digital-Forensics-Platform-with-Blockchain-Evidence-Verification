@@ -158,11 +158,11 @@ class VmController:
             errors=errors,
         )
 
-    def start_vm(self, headless: bool = False) -> None:
+    def start_vm(self, headless: bool = True) -> None:
         """Start the VM.
-        
+
         Args:
-            headless: If True, start in headless mode. Defaults to False (GUI) for visibility.
+            headless: If True, start in headless mode. Defaults to True for sandbox runtime.
         """
         self._logger.info(f"Starting VM: {self._config.vm_name} (headless={headless})")
 
@@ -213,7 +213,7 @@ class VmController:
         except (VBoxCommandError, VBoxNotFoundError, VBoxTimeoutError) as e:
             raise VmOperationError(f"Failed to stop VM: {e}")
 
-    def ensure_running(self, headless: bool = False) -> None:
+    def ensure_running(self, headless: bool = True) -> None:
         """Ensure VM is running, starting if necessary."""
         current_state = self.get_vm_state()
 

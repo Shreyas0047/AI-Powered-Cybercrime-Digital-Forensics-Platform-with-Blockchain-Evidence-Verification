@@ -385,12 +385,14 @@ class VBoxManage:
             background: If True, start in background (headless) mode
         """
         if background:
+            self._logger.info(f"Starting VM {vm_name} in HEADLESS mode")
             args = ["startvm", vm_name, "--type", "headless"]
         else:
+            self._logger.info(f"Starting VM {vm_name} in GUI mode (interactive)")
             args = ["startvm", vm_name]
 
         self._execute_command(args)
-        self._logger.info(f"Started VM: {vm_name}")
+        self._logger.info(f"VM start command executed: {vm_name}")
 
     def stop_vm(
         self,

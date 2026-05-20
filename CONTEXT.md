@@ -6,7 +6,7 @@
 
 **Purpose:** Educational cybersecurity platform for malware behavior simulation and forensic analysis in controlled VirtualBox sandbox environments. NOT offensive security tooling.
 
-**Current Phase:** Phase 5 - Enterprise SOC UI/UX Transformation
+**Current Phase:** Production - Enterprise Hardening Complete
 
 **Platform:** Windows 11 / VirtualBox 7.1.6 with ICH9 chipset
 
@@ -16,26 +16,41 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        Frontend (React + TypeScript + Vite)    │
-│  src/                                                              │
-│  ├── pages/        Dashboard, Investigations, Evidence, Alerts, Logs │
-│  ├── stores/       Zustand state (auth, investigation, realtime)    │
+│                        Frontend (React + TypeScript + Vite)          │
+│  src/                                                                 │
+│  ├── pages/        Dashboard, Sandbox, Investigations, Evidence    │
+│  ├── stores/       Zustand state (auth, sandbox, realtime)           │
 │  ├── services/     API client, WebSocket client                       │
-│  ├── components/   UI components, layout, visualizations, blockchain  │
-│  ├── providers/    Theme provider (dark/light mode)                  │
+│  ├── components/   UI components, enterprise, blockchain             │
 │  └── router/       React Router configuration                        │
 └────────────────────────────────────────────────────────────────────────┘
-
-backend/                 # Express.js API (TypeScript)
-├── src/
-│   ├── controllers/     Investigation, Evidence, Alert, AI, Ops, Reports, Logs
-│   ├── services/         Business logic, WebSocket, queue, health
-│   ├── models/          MongoDB schemas
-│   ├── middleware/      Auth, Security, Validation, Tracing
-│   ├── routes/          API endpoints
-│   ├── blockchain/      Web3 integration
-│   └── threat_intelligence/  Behavioral analysis, classification, correlation
-└── dist/                # Compiled output
+            ↓↑ REST/WebSocket
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Backend API (Express.js + TypeScript)         │
+│  src/                                                                 │
+│  ├── controllers/    Sandbox, Investigation, Evidence, Alert, AI    │
+│  ├── services/       SandboxRuntimeService, SandboxSyncService       │
+│  ├── routes/        API v1 endpoints                                 │
+│  ├── models/        MongoDB schemas                                  │
+│  └── middleware/    Auth, Security, Validation                        │
+└────────────────────────────────────────────────────────────────────────┘
+            ↓↑ HTTP
+┌────────────────────────────────────────────────────────────────────────┐
+│              Sandbox Runtime API (FastAPI - Python)                  │
+│  sandbox-agent/src/forensics_sandbox_agent/infrastructure/          │
+│  ├── runtime_api.py         - Headless REST API service             │
+│  ├── vm/                    - VirtualBox VM control                  │
+│  ├── execution/             - Simulator execution                    │
+│  ├── monitoring/           - Forensic monitoring                     │
+│  └── reporting/             - Report generation                       │
+└────────────────────────────────────────────────────────────────────────┘
+            ↓
+┌────────────────────────────────────────────────────────────────────────┐
+│                     VirtualBox VM (Windows 11)                        │
+│  - Snapshot: CleanBaseline                                           │
+│  - Execution: Headless mode                                           │
+│  - Guest Additions: Required                                          │
+└────────────────────────────────────────────────────────────────────────┘
 
 ai-service/              # FastAPI AI microservice (Python)
 ├── app/
@@ -43,86 +58,126 @@ ai-service/              # FastAPI AI microservice (Python)
 │   └── analysis/       AI analysis modules
 └── requirements.txt
 
-sandbox-agent/           # Desktop PyQt6 application (EXE ready)
-├── app/                 Bootstrap, config, logging, services
-├── domain/              Entities, contracts, value objects
-├── infrastructure/      VM, execution, monitoring, reporting
-├── presentation/        PyQt6 UI (enterprise dark theme)
-└── packaging/          PyInstaller configs
-
 simulators/             # 5 SAFE educational malware simulators
 ├── common/              Shared framework
-├── ransomware-simulator/     → threat_file_1.exe
-├── spyware-simulator/        → threat_file_2.exe
-├── trojan-simulator/         → updater_service.exe
-├── botnet-simulator/         → runtime_helper.exe
-└── credential-stealer-simulator/  → windows_patch.exe
+├── ransomware-simulator/
+├── spyware-simulator/
+├── trojan-simulator/
+├── botnet-simulator/
+└── credential-stealer-simulator/
 ```
 
 ---
 
-## Current Phase (Phase 5)
+## Current Phase (Production)
 
-### Completed Work
+### Platform Status: Enterprise Ready
 
-1. **Enterprise Design System** (`frontend/src/index.css`)
-   - Professional typography, spacing, color palette
-   - Dark theme with deep charcoal (#0a0e17)
-   - Severity color system
-   - Animation keyframes
+All phases complete:
+- Phase 1-3: Core platform with blockchain verification
+- Phase 3.5-3.7: Chain of custody, threat intelligence, forensic analytics
+- Phase 4: Enterprise hardening, resilience, health monitoring
+- Phase 5-6: Headless sandbox runtime, web dashboard
 
-2. **Global Layout Redesign**
-   - Collapsible sidebar (72px/260px)
-   - Header with command palette (Ctrl+K)
-   - Breadcrumb navigation
+---
 
-3. **Dashboard Transformation**
-   - SOC command center with live widgets
-   - Threat distribution, MITRE tactics
-   - Activity stream with animations
+## Sandbox Runtime Service
 
-4. **Visualization Components** (new)
-   - ForensicTimeline - Interactive event timeline
-   - MITREHeatmap - ATT&CK technique heatmap
-   - AttackChain - Attack progression visualization
-   - RiskScoreGauge - Animated risk scoring
-   - EvidenceGraph - Node-based relationship graph
-   - LiveActivityStream - Real-time activity feed
-   - ThreatRadar - Radar chart for profiles
+### Starting the Runtime
 
-5. **UI Component Polish**
-   - DataTable with sorting/filtering/pagination
-   - Skeleton loaders with shimmer
-   - Premium empty states
+```bash
+cd sandbox-agent
+python start_runtime.py
+# Or: python -m forensics_sandbox_agent.infrastructure.runtime_api
+# Default port: 8765
+```
+
+### Runtime API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Runtime health status |
+| `/simulators` | GET | List available simulators |
+| `/sessions` | GET | List all sessions |
+| `/sessions/start` | POST | Start new session |
+| `/sessions/{id}` | GET | Get session status |
+| `/sessions/{id}/stop` | POST | Stop session gracefully |
+| `/sessions/{id}/terminate` | POST | Force terminate with rollback |
+| `/vm/status` | GET | VM status |
+| `/vm/reset` | POST | Reset VM to snapshot |
+| `/monitoring/status` | GET | Monitoring statistics |
+| `/execution/status` | GET | Execution history |
+| `/logs` | GET | Runtime logs |
+| `/telemetry/live` | WS | WebSocket telemetry stream |
+
+---
+
+## Backend Sandbox Endpoints
+
+| Endpoint | Method | RBAC | Description |
+|----------|--------|------|-------------|
+| `/sandbox/health` | GET | All | Get runtime health |
+| `/sandbox/simulators` | GET | Analyst+ | List simulators |
+| `/sandbox/sessions` | GET | Analyst+ | List sessions |
+| `/sandbox/sessions` | POST | Operator+ | Start session |
+| `/sandbox/sessions/{id}` | GET | Analyst+ | Get session |
+| `/sandbox/sessions/{id}/stop` | POST | Operator+ | Stop session |
+| `/sandbox/sessions/{id}/terminate` | POST | Operator+ | Force terminate |
+| `/sandbox/stats` | GET | Analyst+ | Session statistics |
+| `/sandbox/telemetry-url` | GET | Analyst+ | WebSocket URL |
+| `/sandbox/vm/reset` | POST | Operator+ | Reset VM |
+| `/sandbox/vm/status` | GET | Analyst+ | VM status |
+| `/sandbox/monitoring/status` | GET | Analyst+ | Monitoring status |
+| `/sandbox/logs` | GET | Analyst+ | Runtime logs |
+| `/sandbox/runtime/start` | POST | Admin | Start runtime service |
+
+---
+
+## Simulator IDs (Internal)
+
+| Internal ID | Display Name | Category | Description |
+|-------------|--------------|----------|-------------|
+| `system_service_1` | Ransomware Simulator | ransomware | File encryption simulation |
+| `system_service_2` | Spyware Simulator | spyware | Data exfiltration simulation |
+| `system_service_3` | Trojan Simulator | trojan | Backdoor persistence simulation |
+| `system_service_4` | Botnet Simulator | botnet | C2 communication simulation |
+| `system_service_5` | Credential Stealer | credential-stealer | Credential harvesting simulation |
+
+**Note:** These are the internal obfuscated IDs used for privacy. The UI displays friendly names.
 
 ---
 
 ## Key Services
 
 ### Backend Services
+
 | Service | Purpose |
 |---------|---------|
+| **SandboxRuntimeService** | Communicates with headless runtime API |
+| **SandboxSyncService** | MongoDB session persistence |
 | **AuthService** | JWT token management |
 | **InvestigationService** | Case CRUD, status workflows |
 | **EvidenceService** | File management, verification |
-| **SandboxSyncService** | Sandbox synchronization |
-| **TelemetryIngestionService** | Event processing |
 | **AIAnalysisService** | Threat classification |
-| **WebSocketService** | Real-time streaming |
-| **BlockchainService** | Web3 provider, RPC communication |
+| **BlockchainService** | Evidence verification |
 | **HealthService** | Platform health monitoring |
+| **QueueService** | Background job processing |
+| **ResilienceService** | Circuit breakers, retry logic |
 
 ### Frontend Stores
+
 | Store | Purpose |
 |-------|---------|
+| **sandboxStore** | Sandbox sessions, telemetry, logs, VM status |
 | **authStore** | Authentication state |
 | **investigationStore** | Investigation data |
 | **alertStore** | Alert management |
 | **evidenceStore** | Evidence management |
-| **sandboxStore** | Sandbox sessions |
-| **timelineStore** | Telemetry events & notes |
 | **realtimeStore** | Live connection state |
 | **themeStore** | Dark/light theme management |
+| **blockchainStore** | Blockchain operations |
+| **custodyStore** | Chain of custody |
+| **threatStore** | Threat intelligence |
 
 ---
 
@@ -135,93 +190,56 @@ simulators/             # 5 SAFE educational malware simulators
 | **OS** | Windows 11 EFI |
 | **Username** | guestuser |
 | **Password** | guest |
-| **Snapshot** | CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063) |
-| **Guest Additions** | Required, detected via `/VirtualBox/GuestAdd/Version` |
-| **Headless Mode** | false (GUI visible) |
-
-### Critical Context
-
-- **The Snapshot Trap:** Automated execution restores `CleanBaseline` snapshot. If hardware/folders are changed, that snapshot must be refreshed manually.
-- **Command Syntax:** VirtualBox 7.x uses `run` instead of `exec`, requires `--` separator before positional arguments.
-- **VC++ DLLs:** Bundled in simulators (msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll)
-
----
-
-## API Endpoints
-
-### Core API
-| Prefix | Description |
-|--------|-------------|
-| `/api/v1/auth` | Authentication |
-| `/api/v1/users` | User management |
-| `/api/v1/investigations` | Investigation CRUD |
-| `/api/v1/evidence` | Evidence management |
-| `/api/v1/sandbox` | Sandbox sync |
-| `/api/v1/ai` | AI analysis |
-| `/api/v1/alerts` | Alert management |
-| `/api/v1/telemetry` | Event ingestion |
-
-### Blockchain API
-| Prefix | Description |
-|--------|-------------|
-| `/api/v1/blockchain` | Blockchain operations |
-| `/api/v1/custody` | Chain of custody |
-| `/api/v1/threat` | Threat intelligence |
-
-### Analytics API
-| Prefix | Description |
-|--------|-------------|
-| `/api/v1/analytics` | Behavioral analytics |
-| `/api/v1/operations` | Operations & health |
-| `/api/v1/threat-analysis` | Threat classification |
-| `/api/v1/reports` | Forensic reports |
-| `/api/v1/logs` | System logs |
-| `/api/v1/settings` | Platform settings |
+| **Snapshot** | CleanBaseline |
+| **Guest Additions** | Required |
+| **Headless Mode** | true (default for runtime) |
 
 ---
 
 ## Running the Project
 
-### Frontend
+### 1. Start Sandbox Runtime
 ```bash
-cd frontend
-npm install
-npm run dev
+cd sandbox-agent
+python start_runtime.py
 ```
 
-### Backend
+### 2. Start Backend
 ```bash
 cd backend
 npm install
 npm run dev
 ```
 
-### Build All
+### 3. Start Frontend
 ```bash
-python build.py all
+cd frontend
+npm install
+npm run dev
 ```
 
-### Build Agent Only
-```bash
-python build.py agent
-```
-
-### Build Simulators
-```bash
-python build.py simulator
-```
+### 4. Use Sandbox Dashboard
+- Navigate to Dashboard → Sandbox
+- Click "Start Runtime" (if offline)
+- Select a simulator from dropdown
+- Click "New Session" to begin analysis
 
 ---
 
-## Simulator Mapping (Obfuscated)
+## Session States
 
-| Internal Profile | Executable | UI Display |
-|-----------------|------------|------------|
-| ransomware | threat_file_1.exe | Threat Sample 1 |
-| spyware | threat_file_2.exe | Threat Sample 2 |
-| credential-stealer | windows_patch.exe | Threat Sample 3 |
-| trojan | updater_service.exe | Threat Sample 4 |
-| botnet | runtime_helper.exe | Threat Sample 5 |
+| State | Description |
+|-------|-------------|
+| `pending` | Session created, not started |
+| `initializing` | Preparing environment |
+| `restoring_snapshot` | Restoring clean snapshot |
+| `booting_vm` | Starting VM |
+| `executing` | Running simulator |
+| `monitoring` | Collecting telemetry |
+| `analyzing` | Processing results |
+| `rolling_back` | Restoring snapshot |
+| `completed` | Session finished successfully |
+| `failed` | Session failed or terminated |
 
 ---
 
@@ -232,34 +250,37 @@ python build.py simulator
 - ✅ Safe directory restrictions
 - ✅ Synthetic data only
 - ✅ Localhost-only networking
-- ✅ Rollback enforcement
+- ✅ Automatic rollback on completion
 - ✅ RBAC access control
 - ✅ Input validation
 - ✅ Enterprise security hardening
 
 ---
 
-## Recent Changes (2026-05-19)
+## API Endpoints Summary
 
-- Phase 5: Enterprise SOC UI/UX Transformation
-- Advanced forensic visualizations
-- Live activity streaming
-- Command palette (Ctrl+K)
-- Premium skeleton loaders
-- Dark theme refinement
+### Core API
+| Prefix | Description |
+|--------|-------------|
+| `/api/v1/auth` | Authentication |
+| `/api/v1/users` | User management |
+| `/api/v1/investigations` | Investigation CRUD |
+| `/api/v1/evidence` | Evidence management |
+| `/api/v1/sandbox` | Sandbox sync |
+| `/api/v1/ai` | AI analysis |
 
----
+### Blockchain API
+| Prefix | Description |
+|--------|-------------|
+| `/api/v1/blockchain` | Blockchain operations |
+| `/api/v1/custody` | Chain of custody |
+| `/api/v1/threat` | Threat intelligence |
 
-## Documentation Files
-
-- `docs/runbooks/execution-runbook.md` - Operational procedures
-- `docs/runbooks/blockchain-operations-runbook.md` - Blockchain operations
-- `docs/runbooks/threat-intelligence-runbook.md` - Threat intelligence
-- `docs/runbooks/forensic-analytics-runbook.md` - Forensic analytics
-- `docs/runbooks/deployment-runbook.md` - Enterprise deployment
-- `docs/runbooks/operational-runbook.md` - Day-to-day operations
-- `SESSION.md` - Session sync for Claude
-- `CONTEXT.md` - This file (project overview for new sessions)
+### Analytics & Operations
+| Prefix | Description |
+|--------|-------------|
+| `/api/v1/analytics` | Behavioral analytics |
+| `/api/v1/operations` | Operations & health |
 
 ---
 
@@ -270,6 +291,45 @@ JWT_SECRET=<32-char-minimum>
 JWT_REFRESH_SECRET=<32-char-minimum>
 MONGODB_URI=mongodb://...
 BLOCKCHAIN_ENABLED=false
+SANDBOX_RUNTIME_URL=http://127.0.0.1:8765
+```
+
+---
+
+## Build Commands
+
+```bash
+# Build everything
+python build.py all
+
+# Build agent only
+python build.py agent
+
+# Build simulators
+python build.py simulator
+
+# Validate builds
+python build.py validate
+
+# Clean
+python build.py clean
+```
+
+---
+
+## Project Structure
+
+```
+/
+├── backend/                  # Express.js API (TypeScript)
+├── frontend/                 # React + TypeScript (Vite)
+├── sandbox-agent/            # Desktop PyQt6 + Headless Runtime
+├── ai-service/              # FastAPI AI microservice
+├── simulators/              # 5 educational simulators
+├── build/                   # Build artifacts (84 files)
+├── dist/                    # Distribution (8 files)
+├── docs/                    # Runbooks and documentation
+└── logs/                    # Application logs
 ```
 
 ---
@@ -278,4 +338,4 @@ BLOCKCHAIN_ENABLED=false
 
 2026-05-19
 
-(Last updated: Phase 5 completion)
+(Last updated: Production - Enterprise Hardening Complete)

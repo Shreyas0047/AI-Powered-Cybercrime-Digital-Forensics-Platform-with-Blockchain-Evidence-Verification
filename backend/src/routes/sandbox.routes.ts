@@ -5,15 +5,103 @@
 
 import { Router } from 'express';
 import { sandboxController } from '../controllers';
-import { authenticate, authorize, requirePermission, asyncHandler } from '../middleware';
-import { UserRole, Permission } from '../types';
+import { authenticate, authorize, asyncHandler } from '../middleware';
+import { UserRole } from '../types';
 
 const router = Router();
 
-// Sandbox sync endpoints
 router.use(authenticate);
 
-// Session endpoints
+router.get(
+  '/health',
+  authorize(UserRole.AUDITOR, UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getHealth)
+);
+
+router.get(
+  '/simulators',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.listSimulators)
+);
+
+router.post(
+  '/sessions',
+  authorize(UserRole.SANDBOX_OPERATOR, UserRole.FORENSIC_ANALYST, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.startSession)
+);
+
+router.get(
+  '/sessions',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.findAll)
+);
+
+router.get(
+  '/sessions/:sessionId',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.SANDBOX_OPERATOR, UserRole.AUDITOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.findById)
+);
+
+router.post(
+  '/sessions/:sessionId/stop',
+  authorize(UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.stopSession)
+);
+
+router.post(
+  '/sessions/:sessionId/terminate',
+  authorize(UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.terminateSession)
+);
+
+router.get(
+  '/stats',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getStats)
+);
+
+router.get(
+  '/telemetry-url',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getTelemetryUrl)
+);
+
+router.post(
+  '/vm/reset',
+  authorize(UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.resetVm)
+);
+
+router.get(
+  '/vm/status',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getVmStatus)
+);
+
+router.get(
+  '/monitoring/status',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getMonitoringStatus)
+);
+
+router.get(
+  '/execution/status',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getExecutionStatus)
+);
+
+router.get(
+  '/logs',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getLogs)
+);
+
+router.post(
+  '/runtime/start',
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.startRuntime)
+);
+
 router.post(
   '/sessions/start',
   authorize(UserRole.SANDBOX_OPERATOR, UserRole.FORENSIC_ANALYST, UserRole.ADMIN, UserRole.SUPER_ADMIN),
@@ -32,24 +120,10 @@ router.post(
   asyncHandler(sandboxController.receiveEvents)
 );
 
-// List and get sessions
-router.get(
-  '/sessions',
-  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  asyncHandler(sandboxController.findAll)
-);
-
-router.get(
-  '/sessions/:sessionId',
-  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.SANDBOX_OPERATOR, UserRole.AUDITOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  asyncHandler(sandboxController.findById)
-);
-
-// Statistics
-router.get(
-  '/stats',
-  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  asyncHandler(sandboxController.getStats)
+router.post(
+  '/launch-agent',
+  authorize(UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.launchAgent)
 );
 
 export default router;

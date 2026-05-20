@@ -96,7 +96,6 @@ const evidenceSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Investigation',
         required: true,
-        index: true,
     },
     // Basic info
     name: {
@@ -148,7 +147,6 @@ const evidenceSchema = new mongoose_1.Schema({
     hash: {
         sha256: {
             type: String,
-            index: true,
         },
         md5: String,
         sha1: String,

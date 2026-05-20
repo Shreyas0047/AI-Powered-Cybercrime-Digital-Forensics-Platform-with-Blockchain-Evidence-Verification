@@ -27,17 +27,6 @@ import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardCard, DashboardStat } from '../components/enterprise/DashboardGrid';
 import { formatRelativeTime, formatFileSize, cn } from '../utils/helpers';
 
-const mockEvidence = [
-  { id: '1', evidenceId: 'EV-2024-5A3B-001', name: 'suspicious_email.eml', type: 'email', size: 24576, status: 'verified', investigation: 'INV-2024-5A3B', collectedAt: '2024-01-15T11:00:00Z', collectedBy: 'John Smith', verified: true, tags: ['phishing', 'initial-compromise'] },
-  { id: '2', evidenceId: 'EV-2024-5A3B-002', name: 'malware_sample.exe', type: 'malware_sample', size: 153600, status: 'analyzing', investigation: 'INV-2024-5A3B', collectedAt: '2024-01-15T12:30:00Z', collectedBy: 'Sarah Johnson', verified: false, tags: ['ransomware', 'binary'] },
-  { id: '3', evidenceId: 'EV-2024-5A3B-003', name: 'network_capture.pcap', type: 'network_capture', size: 5242880, status: 'ready', investigation: 'INV-2024-5A3B', collectedAt: '2024-01-15T14:00:00Z', collectedBy: 'Mike Chen', verified: true, tags: ['network', 'c2-traffic'] },
-  { id: '4', evidenceId: 'EV-2024-5A3B-004', name: 'memory_dump.raw', type: 'memory_dump', size: 8192000, status: 'ready', investigation: 'INV-2024-5A3B', collectedAt: '2024-01-15T15:30:00Z', collectedBy: 'John Smith', verified: true, tags: ['memory', 'volatile'] },
-  { id: '5', evidenceId: 'EV-2024-5A2C-001', name: 'phishing_landing.html', type: 'file', size: 15360, status: 'verified', investigation: 'INV-2024-5A2C', collectedAt: '2024-01-14T09:00:00Z', collectedBy: 'Sarah Johnson', verified: true, tags: ['phishing', 'web'] },
-  { id: '6', evidenceId: 'EV-2024-5A2C-002', name: 'event_logs.xml', type: 'log', size: 2097152, status: 'ready', investigation: 'INV-2024-5A2C', collectedAt: '2024-01-14T10:30:00Z', collectedBy: 'Mike Chen', verified: true, tags: ['windows', 'security'] },
-  { id: '7', evidenceId: 'EV-2024-5A1D-001', name: 'screenshot_desktop.png', type: 'screenshot', size: 1048576, status: 'ready', investigation: 'INV-2024-5A1D', collectedAt: '2024-01-13T14:00:00Z', collectedBy: 'John Smith', verified: true, tags: ['visual', 'evidence'] },
-  { id: '8', evidenceId: 'EV-2024-5A1D-002', name: 'registry_export.reg', type: 'registry_dump', size: 524288, status: 'analyzing', investigation: 'INV-2024-5A1D', collectedAt: '2024-01-13T15:30:00Z', collectedBy: 'Sarah Johnson', verified: false, tags: ['registry', 'persistence'] },
-];
-
 const typeIcons: Record<string, typeof File> = {
   email: FileText,
   malware_sample: FileCode,
@@ -68,9 +57,11 @@ export function EvidenceExplorerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedEvidence, setSelectedEvidence] = useState<typeof mockEvidence[0] | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<{id: string; evidenceId: string; name: string; type: string; size: number; status: string; investigation: string; collectedAt: string; collectedBy: string; verified: boolean; tags: string[]} | null>(null);
 
-  const filteredEvidence = mockEvidence.filter((evidence) => {
+  const evidence: typeof filteredEvidence = [];
+
+  const filteredEvidence = evidence.filter((evidence) => {
     const matchesSearch = evidence.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       evidence.evidenceId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || evidence.type === typeFilter;
@@ -78,9 +69,9 @@ export function EvidenceExplorerPage() {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const totalSize = mockEvidence.reduce((acc, e) => acc + e.size, 0);
-  const verifiedCount = mockEvidence.filter(e => e.verified).length;
-  const analyzingCount = mockEvidence.filter(e => e.status === 'analyzing').length;
+  const totalSize = 0;
+  const verifiedCount = 0;
+  const analyzingCount = 0;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -101,7 +92,7 @@ export function EvidenceExplorerPage() {
         <DashboardCard>
           <DashboardStat
             label="Total Evidence"
-            value={mockEvidence.length}
+            value={0}
             icon={<FileText className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />}
           />
         </DashboardCard>

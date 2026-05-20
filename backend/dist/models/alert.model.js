@@ -118,19 +118,16 @@ const alertSchema = new mongoose_1.Schema({
         type: String,
         enum: Object.values(AlertType),
         required: true,
-        index: true,
     },
     severity: {
         type: String,
         enum: Object.values(AlertSeverity),
         required: true,
-        index: true,
     },
     status: {
         type: String,
         enum: Object.values(AlertStatus),
         default: AlertStatus.NEW,
-        index: true,
     },
     source: {
         type: String,
@@ -148,7 +145,6 @@ const alertSchema = new mongoose_1.Schema({
         type: Date,
         required: true,
         default: Date.now,
-        index: true,
     },
     acknowledgedAt: Date,
     resolvedAt: Date,

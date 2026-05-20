@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import type { UserRole } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import MainLayout from '../layouts/MainLayout';
 import LoginPage from '../pages/LoginPage';
@@ -18,6 +19,7 @@ import ReportsPage from '../pages/ReportsPage';
 import SettingsPage from '../pages/SettingsPage';
 import LogsPage from '../pages/LogsPage';
 import EvidenceArtifactsPage from '../pages/EvidenceArtifactsPage';
+import UsersPage from '../pages/UsersPage';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -25,6 +27,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Role-based Route Wrapper
+function RoleRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: UserRole[] }) {
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user || !allowedRoles.includes(user.role as UserRole)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -126,9 +143,61 @@ export const router = createBrowserRouter([
         path: 'evidence-artifacts',
         element: <EvidenceArtifactsPage />,
       },
-      {
+{
         path: 'health',
-        element: <SystemHealthPage />,
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin']}>
+            <SystemHealthPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'blockchain-operations',
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin', 'forensic_analyst']}>
+            <BlockchainOperationsPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'threat-intelligence',
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin', 'analyst', 'forensic_analyst']}>
+            <ThreatIntelligencePage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'forensic-analytics',
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin']}>
+            <ForensicAnalyticsPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin']}>
+            <UsersPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin']}>
+            <SettingsPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'audit',
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin']}>
+            <LogsPage />
+          </RoleRoute>
+        ),
       },
       {
         path: 'blockchain-operations',
@@ -141,6 +210,10 @@ export const router = createBrowserRouter([
       {
         path: 'forensic-analytics',
         element: <ForensicAnalyticsPage />,
+      },
+      {
+        path: 'users',
+        element: <UsersPage />,
       },
       {
         path: '',

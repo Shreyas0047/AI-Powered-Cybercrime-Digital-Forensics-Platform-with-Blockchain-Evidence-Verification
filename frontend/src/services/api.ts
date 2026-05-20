@@ -166,7 +166,74 @@ class ApiService {
     return response.data;
   }
 
-  // Sandbox Sessions
+  // Sandbox Runtime
+  async getSandboxHealth(): Promise<ApiResponse<{ health: { status: string; version: string; uptime_seconds: number; vm_status: Record<string, any>; active_sessions: number; telemetry_connections: number } }>> {
+    const response = await this.client.get('/sandbox/health');
+    return response.data;
+  }
+
+  async getSandboxSimulators(): Promise<ApiResponse<{ simulators: Array<{ id: string; display_name: string; description: string; category: string }> }>> {
+    const response = await this.client.get('/sandbox/simulators');
+    return response.data;
+  }
+
+  async startSandboxSession(request: {
+    simulator_id: string;
+    auto_rollback?: boolean;
+    timeout_seconds?: number;
+  }): Promise<ApiResponse<{ session: { session_id: string; state: string; simulator_id: string; created_at: string; updated_at: string; error?: string } }>> {
+    const response = await this.client.post('/sandbox/sessions', request);
+    return response.data;
+  }
+
+  async stopSandboxSession(sessionId: string): Promise<ApiResponse<{ session: { session_id: string; state: string; simulator_id: string; created_at: string; updated_at: string; error?: string } }>> {
+    const response = await this.client.post(`/sandbox/sessions/${sessionId}/stop`);
+    return response.data;
+  }
+
+  async terminateSandboxSession(sessionId: string): Promise<ApiResponse<{ session: { session_id: string; state: string; simulator_id: string; created_at: string; updated_at: string; error?: string } }>> {
+    const response = await this.client.post(`/sandbox/sessions/${sessionId}/terminate`);
+    return response.data;
+  }
+
+  async getSandboxTelemetryUrl(): Promise<ApiResponse<{ url: string }>> {
+    const response = await this.client.get('/sandbox/telemetry-url');
+    return response.data;
+  }
+
+  async resetSandboxVm(): Promise<ApiResponse<{ status: string; message: string }>> {
+    const response = await this.client.post('/sandbox/vm/reset');
+    return response.data;
+  }
+
+  async getSandboxVmStatus(): Promise<ApiResponse<{ status: Record<string, any> }>> {
+    const response = await this.client.get('/sandbox/vm/status');
+    return response.data;
+  }
+
+  async getSandboxMonitoringStatus(): Promise<ApiResponse<{ status: Record<string, any> }>> {
+    const response = await this.client.get('/sandbox/monitoring/status');
+    return response.data;
+  }
+
+  async getSandboxExecutionStatus(): Promise<ApiResponse<{ status: Record<string, any> }>> {
+    const response = await this.client.get('/sandbox/execution/status');
+    return response.data;
+  }
+
+  async getSandboxLogs(limit: number = 100, level?: string): Promise<ApiResponse<{ logs: Array<{ timestamp: string; message: string; level: string }> }>> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (level) params.append('level', level);
+    const response = await this.client.get(`/sandbox/logs?${params}`);
+    return response.data;
+  }
+
+  async startSandboxRuntime(): Promise<ApiResponse<{ message: string }>> {
+    const response = await this.client.post('/sandbox/runtime/start');
+    return response.data;
+  }
+
+  // Sandbox Sessions (Legacy)
   async getSandboxSessions(params: PaginationParams): Promise<ApiResponse<SandboxSession[]>> {
     const response = await this.client.get('/sandbox/sessions', { params });
     return response.data;
@@ -179,6 +246,11 @@ class ApiService {
 
   async getSandboxStats(): Promise<ApiResponse<{ total: number; byStatus: Record<string, number>; avgDuration: number }>> {
     const response = await this.client.get('/sandbox/stats');
+    return response.data;
+  }
+
+  async launchSandboxAgent(): Promise<ApiResponse<{ agentPath: string }>> {
+    const response = await this.client.post('/sandbox/launch-agent');
     return response.data;
   }
 
@@ -370,6 +442,45 @@ async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<Ha
 
   async getEvidenceArtifact(id: string): Promise<ApiResponse<ForensicEvidenceDetail>> {
     const response = await this.client.get(`/evidence/artifacts/${id}`);
+    return response.data;
+  }
+
+  // Users
+  async getUsers(params?: {
+    page?: number; limit?: number; role?: string; search?: string;
+  }): Promise<ApiResponse<{ users: User[]; total: number }>> {
+    const response = await this.client.get('/users', { params });
+    return response.data;
+  }
+
+  async getUser(id: string): Promise<ApiResponse<{ user: User }>> {
+    const response = await this.client.get(`/users/${id}`);
+    return response.data;
+  }
+
+  async createUser(data: {
+    name: string; email: string; password: string;
+    role: string; department?: string;
+  }): Promise<ApiResponse<{ user: User }>> {
+    const response = await this.client.post('/users', data);
+    return response.data;
+  }
+
+  async updateUser(id: string, data: Partial<{
+    name: string; email: string; password: string;
+    role: string; department: string;
+  }>): Promise<ApiResponse<{ user: User }>> {
+    const response = await this.client.patch(`/users/${id}`, data);
+    return response.data;
+  }
+
+  async deleteUser(id: string): Promise<ApiResponse<void>> {
+    const response = await this.client.delete(`/users/${id}`);
+    return response.data;
+  }
+
+  async getUserActivity(userId: string): Promise<ApiResponse<{ activity: unknown[] }>> {
+    const response = await this.client.get(`/users/${userId}/activity`);
     return response.data;
   }
 

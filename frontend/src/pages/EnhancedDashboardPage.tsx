@@ -24,20 +24,15 @@ import { useAlertStore } from '../stores/alertStore';
 import { useSandboxStore } from '../stores/sandboxStore';
 import { cn, formatDate } from '../design-system';
 
-const mockActivity = [
-  { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'Investigation resolved', time: '2 min ago' },
-  { icon: FileText, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/20', text: 'New evidence uploaded', time: '15 min ago' },
-  { icon: Activity, color: 'text-cyan-500', bg: 'bg-cyan-50 dark:bg-cyan-900/20', text: 'Sandbox session completed', time: '30 min ago' },
-  { icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'New critical alert generated', time: '45 min ago' },
+const severityDistribution = [
+  { severity: 'critical', count: 0 },
+  { severity: 'high', count: 0 },
+  { severity: 'medium', count: 0 },
+  { severity: 'low', count: 0 },
+  { severity: 'info', count: 0 },
 ];
 
-const severityDistribution = [
-  { severity: 'critical', count: 8 },
-  { severity: 'high', count: 23 },
-  { severity: 'medium', count: 45 },
-  { severity: 'low', count: 67 },
-  { severity: 'info', count: 34 },
-];
+const mockActivity: { icon: React.ElementType; color: string; bg: string; text: string; time: string }[] = [];
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 

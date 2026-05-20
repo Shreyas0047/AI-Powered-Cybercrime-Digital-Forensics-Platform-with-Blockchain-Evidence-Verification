@@ -18,14 +18,6 @@ import { Select } from '../components/ui/Select';
 import { PageHeader } from '../layouts/PageContainer';
 import { formatRelativeTime } from '../utils/helpers';
 
-const mockInvestigations = [
-  { id: '1', caseNumber: 'INV-2024-5A3B', title: 'Ransomware Incident Analysis', description: 'Analysis of ransomware attack on company servers', status: 'active', priority: 'critical', category: 'ransomware', evidenceCount: 12, alertCount: 3, createdAt: '2024-01-15T10:30:00Z', updatedAt: '2024-01-16T14:20:00Z' },
-  { id: '2', caseNumber: 'INV-2024-5A2C', title: 'Phishing Campaign Investigation', description: 'Investigation into targeted phishing emails', status: 'analyzing', priority: 'high', category: 'phishing', evidenceCount: 8, alertCount: 2, createdAt: '2024-01-14T09:00:00Z', updatedAt: '2024-01-15T16:45:00Z' },
-  { id: '3', caseNumber: 'INV-2024-5A1D', title: 'Data Breach Assessment', description: 'Assessment of potential data exfiltration', status: 'pending', priority: 'medium', category: 'data_breach', evidenceCount: 5, alertCount: 0, createdAt: '2024-01-13T11:20:00Z', updatedAt: '2024-01-13T11:20:00Z' },
-  { id: '4', caseNumber: 'INV-2024-5A0E', title: 'Malware Detection Analysis', description: 'Analysis of detected malware samples', status: 'resolved', priority: 'low', category: 'malware', evidenceCount: 23, alertCount: 1, createdAt: '2024-01-10T08:15:00Z', updatedAt: '2024-01-12T17:30:00Z' },
-  { id: '5', caseNumber: 'INV-2024-4Z9F', title: 'Insider Threat Investigation', description: 'Investigation of suspicious employee activity', status: 'closed', priority: 'high', category: 'insider_threat', evidenceCount: 15, alertCount: 4, createdAt: '2024-01-05T14:00:00Z', updatedAt: '2024-01-08T10:00:00Z' },
-];
-
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 
@@ -34,7 +26,9 @@ export function InvestigationsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
 
-  const filteredInvestigations = mockInvestigations.filter(inv => {
+  const investigations: typeof filteredInvestigations = [];
+
+  const filteredInvestigations = investigations.filter(inv => {
     const matchesSearch = inv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       inv.caseNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
