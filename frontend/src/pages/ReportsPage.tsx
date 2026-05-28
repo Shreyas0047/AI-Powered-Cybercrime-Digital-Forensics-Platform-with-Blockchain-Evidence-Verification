@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -6,7 +6,6 @@ import {
   Filter,
   Download,
   Eye,
-  X,
   Clock,
   AlertTriangle,
   Shield,
@@ -20,7 +19,8 @@ import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardCard, DashboardStat } from '../components/enterprise/DashboardGrid';
-import { formatDateTime, formatDuration, formatFileSize, cn } from '../utils/helpers';
+import { formatDateTime, formatDuration, formatFileSize } from '../utils/helpers';
+import { cn } from '../design-system';
 import { useReportsStore } from '../stores/reportsStore';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };

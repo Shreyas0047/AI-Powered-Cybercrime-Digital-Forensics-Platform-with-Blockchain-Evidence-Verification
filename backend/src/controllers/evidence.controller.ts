@@ -5,16 +5,17 @@
 
 import { Response } from 'express';
 import multer from 'multer';
+import fs from 'fs';
 import { evidenceService } from '../services';
 import { AuthenticatedRequest } from '../middleware';
 import { ApiResponse, EvidenceType } from '../types';
+import { Evidence } from '../models';
 import { config } from '../config';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const tempDir = './uploads/temp';
-    const fs = require('fs');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
@@ -97,6 +98,50 @@ export class EvidenceController {
         limit: Number(limit),
         total: result.total,
         totalPages: result.totalPages,
+      },
+    };
+
+    res.json(response);
+  }
+
+  /**
+   * GET /api/v1/evidence
+   * List all evidence with pagination, search, and type filters
+   */
+  async findAll(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const { page = 1, limit = 20, search, type } = req.query as Record<string, any>;
+
+    const query: Record<string, any> = {};
+
+    if (type) {
+      query.type = type;
+    }
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const total = await Evidence.countDocuments(query);
+    const totalPages = Math.ceil(total / Math.min(Number(limit), 100));
+
+    const evidence = await Evidence.find(query)
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Math.min(Number(limit), 100))
+      .lean();
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Evidence retrieved',
+      data: evidence,
+      meta: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        totalPages,
       },
     };
 

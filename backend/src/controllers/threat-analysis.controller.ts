@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from 'express';
+import logger from '../config/logger';
 import { intelligencePipeline, RawTelemetryEvent } from '../threat_intelligence';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -55,7 +56,7 @@ export class ThreatAnalysisController {
         data: result.report
       });
     } catch (error) {
-      console.error('Threat analysis error:', error);
+      logger.error('Threat analysis error:', error);
       res.status(500).json({
         success: false,
         error: `Analysis failed: ${error}`
@@ -115,7 +116,7 @@ export class ThreatAnalysisController {
         data: result.report
       });
     } catch (error) {
-      console.error('Get intelligence report error:', error);
+      logger.error('Get intelligence report error:', error);
       res.status(500).json({
         success: false,
         error: `Failed to get report: ${error}`
@@ -189,7 +190,7 @@ export class ThreatAnalysisController {
         data: summary
       });
     } catch (error) {
-      console.error('Get intelligence summary error:', error);
+      logger.error('Get intelligence summary error:', error);
       res.status(500).json({
         success: false,
         error: `Failed to get summary: ${error}`
@@ -203,7 +204,7 @@ export class ThreatAnalysisController {
       const report = JSON.parse(content);
       return this.extractEventsFromReport(report);
     } catch (error) {
-      console.error('Error loading report file:', error);
+      logger.error('Error loading report file:', error);
       return [];
     }
   }
@@ -232,7 +233,7 @@ export class ThreatAnalysisController {
 
       return events;
     } catch (error) {
-      console.error('Error loading monitoring log:', error);
+      logger.error('Error loading monitoring log:', error);
       return [];
     }
   }

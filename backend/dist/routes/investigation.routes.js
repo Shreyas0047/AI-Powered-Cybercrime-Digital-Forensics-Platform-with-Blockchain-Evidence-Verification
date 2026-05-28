@@ -17,6 +17,8 @@ router.get('/stats', (0, middleware_1.authorize)(types_1.UserRole.FORENSIC_ANALY
 router.get('/:id', (0, middleware_1.authorize)(types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.SECURITY_REVIEWER, types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.AUDITOR, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.investigationController.findById));
 router.post('/', (0, middleware_1.requirePermission)(types_1.Permission.INVESTIGATION_CREATE), (0, middleware_1.asyncHandler)(controllers_1.investigationController.create));
 router.put('/:id', (0, middleware_1.requirePermission)(types_1.Permission.INVESTIGATION_UPDATE), (0, middleware_1.asyncHandler)(controllers_1.investigationController.update));
+// Get forensic report for investigation
+router.get('/:id/forensic-report', (0, middleware_1.authorize)(types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.SECURITY_REVIEWER, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.investigationController.getForensicReport));
 router.delete('/:id', (0, middleware_1.requirePermission)(types_1.Permission.INVESTIGATION_DELETE), (0, middleware_1.asyncHandler)(controllers_1.investigationController.delete));
 exports.default = router;
 //# sourceMappingURL=investigation.routes.js.map

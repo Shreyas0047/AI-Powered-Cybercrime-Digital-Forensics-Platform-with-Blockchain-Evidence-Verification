@@ -1,7 +1,7 @@
 simulator_id: "credential-stealer-simulator"
-display_name: "Credential Stealer Simulator"
-version: "0.1.0"
-description: "Placeholder safe simulator package."
+display_name: "Sample Epsilon"
+version: "1.0.0"
+description: "Unknown threat sample - awaiting behavioral analysis"
 entry_point: "credential_stealer_simulator.runtime"
 allowed_directories:
   - "C:/sandbox/artifacts/credential-stealer"

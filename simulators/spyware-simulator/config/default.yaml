@@ -1,7 +1,7 @@
 simulator_id: "spyware-simulator"
-display_name: "Spyware Simulator"
-version: "0.1.0"
-description: "Placeholder safe simulator package."
+display_name: "Sample Beta"
+version: "1.0.0"
+description: "Unknown threat sample - awaiting behavioral analysis"
 entry_point: "spyware_simulator.runtime"
 allowed_directories:
   - "C:/sandbox/artifacts/spyware"

@@ -6,10 +6,16 @@
 import winston from 'winston';
 import path from 'path';
 import fs from 'fs';
-import config from './index';
+
+// Read logging config directly from env to avoid circular dependency with config/index.ts
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+const LOG_FILE_PATH = process.env.LOG_FILE_PATH || './logs';
+const LOG_MAX_SIZE = process.env.LOG_MAX_SIZE || '10m';
+const LOG_MAX_FILES = parseInt(process.env.LOG_MAX_FILES || '30', 10);
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Ensure log directory exists
-const logDir = config.logging.filePath;
+const logDir = LOG_FILE_PATH;
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
@@ -33,7 +39,7 @@ const consoleFormat = winston.format.combine(
 
 // Create loggers
 const logger = winston.createLogger({
-  level: config.logging.level,
+  level: LOG_LEVEL,
   format: jsonFormat,
   defaultMeta: { service: 'forensics-platform' },
   transports: [
@@ -41,19 +47,19 @@ const logger = winston.createLogger({
     new winston.transports.File({
       filename: path.join(logDir, 'error.log'),
       level: 'error',
-      maxsize: parseSize(config.logging.maxSize),
-      maxFiles: config.logging.maxFiles,
+      maxsize: parseSize(LOG_MAX_SIZE),
+      maxFiles: LOG_MAX_FILES,
     }),
     new winston.transports.File({
       filename: path.join(logDir, 'combined.log'),
-      maxsize: parseSize(config.logging.maxSize),
-      maxFiles: config.logging.maxFiles,
+      maxsize: parseSize(LOG_MAX_SIZE),
+      maxFiles: LOG_MAX_FILES,
     }),
   ],
 });
 
 // Add console transport for non-production
-if (config.server.nodeEnv !== 'production') {
+if (NODE_ENV !== 'production') {
   logger.add(new winston.transports.Console({
     format: consoleFormat,
   }));
@@ -67,8 +73,8 @@ export const auditLogger = winston.createLogger({
   transports: [
     new winston.transports.File({
       filename: path.join(logDir, 'audit.log'),
-      maxsize: parseSize(config.logging.maxSize),
-      maxFiles: config.logging.maxFiles * 2, // Keep audit logs longer
+      maxsize: parseSize(LOG_MAX_SIZE),
+      maxFiles: LOG_MAX_FILES * 2, // Keep audit logs longer
     }),
   ],
 });
@@ -80,8 +86,8 @@ export const securityLogger = winston.createLogger({
   transports: [
     new winston.transports.File({
       filename: path.join(logDir, 'security.log'),
-      maxsize: parseSize(config.logging.maxSize),
-      maxFiles: config.logging.maxFiles * 2,
+      maxsize: parseSize(LOG_MAX_SIZE),
+      maxFiles: LOG_MAX_FILES * 2,
     }),
   ],
 });
@@ -93,8 +99,8 @@ export const apiLogger = winston.createLogger({
   transports: [
     new winston.transports.File({
       filename: path.join(logDir, 'api.log'),
-      maxsize: parseSize(config.logging.maxSize),
-      maxFiles: config.logging.maxFiles,
+      maxsize: parseSize(LOG_MAX_SIZE),
+      maxFiles: LOG_MAX_FILES,
     }),
   ],
 });

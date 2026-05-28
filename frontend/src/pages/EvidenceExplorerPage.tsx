@@ -1,9 +1,8 @@
-import { useState } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
   Filter,
-  Upload,
   FileText,
   Download,
   Eye,
@@ -17,6 +16,8 @@ import {
   Network,
   Image,
   FileCode,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -25,7 +26,9 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardCard, DashboardStat } from '../components/enterprise/DashboardGrid';
-import { formatRelativeTime, formatFileSize, cn } from '../utils/helpers';
+import { formatRelativeTime, formatFileSize } from '../utils/helpers';
+import { cn } from '../design-system';
+import { useEvidenceStore } from '../stores/evidenceStore';
 
 const typeIcons: Record<string, typeof File> = {
   email: FileText,
@@ -54,46 +57,75 @@ const typeColors: Record<string, string> = {
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 
 export function EvidenceExplorerPage() {
+  const {
+    evidence,
+    isLoading,
+    error,
+    pagination,
+    fetchEvidence,
+    deleteEvidence,
+    verifyEvidence,
+  } = useEvidenceStore();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedEvidence, setSelectedEvidence] = useState<{id: string; evidenceId: string; name: string; type: string; size: number; status: string; investigation: string; collectedAt: string; collectedBy: string; verified: boolean; tags: string[]} | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const evidence: typeof filteredEvidence = [];
+  useEffect(() => {
+    fetchEvidence({ page: 1, limit: 50 });
+  }, [fetchEvidence]);
 
-  const filteredEvidence = evidence.filter((evidence) => {
-    const matchesSearch = evidence.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      evidence.evidenceId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || evidence.type === typeFilter;
-    const matchesStatus = statusFilter === 'all' || evidence.status === statusFilter;
+  const handleDelete = useCallback(async (id: string) => {
+    if (!confirm('Delete this evidence?')) return;
+    await deleteEvidence(id);
+    fetchEvidence({ page: 1, limit: 50 });
+    if (selectedId === id) setSelectedId(null);
+  }, [deleteEvidence, fetchEvidence, selectedId]);
+
+  const handleVerify = useCallback(async (id: string) => {
+    await verifyEvidence(id);
+    fetchEvidence({ page: 1, limit: 50 });
+  }, [verifyEvidence, fetchEvidence]);
+
+  const filteredEvidence = evidence.filter((ev) => {
+    const matchesSearch = !searchTerm || ev.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ev.evidenceId.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'all' || ev.type === typeFilter;
+    const matchesStatus = statusFilter === 'all' || ev.status === statusFilter;
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const totalSize = 0;
-  const verifiedCount = 0;
-  const analyzingCount = 0;
+  const selectedEvidence = evidence.find(e => e.id === selectedId) || null;
+
+  const totalSize = evidence.reduce((sum, e) => sum + (e.size || 0), 0);
+  const verifiedCount = evidence.filter(e => e.status === 'verified').length;
+  const analyzingCount = evidence.filter(e => e.status === 'analyzing').length;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      {/* Header */}
       <PageHeader
         title="Evidence Explorer"
         subtitle="Browse and manage forensic evidence"
-        actions={
-          <Button size="sm">
-            <Upload className="w-4 h-4" />
-            Upload Evidence
-          </Button>
-        }
       />
 
-      {/* Stats */}
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-red-500" />
+          <span className="text-sm text-red-700 dark:text-red-400">{error}</span>
+          <button onClick={() => fetchEvidence({ page: 1, limit: 50 })} className="ml-auto p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+            <X className="w-4 h-4 text-red-500" />
+          </button>
+        </div>
+      )}
+
       <PageGrid columns={4}>
         <DashboardCard>
           <DashboardStat
             label="Total Evidence"
-            value={0}
+            value={evidence.length}
             icon={<FileText className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />}
+            delta={`${pagination.total || 0} in database`}
           />
         </DashboardCard>
         <DashboardCard>
@@ -101,6 +133,7 @@ export function EvidenceExplorerPage() {
             label="Verified"
             value={verifiedCount}
             icon={<CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+            delta={verifiedCount > 0 ? 'Chain of custody intact' : 'No verified evidence'}
           />
         </DashboardCard>
         <DashboardCard>
@@ -108,18 +141,19 @@ export function EvidenceExplorerPage() {
             label="Analyzing"
             value={analyzingCount}
             icon={<Clock className="w-5 h-5 text-violet-600 dark:text-violet-400" />}
+            delta="In progress"
           />
         </DashboardCard>
         <DashboardCard>
           <DashboardStat
             label="Total Size"
             value={formatFileSize(totalSize)}
-            icon={<AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+            icon={<Database className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+            delta="Across all evidence"
           />
         </DashboardCard>
       </PageGrid>
 
-      {/* Filters */}
       <Card>
         <div className="p-4 flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[200px]">
@@ -160,140 +194,166 @@ export function EvidenceExplorerPage() {
         </div>
       </Card>
 
-      {/* Evidence Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {filteredEvidence.map((evidence) => {
-                const Icon = typeIcons[evidence.type] || File;
-                const colorClass = typeColors[evidence.type] || 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        </div>
+      ) : filteredEvidence.length === 0 ? (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+            <FileText className="w-12 h-12 mb-3 opacity-40" />
+            <p className="text-lg font-medium">No evidence found</p>
+            <p className="text-sm mt-1">Evidence collected from sandbox sessions will appear here</p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card>
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/50 max-h-[500px] overflow-y-auto">
+                {filteredEvidence.map((ev) => {
+                  const Icon = typeIcons[ev.type] || File;
+                  const colorClass = typeColors[ev.type] || 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
 
-                return (
-                  <motion.div
-                    key={evidence.id}
-                    variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
-                    onClick={() => setSelectedEvidence(evidence)}
-                    className={cn(
-                      'px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
-                      selectedEvidence?.id === evidence.id && 'bg-cyan-50/50 dark:bg-cyan-900/10'
-                    )}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colorClass)}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
+                  return (
+                    <motion.div
+                      key={ev.id}
+                      variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                      onClick={() => setSelectedId(ev.id)}
+                      className={cn(
+                        'px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors',
+                        selectedId === ev.id && 'bg-cyan-50/50 dark:bg-cyan-900/10'
+                      )}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colorClass)}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-slate-900 dark:text-white truncate">{ev.name}</p>
+                            {ev.status === 'verified' && <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">{ev.evidenceId}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500 capitalize">{ev.type.replace('_', ' ')}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">{formatFileSize(ev.size)}</span>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-slate-900 dark:text-white truncate">{evidence.name}</p>
-                          {evidence.verified && <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">{evidence.evidenceId}</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500 capitalize">{evidence.type.replace('_', ' ')}</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">{formatFileSize(evidence.size)}</span>
+                          <StatusBadge status={ev.status} size="sm" />
+                          {ev.status !== 'verified' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleVerify(ev.id); }}
+                              className="p-1.5 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 transition-colors"
+                              title="Verify"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(ev.id); }}
+                            className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={evidence.status} size="sm" />
-                        <Button variant="ghost" size="sm">
-                          <Eye className="w-4 h-4" />
-                        </Button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+
+          <div>
+            {selectedEvidence ? (
+              <Card>
+                <div className="p-5">
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Evidence Details</h3>
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg mb-4">
+                    <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center', typeColors[selectedEvidence.type] || 'bg-slate-100')}>
+                      {(() => {
+                        const Icon = typeIcons[selectedEvidence.type] || File;
+                        return <Icon className="w-6 h-6" />;
+                      })()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-900 dark:text-white truncate">{selectedEvidence.name}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{selectedEvidence.evidenceId}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Type</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">{selectedEvidence.type.replace('_', ' ')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Size</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{formatFileSize(selectedEvidence.size)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Status</span>
+                      <StatusBadge status={selectedEvidence.status} size="sm" />
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Investigation</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-300 font-mono">{selectedEvidence.investigationId || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">SHA-256</span>
+                      <span className="text-xs text-slate-700 dark:text-slate-300 font-mono truncate max-w-[150px]" title={selectedEvidence.sha256}>
+                        {selectedEvidence.sha256 ? selectedEvidence.sha256.slice(0, 16) + '...' : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Collected</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{selectedEvidence.collectedAt ? formatRelativeTime(selectedEvidence.collectedAt) : 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  {selectedEvidence.tags && selectedEvidence.tags.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Tags</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedEvidence.tags.map((tag: string) => (
+                          <span key={tag} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </Card>
+                  )}
+
+                  <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Eye className="w-4 h-4" />
+                      View
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Download className="w-4 h-4" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                    <FileText className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Select an evidence item to view details</p>
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
-
-        {/* Detail Panel */}
-        <div>
-          {selectedEvidence ? (
-            <Card>
-              <div className="p-5">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Evidence Details</h3>
-                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg mb-4">
-                  <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center', typeColors[selectedEvidence.type] || 'bg-slate-100')}>
-                    {(() => {
-                      const Icon = typeIcons[selectedEvidence.type] || File;
-                      return <Icon className="w-6 h-6" />;
-                    })()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 dark:text-white truncate">{selectedEvidence.name}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{selectedEvidence.evidenceId}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Type</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">{selectedEvidence.type.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Size</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300">{formatFileSize(selectedEvidence.size)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Status</span>
-                    <StatusBadge status={selectedEvidence.status} size="sm" />
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Investigation</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300 font-mono">{selectedEvidence.investigation}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Collected By</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300">{selectedEvidence.collectedBy}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Collected</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300">{formatRelativeTime(selectedEvidence.collectedAt)}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Tags</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedEvidence.tags.map((tag) => (
-                      <span key={tag} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Eye className="w-4 h-4" />
-                    View
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Download className="w-4 h-4" />
-                    Download
-                  </Button>
-                  <Button variant="danger" size="sm">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ) : (
-            <Card>
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                  <FileText className="w-8 h-8 text-slate-400" />
-                </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Select an evidence item to view details</p>
-              </div>
-            </Card>
-          )}
-        </div>
-      </div>
+      )}
     </motion.div>
   );
 }

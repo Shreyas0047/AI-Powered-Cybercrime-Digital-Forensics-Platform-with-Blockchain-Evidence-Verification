@@ -3,14 +3,17 @@
  * Comprehensive Forensic Analysis Service
  * Orchestrates all threat intelligence components
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.comprehensiveForensicService = exports.ComprehensiveForensicService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const uuid_1 = require("uuid");
 const event_normalizer_1 = require("./event_normalizer");
 const feature_extractor_1 = require("./feature_extractor");
 const behavior_analyzer_1 = require("./behavior_analyzer");
 const risk_engine_1 = require("./risk_engine");
-const correlation_engine_1 = require("./correlation_engine");
 const correlation_engine_v2_1 = require("./correlation_engine_v2");
 const threat_classifier_1 = require("./threat_classifier");
 const behavioral_heuristics_1 = require("./behavioral_heuristics");
@@ -20,22 +23,22 @@ const threat_explanation_1 = require("./threat_explanation");
 class ComprehensiveForensicService {
     async analyzeSession(input) {
         const { sessionId, events } = input;
-        console.log(`[ComprehensiveForensic] Starting full analysis for session ${sessionId}`);
+        logger_1.default.info(`[ComprehensiveForensic] Starting full analysis for session ${sessionId}`);
         const normalizedEvents = event_normalizer_1.eventNormalizer.normalize(events, sessionId);
         const features = feature_extractor_1.featureExtractor.extractFeatures(normalizedEvents);
         const behaviors = behavior_analyzer_1.behaviorAnalyzer.analyzeBehaviors(normalizedEvents, features);
         const riskScore = risk_engine_1.riskEngine.calculateRiskScore(features, behaviors);
-        const attackPatterns = correlation_engine_1.correlationEngine.correlateEvents(normalizedEvents);
-        console.log(`[ComprehensiveForensic] Base analysis complete - ${behaviors.length} behaviors detected`);
+        logger_1.default.info(`[ComprehensiveForensic] Base analysis complete - ${behaviors.length} behaviors detected`);
         const correlation = correlation_engine_v2_1.forensicCorrelationEngine.correlateEvents(normalizedEvents, features, sessionId);
-        console.log(`[ComprehensiveForensic] Correlation complete - ${correlation.attack_chains.length} chains, ${correlation.incidents.length} incidents`);
+        logger_1.default.info(`[ComprehensiveForensic] Correlation complete - ${correlation.attack_chains.length} chains, ${correlation.incidents.length} incidents`);
+        const attackPatterns = [];
         const heuristics = behavioral_heuristics_1.behavioralHeuristicsEngine.analyzeHeuristics(normalizedEvents, features);
-        console.log(`[ComprehensiveForensic] Heuristics complete - ${heuristics.length} triggers`);
+        logger_1.default.info(`[ComprehensiveForensic] Heuristics complete - ${heuristics.length} triggers`);
         const anomalyResult = anomaly_detector_1.anomalyDetectionLayer.detectAnomalies(normalizedEvents, features);
-        console.log(`[ComprehensiveForensic] Anomaly detection complete - ${anomalyResult.anomalies.length} anomalies`);
+        logger_1.default.info(`[ComprehensiveForensic] Anomaly detection complete - ${anomalyResult.anomalies.length} anomalies`);
         const classification = threat_classifier_1.threatClassifier.classifyThreat(features, behaviors, attackPatterns, normalizedEvents);
         const profileMatch = threat_profiler_1.threatProfiler.matchProfile(features, behaviors);
-        console.log(`[ComprehensiveForensic] Classification: ${classification.predicted_threat} (${classification.confidence}%)`);
+        logger_1.default.info(`[ComprehensiveForensic] Classification: ${classification.predicted_threat} (${classification.confidence}%)`);
         const executionChain = threat_classifier_1.threatClassifier.buildExecutionChain(normalizedEvents);
         const mitreTactics = threat_classifier_1.threatClassifier.extractMitreTactics(classification.mitre_techniques);
         const explanation = threat_explanation_1.threatExplanationEngine.generateExplanation(sessionId, classification.predicted_threat, classification.confidence, features, behaviors, riskScore, correlation.attack_chains[0], anomalyResult.anomalies);
@@ -71,7 +74,7 @@ class ComprehensiveForensicService {
             recommendations,
             explanation
         };
-        console.log(`[ComprehensiveForensic] Analysis complete for session ${sessionId}`);
+        logger_1.default.info(`[ComprehensiveForensic] Analysis complete for session ${sessionId}`);
         return report;
     }
     buildTimeline(normalizedEvents) {

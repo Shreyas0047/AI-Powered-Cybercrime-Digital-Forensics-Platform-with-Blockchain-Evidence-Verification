@@ -3,6 +3,7 @@
  * Handles detection and resolution of blockchain inconsistencies
  */
 
+import logger from '../config/logger';
 import { BlockchainVerification, EvidenceIntegrity, BlockchainAudit, BlockchainVerificationStatus } from './models/blockchain.model';
 import { blockchainService } from './blockchain.service';
 import { blockchainSyncService } from './synchronization.service';
@@ -42,7 +43,7 @@ export class BlockchainReconciliationService {
     const issues: ReconciliationIssue[] = [];
     let resolved = 0;
 
-    console.log('[Reconciliation] Starting full reconciliation...');
+    logger.info('[Reconciliation] Starting full reconciliation...');
 
     // Check 1: Hash consistency between verification and integrity records
     const verificationRecords = await BlockchainVerification.find().lean();
@@ -114,11 +115,12 @@ export class BlockchainReconciliationService {
       }
     }
 
-    // Update active issues
-    this.activeIssues.clear();
+    // Update active issues — build local accumulator first, then bulk-assign
+    const newIssues = new Map<string, ReconciliationIssue>();
     for (const issue of issues.filter(i => !i.resolved)) {
-      this.activeIssues.set(issue.id, issue);
+      newIssues.set(issue.id, issue);
     }
+    this.activeIssues = newIssues;
 
     const report: ReconciliationReport = {
       id: uuidv4(),
@@ -135,7 +137,7 @@ export class BlockchainReconciliationService {
       `Reconciliation completed: ${issues.length} issues found, ${resolved} resolved`,
       'system', { issuesFound: issues.length, resolved, remaining: issues.length - resolved });
 
-    console.log(`[Reconciliation] Completed: ${issues.length} issues found, ${resolved} resolved`);
+    logger.info(`[Reconciliation] Completed: ${issues.length} issues found, ${resolved} resolved`);
 
     return report;
   }
@@ -225,7 +227,7 @@ export class BlockchainReconciliationService {
           return false;
       }
     } catch (error) {
-      console.error(`[Reconciliation] Auto-resolution failed for ${issue.id}:`, error);
+      logger.error(`[Reconciliation] Auto-resolution failed for ${issue.id}:`, error);
     }
 
     return false;
@@ -361,7 +363,7 @@ export class BlockchainReconciliationService {
         metadata,
       });
     } catch (error) {
-      console.error('[Reconciliation] Failed to log audit:', error);
+      logger.error('[Reconciliation] Failed to log audit:', error);
     }
   }
 

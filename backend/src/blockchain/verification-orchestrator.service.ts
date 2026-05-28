@@ -3,6 +3,7 @@
  * Coordinates all blockchain verification operations
  */
 
+import logger from '../config/logger';
 import fs from 'fs';
 import {
   VerificationStatus,
@@ -27,7 +28,7 @@ export class BlockchainVerificationService {
    */
   async initialize(): Promise<void> {
     await blockchainService.initialize();
-    console.log('[BlockchainVerification] Service initialized');
+    logger.info('[BlockchainVerification] Service initialized');
   }
 
   /**
@@ -414,6 +415,7 @@ export class BlockchainVerificationService {
     networkName: string;
     chainId: number;
     blockNumber: number;
+    verificationMode: string;
   }> {
     const networkInfo = await blockchainService.getNetworkInfo();
     return {
@@ -421,6 +423,7 @@ export class BlockchainVerificationService {
       networkName: networkInfo.networkName,
       chainId: networkInfo.chainId,
       blockNumber: networkInfo.blockNumber,
+      verificationMode: networkInfo.available ? 'on-chain' : 'local-only',
     };
   }
 

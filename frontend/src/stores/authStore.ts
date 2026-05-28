@@ -14,7 +14,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   permissions: Permission[];
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<{ user: User } | null>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   clearError: () => void;
@@ -33,12 +33,6 @@ export const useAuthStore = create<AuthState>()(
       error: null,
       permissions: [],
 
-      // Helper to get permissions based on user role
-      getPermissionsForRole: (role: UserRole): Permission[] => {
-        const permissions = BackendRolePermissions[role] || [];
-        return [...permissions];
-      },
-
       login: async (credentials: LoginCredentials): Promise<{ user: User } | null> => {
         set({ isLoading: true, error: null });
 
@@ -47,9 +41,15 @@ export const useAuthStore = create<AuthState>()(
           if (response.success && response.data) {
             const user = response.data.user;
             const permissions = BackendRolePermissions[user.role as UserRole] || [];
+            const accessToken = response.data.tokens.accessToken;
+            const refreshToken = response.data.tokens.refreshToken;
+            localStorage.setItem('accessToken', accessToken);
+            if (refreshToken) {
+              localStorage.setItem('refreshToken', refreshToken);
+            }
             set({
               user: user,
-              token: response.data.tokens.accessToken,
+              token: accessToken,
               isAuthenticated: true,
               isLoading: false,
               permissions: permissions,
@@ -58,8 +58,19 @@ export const useAuthStore = create<AuthState>()(
           }
           set({ isLoading: false, error: response.message || 'Login failed' });
           return null;
-        } catch (error) {
-          set({ isLoading: false, error: 'Login failed. Please check your credentials.' });
+        } catch (error: unknown) {
+          let errorMessage = 'Login failed. Please check your credentials.';
+          if (error && typeof error === 'object' && 'response' in error) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            if (axiosError.response?.data?.message) {
+              errorMessage = axiosError.response.data.message;
+            } else if (axiosError.response?.status === 429) {
+              errorMessage = 'Too many login attempts. Please wait before trying again.';
+            } else if (axiosError.response?.status === 401) {
+              errorMessage = 'Invalid email or password.';
+            }
+          }
+          set({ isLoading: false, error: errorMessage });
           throw error;
         }
       },
@@ -75,18 +86,20 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isAuthenticated: false,
         });
-        localStorage.removeItem('token');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
       },
 
       checkAuth: async () => {
-        const token = get().token;
+        const token = get().token || localStorage.getItem('accessToken');
 
         if (!token) {
           set({ isAuthenticated: false, permissions: [] });
           return;
+        }
+
+        if (!get().token && token) {
+          set({ token });
         }
 
         set({ isLoading: true });

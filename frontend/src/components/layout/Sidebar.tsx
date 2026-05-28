@@ -1,35 +1,20 @@
 /**
- * Enterprise Sidebar Navigation
- * Refined SOC-style sidebar with premium UX and organization
+ * Command Sidebar — Editorial Dark
+ * Warm near-black surface, cream typography, amber active accent.
+ * No glassmorphism slop — clean industrial aesthetic.
  */
 
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Search,
-  Folder,
-  Bell,
-  Activity,
-  Brain,
-  Settings,
-  Users,
-  Shield,
-  History,
-  Layers,
-  Terminal,
-  Heart,
-  Link2,
-  AlertTriangle,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  Circle,
+  LayoutDashboard, Search, Folder, Bell, Activity, Brain,
+  Settings, Users, Fingerprint, History, Layers, Terminal,
+  Heart, Link2, AlertTriangle, BarChart3, Shield,
+  ChevronLeft, ChevronRight, Circle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { cn } from '../../design-system';
 import { useAuthStore } from '../../stores/authStore';
-import { useTheme } from '../../providers/ThemeProvider';
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -42,382 +27,233 @@ interface NavItem {
   path: string;
   roles: string[];
   badge?: string | number;
-  children?: NavItem[];
-  description?: string;
 }
 
-const navItems: NavItem[] = [
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+const allRoles = ['admin', 'super_admin', 'forensic_analyst'];
+const adminRoles = ['admin', 'super_admin'];
+
+const navSections: NavSection[] = [
   {
-    icon: LayoutDashboard,
-    label: 'Dashboard',
-    path: '/dashboard',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'Operations overview',
+    label: 'Workspace',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: allRoles },
+      { icon: Search, label: 'Investigations', path: '/investigations', roles: allRoles },
+      { icon: Folder, label: 'Evidence', path: '/evidence', roles: allRoles },
+      { icon: Bell, label: 'Alerts', path: '/alerts', roles: allRoles },
+    ],
   },
   {
-    icon: Search,
-    label: 'Investigations',
-    path: '/investigations',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'Case management',
+    label: 'Operations',
+    items: [
+      { icon: Terminal, label: 'Sandbox', path: '/sandbox', roles: allRoles },
+      { icon: Activity, label: 'Telemetry', path: '/telemetry', roles: allRoles },
+      { icon: Brain, label: 'AI Analysis', path: '/ai-analysis', roles: allRoles },
+      { icon: Layers, label: 'Reports', path: '/reports', roles: allRoles },
+    ],
   },
   {
-    icon: Folder,
-    label: 'Evidence',
-    path: '/evidence',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'Evidence repository',
+    label: 'Intelligence',
+    items: [
+      { icon: AlertTriangle, label: 'Threat Intel', path: '/threat-intelligence', roles: allRoles },
+      { icon: BarChart3, label: 'Forensic Analytics', path: '/forensic-analytics', roles: adminRoles },
+      { icon: Shield, label: 'Chain of Custody', path: '/chain-of-custody', roles: allRoles },
+      { icon: Link2, label: 'Blockchain Ops', path: '/blockchain-operations', roles: adminRoles },
+    ],
   },
   {
-    icon: Bell,
-    label: 'Alerts',
-    path: '/alerts',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'Active alerts',
-  },
-  {
-    icon: Terminal,
-    label: 'Sandbox',
-    path: '/sandbox',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'VM execution',
-  },
-  {
-    icon: Brain,
-    label: 'AI Analysis',
-    path: '/ai-analysis',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'Threat classification',
-  },
-  {
-    icon: Activity,
-    label: 'Telemetry',
-    path: '/telemetry',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'Live events',
-  },
-  {
-    icon: Layers,
-    label: 'Reports',
-    path: '/reports',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'Forensic reports',
-  },
-  {
-    icon: Heart,
-    label: 'System Health',
-    path: '/health',
-    roles: ['admin', 'super_admin'],
-    description: 'Platform status',
-  },
-  {
-    icon: Link2,
-    label: 'Blockchain Ops',
-    path: '/blockchain-operations',
-    roles: ['admin', 'super_admin'],
-    description: 'Chain verification',
-  },
-  {
-    icon: AlertTriangle,
-    label: 'Threat Intel',
-    path: '/threat-intelligence',
-    roles: ['admin', 'super_admin', 'analyst', 'forensic_analyst'],
-    description: 'IOC management',
-  },
-  {
-    icon: BarChart3,
-    label: 'Forensic Analytics',
-    path: '/forensic-analytics',
-    roles: ['admin', 'super_admin'],
-    description: 'Behavioral analysis',
-  },
-  {
-    icon: Users,
-    label: 'User Management',
-    path: '/users',
-    roles: ['admin', 'super_admin'],
-    description: 'User management',
-    adminOnly: true,
-  },
-  {
-    icon: Settings,
-    label: 'Settings',
-    path: '/settings',
-    roles: ['admin', 'super_admin'],
-    description: 'Configuration',
-    adminOnly: true,
-  },
-  {
-    icon: History,
-    label: 'Audit Log',
-    path: '/audit',
-    roles: ['admin', 'super_admin'],
-    description: 'Activity audit',
-    adminOnly: true,
+    label: 'Administration',
+    items: [
+      { icon: Heart, label: 'System Health', path: '/health', roles: adminRoles },
+      { icon: Users, label: 'Users', path: '/users', roles: adminRoles },
+      { icon: Settings, label: 'Settings', path: '/settings', roles: adminRoles },
+      { icon: History, label: 'Audit Log', path: '/audit', roles: adminRoles },
+    ],
   },
 ];
 
-const navItemVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: (i: number) => ({
-    opacity: 1,
-    x: 0,
-    transition: {
-      delay: i * 0.03,
-      duration: 0.2,
-      ease: [0.4, 0, 0.2, 1]
+const NavItemRow = memo(({ item, isCollapsed }: { item: NavItem; isCollapsed: boolean }) => (
+  <NavLink
+    to={item.path}
+    className={({ isActive }) => cn(
+      'group relative flex items-center gap-3 h-9 px-2.5 rounded-md',
+      'transition-colors duration-150',
+      isActive
+        ? 'text-[#ebe8e3]'
+        : 'text-[#a09b93] hover:text-[#ebe8e3]'
+    )}
+    style={({ isActive }: any) => isActive
+      ? { background: 'rgba(245, 158, 11, 0.08)' }
+      : {}
     }
-  })
-};
+  >
+    {({ isActive }) => (
+      <>
+        {isActive && (
+          <motion.div
+            layoutId="sidebar-active-rail"
+            className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r"
+            style={{ background: '#f59e0b' }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          />
+        )}
+        <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+          <item.icon
+            strokeWidth={1.5}
+            className={cn(
+              'w-[18px] h-[18px] transition-colors',
+              isActive ? 'text-amber-400' : 'text-[#6c6862] group-hover:text-[#ebe8e3]'
+            )}
+          />
+        </div>
+
+        <AnimatePresence initial={false}>
+          {!isCollapsed && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              className="flex-1 text-[13px] font-medium tracking-[-0.005em] truncate"
+            >
+              {item.label}
+            </motion.span>
+          )}
+        </AnimatePresence>
+
+        {item.badge && !isCollapsed && (
+          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-rose-500/15 text-rose-300 border border-rose-500/20">
+            {item.badge}
+          </span>
+        )}
+      </>
+    )}
+  </NavLink>
+));
+NavItemRow.displayName = 'NavItemRow';
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
-  const { isDark } = useTheme();
   const { user } = useAuthStore();
-  const location = useLocation();
   const userRole = user?.role || 'auditor';
   const [isCollapsed, setIsCollapsed] = useState(collapsed);
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-
-  const filteredItems = navItems.filter(item => item.roles.includes(userRole));
 
   const handleToggle = () => {
-    const newCollapsed = !isCollapsed;
-    setIsCollapsed(newCollapsed);
-    onToggle?.(newCollapsed);
+    const next = !isCollapsed;
+    setIsCollapsed(next);
+    onToggle?.(next);
   };
+
+  const visibleSections = navSections
+    .map(s => ({ ...s, items: s.items.filter(i => i.roles.includes(userRole)) }))
+    .filter(s => s.items.length > 0);
 
   return (
     <motion.aside
       initial={false}
-      animate={{
-        width: isCollapsed ? 72 : 260,
-        boxShadow: isCollapsed
-          ? '0 0 0 1px rgba(0,0,0,0.05)'
-          : '0 0 0 1px rgba(0,0,0,0.05)'
+      animate={{ width: isCollapsed ? 72 : 244 }}
+      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+      className="fixed left-0 top-0 h-screen z-50 flex flex-col"
+      style={{
+        background: 'var(--surface-sunken)',
+        borderRight: '1px solid var(--border-subtle)',
       }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className={cn(
-        'fixed left-0 top-0 h-screen z-50',
-        'flex flex-col',
-        isDark
-          ? 'bg-[#0f172a] border-r border-slate-800/50'
-          : 'bg-white border-r border-slate-200'
-      )}
     >
-      {/* Logo Area */}
-      <div className={cn(
-        'h-16 flex items-center',
-        isCollapsed ? 'justify-center px-0' : 'px-4 gap-3',
-        'border-b',
-        isDark ? 'border-slate-800/50' : 'border-slate-100'
-      )}>
-        <motion.div
-          className={cn(
-            'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-            'bg-gradient-to-br from-blue-500 to-violet-600'
-          )}
-          whileHover={{ scale: 1.05, rotate: 2 }}
-          whileTap={{ scale: 0.95 }}
+      {/* ─── Brand ─── */}
+      <div
+        className={cn(
+          'h-16 flex items-center flex-shrink-0',
+          isCollapsed ? 'justify-center' : 'px-5 gap-3'
+        )}
+        style={{ borderBottom: '1px solid var(--border-subtle)' }}
+      >
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{
+            background: 'linear-gradient(135deg, #f59e0b, #b45309)',
+            boxShadow: '0 1px 3px rgba(245, 158, 11, 0.25)',
+          }}
         >
-          <Shield className="w-5 h-5 text-white" />
-        </motion.div>
-
-        <AnimatePresence>
+          <Fingerprint strokeWidth={1.75} className="w-4 h-4 text-white" />
+        </div>
+        <AnimatePresence initial={false}>
           {!isCollapsed && (
             <motion.div
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
             >
-              <h1 className={cn(
-                'text-lg font-bold whitespace-nowrap',
-                isDark ? 'text-slate-100' : 'text-slate-900'
-              )}>
-                <span className="bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">
-                  ForensicsAI
-                </span>
+              <h1 className="font-display font-semibold text-[15px] text-[#ebe8e3] tracking-tight leading-tight">
+                ForensicsAI
               </h1>
-              <p className={cn(
-                'text-[10px] tracking-wider whitespace-nowrap',
-                isDark ? 'text-slate-500' : 'text-slate-400'
-              )}>
-                CYBERSECURITY PLATFORM
-              </p>
+              <p className="overline text-[9px] mt-0.5">Cyber Intelligence</p>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
-        <div className="space-y-1">
-          {filteredItems.map((item, index) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                cn(
-                  'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg',
-                  'transition-all duration-200',
-                  isActive
-                    ? isDark
-                      ? 'bg-blue-500/10 text-blue-400'
-                      : 'bg-blue-50 text-blue-700'
-                    : isDark
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                )
-              }
-              onMouseEnter={() => setHoveredItem(item.path)}
-              onMouseLeave={() => setHoveredItem(null)}
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Active Indicator */}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeIndicator"
-                      className={cn(
-                        'absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full',
-                        'bg-gradient-to-b from-blue-500 to-violet-500'
-                      )}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  )}
-
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="relative z-10"
-                  >
-                    <item.icon
-                      className={cn(
-                        'w-5 h-5 flex-shrink-0 transition-colors duration-200',
-                        isActive
-                          ? 'text-blue-500'
-                          : isDark
-                            ? 'text-slate-500 group-hover:text-slate-300'
-                            : 'text-slate-400 group-hover:text-slate-600'
-                      )}
-                    />
-                  </motion.div>
-
-                  <AnimatePresence>
-                    {!isCollapsed && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="flex-1 min-w-0"
-                      >
-                        <span className={cn(
-                          'block text-sm font-medium truncate whitespace-nowrap',
-                          isActive
-                            ? isDark ? 'text-blue-400' : 'text-blue-700'
-                            : ''
-                        )}>
-                          {item.label}
-                        </span>
-                        <span className={cn(
-                          'block text-[10px] truncate whitespace-nowrap',
-                          isDark ? 'text-slate-600' : 'text-slate-400'
-                        )}>
-                          {item.description}
-                        </span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Badge */}
-                  {item.badge && !isCollapsed && (
-                    <span className={cn(
-                      'px-2 py-0.5 text-xs font-medium rounded-full',
-                      isDark
-                        ? 'bg-rose-500/20 text-rose-400'
-                        : 'bg-rose-100 text-rose-700'
-                    )}>
-                      {item.badge}
-                    </span>
-                  )}
-
-                  {/* Active Dot (collapsed state) */}
-                  {isActive && isCollapsed && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className={cn(
-                        'absolute left-1/2 bottom-0 w-1 h-1 rounded-full bg-blue-500',
-                        '-translate-x-1/2 translate-y-1'
-                      )}
-                    />
-                  )}
-                </>
+      {/* ─── Navigation ─── */}
+      <nav className="flex-1 overflow-y-auto py-4 px-2.5">
+        {visibleSections.map((section, idx) => (
+          <div key={section.label} className={cn(idx > 0 && 'mt-5')}>
+            <AnimatePresence initial={false}>
+              {!isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="overline px-2.5 mb-1.5"
+                >
+                  {section.label}
+                </motion.div>
               )}
-            </NavLink>
-          ))}
-        </div>
+            </AnimatePresence>
+            <div className="space-y-0.5">
+              {section.items.map((item) => (
+                <NavItemRow key={item.path} item={item} isCollapsed={isCollapsed} />
+              ))}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Footer */}
-      <div className={cn(
-        'p-3 border-t',
-        isDark ? 'border-slate-800/50' : 'border-slate-100'
-      )}>
+      {/* ─── Footer ─── */}
+      <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         {isCollapsed ? (
           <button
             onClick={handleToggle}
-            className={cn(
-              'w-full flex items-center justify-center p-2 rounded-lg',
-              'transition-all duration-200',
-              isDark
-                ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-            )}
+            className="w-full h-9 flex items-center justify-center rounded-md text-[#6c6862] hover:text-[#ebe8e3] transition-colors"
+            style={{ }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            aria-label="Expand sidebar"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight strokeWidth={1.5} className="w-4 h-4" />
           </button>
         ) : (
-          <div className="space-y-3">
-            {/* System Status */}
-            <div className={cn(
-              'px-3 py-3 rounded-lg',
-              isDark ? 'bg-slate-800/50' : 'bg-slate-50'
-            )}>
-              <div className="flex items-center gap-2 mb-2">
-                <Circle
-                  className="w-2 h-2 fill-emerald-500 text-emerald-500 animate-pulse"
-                />
-                <span className={cn(
-                  'text-xs font-medium',
-                  isDark ? 'text-slate-400' : 'text-slate-500'
-                )}>
-                  System Operational
-                </span>
+          <div className="space-y-2">
+            <div
+              className="px-2.5 py-2 rounded-md"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div className="flex items-center gap-2 mb-0.5">
+                <Circle className="w-1.5 h-1.5 fill-emerald-400 text-emerald-400" />
+                <span className="overline text-[9px]">Operational</span>
               </div>
-              <div className={cn(
-                'text-[10px]',
-                isDark ? 'text-slate-500' : 'text-slate-400'
-              )}>
-                v2.0.0 • Enterprise Edition
-              </div>
+              <p className="font-mono text-[10px] text-[#6c6862] tracking-tight">v2.0 · Enterprise</p>
             </div>
-
-            {/* Collapse Button */}
             <button
               onClick={handleToggle}
-              className={cn(
-                'w-full flex items-center justify-center gap-2 p-2 rounded-lg',
-                'transition-all duration-200',
-                isDark
-                  ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-              )}
+              className="w-full h-8 flex items-center justify-center gap-1.5 rounded-md text-[#6c6862] hover:text-[#a09b93] transition-colors"
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
-              <ChevronLeft className="w-4 h-4" />
-              <span className="text-xs">Collapse</span>
+              <ChevronLeft strokeWidth={1.5} className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-medium">Collapse</span>
             </button>
           </div>
         )}

@@ -7,10 +7,15 @@ managing VM lifecycle, state verification, and readiness checks.
 from __future__ import annotations
 
 import logging
+import os
+import subprocess
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+# Windows-specific flag to suppress console windows for taskkill/tasklist
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW") else 0
 
 from forensics_sandbox_agent.app.config.execution_models import (
     SandboxExecutionConfig,
@@ -79,20 +84,79 @@ class VmController:
         self._config = config
         self._isolation = isolation
         self._logger = logger
+        self._tracked_pids: set[int] = set()
 
     @property
     def vm_name(self) -> str:
         """Get the configured VM name."""
         return self._config.vm_name
 
+    def _capture_vbox_pids(self, image_name: str = "VBoxHeadless.exe") -> set[int]:
+        """Capture current PIDs for a VBox process image name using tasklist."""
+        pids: set[int] = set()
+        try:
+            result = subprocess.run(
+                ["tasklist", "/fi", f"imagename eq {image_name}", "/fo", "csv", "/nh"],
+                capture_output=True, text=True, timeout=10, creationflags=_NO_WINDOW,
+            )
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if not line or "No tasks" in line:
+                    continue
+                parts = line.split('","')
+                if len(parts) >= 2:
+                    try:
+                        pid = int(parts[1].strip('"'))
+                        pids.add(pid)
+                    except (ValueError, IndexError):
+                        pass
+        except Exception as exc:
+            self._logger.debug(f"Failed to capture {image_name} PIDs: {exc}")
+        return pids
+
+    def cleanup_orphaned_vbox_processes(self, kill_all: bool = False) -> None:
+        """Clean up orphaned VirtualBox processes.
+
+        First kills any PIDs this controller has tracked during VM starts,
+        then optionally performs a safety sweep of all VBox processes by image name.
+
+        Args:
+            kill_all: If True, also kill all VBox processes by image name
+                      (VBoxHeadless.exe, VirtualBoxVM.exe, VBoxSVC.exe)
+        """
+        # 1. Kill tracked PIDs first (targeted cleanup)
+        if self._tracked_pids:
+            self._logger.info(f"Cleaning up {len(self._tracked_pids)} tracked VBox PIDs")
+            for pid in list(self._tracked_pids):
+                try:
+                    subprocess.run(
+                        ["taskkill", "/PID", str(pid), "/T", "/F"],
+                        capture_output=True, timeout=10, creationflags=_NO_WINDOW,
+                    )
+                    self._logger.debug(f"Killed tracked VBox PID {pid}")
+                except Exception as exc:
+                    self._logger.warning(f"Failed to kill tracked VBox PID {pid}: {exc}")
+            self._tracked_pids.clear()
+
+        # 2. Safety sweep by image name (only when kill_all=True)
+        if kill_all:
+            for image_name in ("VBoxHeadless.exe", "VirtualBoxVM.exe", "VBoxSVC.exe"):
+                try:
+                    subprocess.run(
+                        ["taskkill", "/f", "/im", image_name],
+                        capture_output=True, timeout=10, creationflags=_NO_WINDOW,
+                    )
+                except Exception:
+                    pass
+
     def _parse_vm_state(self, state: str) -> VmStatus:
         """Parse VBoxManage state string to VmStatus enum."""
         state_lower = state.lower().replace("_", " ").strip()
         self._logger.debug(f"Parsing VM state: '{state}' -> '{state_lower}'")
 
-        if state_lower in ("running", "restoring"):
+        if state_lower in ("running",):
             return VmStatus.RUNNING
-        elif state_lower in ("starting", "teleporting", "live migrating"):
+        elif state_lower in ("starting", "restoring", "teleporting", "live migrating"):
             return VmStatus.STARTING
         elif state_lower in ("powered off", "poweroff", "aborted", "off"):
             return VmStatus.POWERED_OFF
@@ -179,8 +243,14 @@ class VmController:
                     raise VmOperationError("Timed out waiting for VM to resume")
                 return
 
-            # Default to GUI mode (background=False) so user sees the VM
+            # Start VM (headless by default for automated sandbox execution)
+            _before_pids = self._capture_vbox_pids()
             self._vbox.start_vm(self._config.vm_name, background=headless)
+            _after_pids = self._capture_vbox_pids()
+            _new_pids = _after_pids - _before_pids
+            if _new_pids:
+                self._tracked_pids.update(_new_pids)
+                self._logger.debug(f"Tracking new VBox PIDs: {_new_pids}")
             
             if not self._wait_for_state(VmStatus.RUNNING, timeout=self._config.vm_startup_timeout_seconds):
                 raise VmOperationError("Timed out waiting for VM to reach RUNNING state")
@@ -217,9 +287,14 @@ class VmController:
         """Ensure VM is running, starting if necessary."""
         current_state = self.get_vm_state()
 
-        if current_state == VmStatus.POWERED_OFF:
+        if current_state == VmStatus.RUNNING:
+            return
+        elif current_state in (VmStatus.POWERED_OFF, VmStatus.SAVED, VmStatus.STARTING):
             self.start_vm(headless=headless)
-        elif current_state != VmStatus.RUNNING:
+        elif current_state == VmStatus.PAUSED:
+            self._logger.info(f"Resuming paused VM: {self._config.vm_name}")
+            self._vbox.resume_vm(self._config.vm_name)
+        else:
             raise VmNotReadyError(f"VM is not in a runnable state: {current_state.value}")
 
     def ensure_powered_off(self) -> None:

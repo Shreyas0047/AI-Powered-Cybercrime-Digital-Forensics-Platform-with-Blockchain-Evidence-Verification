@@ -10,15 +10,18 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from collections import deque
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request as FastAPIRequest
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from forensics_sandbox_agent.app.config.loader import load_settings
@@ -40,6 +43,7 @@ class SessionState(str, Enum):
     MONITORING = "monitoring"
     ANALYZING = "analyzing"
     ROLLING_BACK = "rolling_back"
+    ROLLED_BACK = "rolled_back"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -80,6 +84,15 @@ class TelemetryEvent(BaseModel):
     data: dict
 
 
+class SystemLogEvent(BaseModel):
+    """System/operational log event for streaming."""
+    timestamp: str
+    level: str
+    message: str
+    session_id: Optional[str] = None
+    source: str = "runtime"
+
+
 @dataclass
 class RuntimeSession:
     """Active runtime session state."""
@@ -90,6 +103,7 @@ class RuntimeSession:
     updated_at: datetime
     forensic_session: Optional[ForensicSession] = None
     error: Optional[str] = None
+    events: list[dict] = field(default_factory=list)
 
 
 class SandboxRuntimeAPI:
@@ -101,11 +115,90 @@ class SandboxRuntimeAPI:
         self._services: Optional[ServiceRegistry] = None
         self._start_time = datetime.now()
         self._sessions: dict[str, RuntimeSession] = {}
+
         self._telemetry_clients: set[WebSocket] = set()
-        self._telemetry_queue: asyncio.Queue = asyncio.Queue()
+        self._telemetry_queue: asyncio.Queue = asyncio.Queue(maxsize=10000)
         self._telemetry_task: Optional[asyncio.Task] = None
-        self._runtime_logs: list[dict] = []
-        self._max_logs = 1000
+
+        self._system_log_clients: set[WebSocket] = set()
+        self._system_log_queue: asyncio.Queue = asyncio.Queue(maxsize=5000)
+        self._system_log_task: Optional[asyncio.Task] = None
+
+        self._runtime_logs: deque = deque(maxlen=1000)
+        self._cleanup_task: Optional[asyncio.Task] = None
+        self._heartbeat_task: Optional[asyncio.Task] = None
+
+    async def _heartbeat_loop(self) -> None:
+        """Periodically send heartbeats for active sessions to the backend."""
+        import urllib.request
+        import urllib.error
+
+        while True:
+            try:
+                await asyncio.sleep(30)
+                active = {
+                    sid: s for sid, s in self._sessions.items()
+                    if s.state not in (SessionState.COMPLETED, SessionState.FAILED)
+                }
+                if not active:
+                    continue
+                for session_id in active:
+                    await self._send_heartbeat(session_id)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                pass
+
+    async def _send_heartbeat(self, session_id: str) -> None:
+        """Send a single heartbeat for a session to the backend."""
+        import urllib.request
+        import urllib.error
+        try:
+            session = self._sessions.get(session_id)
+            if not session:
+                return
+            payload = json.dumps({
+                "status": session.state.value,
+                "vmState": session.state.value,
+                "memoryUsage": 0,
+                "cpuUsage": 0,
+            }).encode("utf-8")
+            agent_secret = os.environ.get("SANDBOX_AGENT_SECRET", "")
+            req = urllib.request.Request(
+                f"http://127.0.0.1:3000/api/v1/sync/sessions/{session_id}/heartbeat",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Agent-Secret": agent_secret,
+                },
+                method="POST",
+            )
+            await asyncio.to_thread(lambda: urllib.request.urlopen(req, timeout=10))
+        except Exception:
+            pass
+
+    async def _cleanup_loop(self) -> None:
+        """Periodically clean up completed/failed sessions and orphaned VBox processes."""
+        while True:
+            try:
+                await asyncio.sleep(60)
+                terminal = [sid for sid, s in self._sessions.items()
+                            if s.state in (SessionState.COMPLETED, SessionState.FAILED)]
+                for sid in terminal:
+                    self._sessions.pop(sid, None)
+                if terminal:
+                    self._add_log("INFO", f"Cleaned up {len(terminal)} terminal sessions from registry")
+
+                # Periodically clean up orphaned VBox processes
+                if self._services:
+                    try:
+                        self._services.vm_service.cleanup_orphaned_vbox_processes(kill_all=False)
+                    except Exception:
+                        pass
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                pass
 
     def initialize(self) -> None:
         """Initialize the runtime service."""
@@ -126,16 +219,16 @@ class SandboxRuntimeAPI:
         self._add_log("INFO", "Service registry initialized")
         self._add_log("INFO", "Sandbox Runtime API initialized successfully")
 
-    def _add_log(self, level: str, message: str) -> None:
-        """Add a log entry to the runtime log buffer."""
+    def _add_log(self, level: str, message: str, session_id: Optional[str] = None) -> None:
+        """Add a log entry to the runtime log buffer and enqueue for system log broadcast."""
         log_entry = {
             "timestamp": datetime.now().isoformat(),
             "level": level,
-            "message": message
+            "message": message,
+            "session_id": session_id,
+            "source": "runtime",
         }
         self._runtime_logs.append(log_entry)
-        if len(self._runtime_logs) > self._max_logs:
-            self._runtime_logs.pop(0)
         if self._logger:
             if level == "ERROR":
                 self._logger.error(message)
@@ -144,22 +237,34 @@ class SandboxRuntimeAPI:
             else:
                 self._logger.info(message)
 
+        try:
+            self._system_log_queue.put_nowait(log_entry)
+        except asyncio.QueueFull:
+            pass
+
     async def start_telemetry_processor(self) -> None:
         """Start the background telemetry processor."""
         async def process_telemetry():
             while True:
                 try:
-                    event = await asyncio.wait_for(
-                        self._telemetry_queue.get(),
-                        timeout=1.0
-                    )
+                    event = await self._telemetry_queue.get()
                     await self._broadcast_telemetry(event)
-                except asyncio.TimeoutError:
-                    continue
                 except Exception as e:
                     self._logger.error(f"Telemetry processing error: {e}")
 
         self._telemetry_task = asyncio.create_task(process_telemetry())
+
+    async def start_system_log_processor(self) -> None:
+        """Start the background system log processor."""
+        async def process_system_logs():
+            while True:
+                try:
+                    log_entry = await self._system_log_queue.get()
+                    await self._broadcast_system_log(log_entry)
+                except Exception as e:
+                    self._logger.error(f"System log processing error: {e}")
+
+        self._system_log_task = asyncio.create_task(process_system_logs())
 
     async def stop_telemetry_processor(self) -> None:
         """Stop the telemetry processor."""
@@ -170,52 +275,117 @@ class SandboxRuntimeAPI:
             except asyncio.CancelledError:
                 pass
 
-    async def _broadcast_telemetry(self, event: dict) -> None:
-        """Broadcast telemetry to all connected clients."""
-        dead_clients = set()
-        for client in self._telemetry_clients:
+    async def stop_system_log_processor(self) -> None:
+        """Stop the system log processor."""
+        if self._system_log_task:
+            self._system_log_task.cancel()
             try:
-                await client.send_json(event)
-            except Exception:
-                dead_clients.add(client)
-        for client in dead_clients:
+                await self._system_log_task
+            except asyncio.CancelledError:
+                pass
+
+    async def _safe_send(self, client: WebSocket, data: dict) -> None:
+        """Safely send data to a WebSocket client with timeout."""
+        try:
+            await asyncio.wait_for(client.send_json(data), timeout=5.0)
+        except Exception:
+            pass
+
+    async def _broadcast_telemetry(self, event: dict) -> None:
+        """Broadcast forensic telemetry to all connected clients concurrently."""
+        dead = set()
+        tasks = [self._safe_send(client, event) for client in list(self._telemetry_clients)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for client, result in zip(list(self._telemetry_clients), results):
+            if isinstance(result, Exception):
+                dead.add(client)
+        for client in dead:
             self._telemetry_clients.discard(client)
+
+    async def _broadcast_system_log(self, log_entry: dict) -> None:
+        """Broadcast system/operational log to all connected log clients concurrently."""
+        dead = set()
+        tasks = [self._safe_send(client, log_entry) for client in list(self._system_log_clients)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for client, result in zip(list(self._system_log_clients), results):
+            if isinstance(result, Exception):
+                dead.add(client)
+        for client in dead:
+            self._system_log_clients.discard(client)
 
     async def stream_telemetry(self, session_id: str, event: ForensicEvent) -> None:
         """Stream a telemetry event to connected clients."""
-        event_data = {
+        event_data = self._build_telemetry_event(session_id, event)
+        await self._telemetry_queue.put(event_data)
+
+    def enqueue_telemetry(self, session_id: str, event: ForensicEvent) -> None:
+        """Synchronously enqueue a telemetry event for broadcast (thread-safe).
+
+        This is the synchronous counterpart of stream_telemetry, designed to be
+        called from background threads (e.g. monitoring coordinators, pollers).
+        """
+        try:
+            event_data = self._build_telemetry_event(session_id, event)
+            self._telemetry_queue.put_nowait(event_data)
+        except asyncio.QueueFull:
+            pass
+        except Exception:
+            pass
+
+    def _build_telemetry_event(self, session_id: str, event: ForensicEvent) -> dict:
+        """Build the telemetry event dict from a ForensicEvent."""
+        return {
             "session_id": session_id,
             "timestamp": datetime.now().isoformat(),
             "event_type": "forensic_event",
             "category": event.category.value if hasattr(event.category, 'value') else str(event.category),
             "data": event.to_dict() if hasattr(event, 'to_dict') else {"raw": str(event)},
         }
-        await self._telemetry_queue.put(event_data)
 
     async def stream_session_update(self, session_id: str, state: SessionState, data: dict) -> None:
-        """Stream a session state update."""
-        event_data = {
-            "session_id": session_id,
-            "timestamp": datetime.now().isoformat(),
-            "event_type": "session_update",
-            "category": "session",
-            "data": {
-                "state": state.value,
-                **data
-            },
+        """Stream a session state update to the system log channel (NOT telemetry)."""
+        state_messages = {
+            SessionState.RESTORING_SNAPSHOT: "Restoring VM snapshot",
+            SessionState.BOOTING_VM: "Starting VM",
+            SessionState.EXECUTING: "Executing simulator",
+            SessionState.MONITORING: "Monitoring active",
+            SessionState.ANALYZING: "Analyzing results",
+            SessionState.ROLLING_BACK: "Rolling back VM",
+            SessionState.COMPLETED: "Session completed",
+            SessionState.FAILED: "Session failed",
         }
-        await self._telemetry_queue.put(event_data)
+        message = data.get("message", state_messages.get(state, f"State: {state.value}"))
+        log_level = "ERROR" if state == SessionState.FAILED else "INFO"
 
-    async def connect_websocket(self, websocket: WebSocket) -> None:
-        """Accept a WebSocket connection for telemetry streaming."""
-        await websocket.accept()
+        self._add_log(log_level, message, session_id)
+
+    async def connect_telemetry_websocket(self, websocket: WebSocket) -> None:
+        """Register a WebSocket client for forensic telemetry streaming."""
+        if len(self._telemetry_clients) >= 50:
+            await websocket.close(code=1013)
+            self._logger.warning("Telemetry WS client rejected: max clients (50) reached")
+            return
         self._telemetry_clients.add(websocket)
-        self._logger.info(f"WebSocket client connected. Total clients: {len(self._telemetry_clients)}")
+        self._logger.info(f"Telemetry WS client connected. Total: {len(self._telemetry_clients)}")
 
-    async def disconnect_websocket(self, websocket: WebSocket) -> None:
-        """Handle WebSocket disconnection."""
+    async def disconnect_telemetry_websocket(self, websocket: WebSocket) -> None:
+        """Handle telemetry WebSocket disconnection."""
         self._telemetry_clients.discard(websocket)
-        self._logger.info(f"WebSocket client disconnected. Total clients: {len(self._telemetry_clients)}")
+        self._logger.info(f"Telemetry WS client disconnected. Total: {len(self._telemetry_clients)}")
+
+    async def connect_system_log_websocket(self, websocket: WebSocket) -> None:
+        """Register a WebSocket client for system/operational log streaming."""
+        if len(self._system_log_clients) >= 50:
+            await websocket.close(code=1013)
+            self._logger.warning("System log WS client rejected: max clients (50) reached")
+            return
+        self._system_log_clients.add(websocket)
+        self._logger.info(f"System log WS client connected. Total: {len(self._system_log_clients)}")
+
+    async def disconnect_system_log_websocket(self, websocket: WebSocket) -> None:
+        """Handle system log WebSocket disconnection."""
+        self._system_log_clients.discard(websocket)
+        self._logger.info(f"System log WS client disconnected. Total: {len(self._system_log_clients)}")
 
     def get_health(self) -> HealthResponse:
         """Get service health status."""
@@ -256,24 +426,57 @@ class SandboxRuntimeAPI:
         )
         self._sessions[session_id] = runtime_session
 
+        async def run_with_timeout():
+            try:
+                await asyncio.wait_for(
+                    self._run_session(runtime_session, request),
+                    timeout=request.timeout_seconds + 30,
+                )
+            except asyncio.TimeoutError:
+                self._add_log("ERROR", f"Session {session_id} timed out after {request.timeout_seconds}s")
+                runtime_session.state = SessionState.FAILED
+                runtime_session.error = f"Session timed out after {request.timeout_seconds}s"
+                runtime_session.updated_at = datetime.now()
+                await self.stream_session_update(session_id, SessionState.FAILED, {
+                    "message": "Session timed out",
+                    "error": f"Exceeded {request.timeout_seconds}s limit",
+                })
+            except Exception as e:
+                self._add_log("ERROR", f"Session {session_id} failed: {e}")
+                runtime_session.state = SessionState.FAILED
+                runtime_session.error = str(e)
+                runtime_session.updated_at = datetime.now()
+                await self.stream_session_update(session_id, SessionState.FAILED, {
+                    "message": "Session failed",
+                    "error": str(e),
+                })
+
+        asyncio.create_task(run_with_timeout())
+
+        return SessionResponse(
+            session_id=runtime_session.session_id,
+            state=runtime_session.state,
+            simulator_id=runtime_session.simulator_id,
+            created_at=runtime_session.created_at.isoformat(),
+            updated_at=runtime_session.updated_at.isoformat(),
+            error=runtime_session.error,
+        )
+
+    async def _run_session(self, runtime_session: RuntimeSession, request: StartSessionRequest) -> None:
+        """Run the blocking VM execution pipeline without blocking the API."""
+        session_id = runtime_session.session_id
+
         try:
             self._add_log("INFO", "Preparing environment...")
-            await self.stream_session_update(session_id, SessionState.RESTORING_SNAPSHOT, {"message": "Restoring VM snapshot"})
 
-            self._add_log("INFO", "Restoring VM to clean snapshot...")
-            self._services.session_orchestrator.restore_snapshot()
-            self._add_log("INFO", "Snapshot restored successfully")
+            runtime_session.state = SessionState.RESTORING_SNAPSHOT
+            runtime_session.updated_at = datetime.now()
+            await self.stream_session_update(session_id, SessionState.RESTORING_SNAPSHOT, {"message": "Preparing VM for execution"})
+            self._add_log("INFO", "VM lifecycle managed by execution pipeline")
 
-            await self.stream_session_update(session_id, SessionState.BOOTING_VM, {"message": "Starting VM"})
-            self._add_log("INFO", "Starting VirtualBox VM (headless mode)...")
-            self._services.session_orchestrator.start_vm(headless=True)
-            self._add_log("INFO", "VM started successfully")
-
-            self._add_log("INFO", "Waiting for VM to boot...")
-            await asyncio.sleep(3)
-            self._add_log("INFO", "VM booted and ready")
-
-            await self.stream_session_update(session_id, SessionState.EXECUTING, {"message": "Executing simulator"})
+            runtime_session.state = SessionState.EXECUTING
+            runtime_session.updated_at = datetime.now()
+            await self.stream_session_update(session_id, SessionState.EXECUTING, {"message": "Starting simulator execution"})
             self._add_log("INFO", f"Loading simulator: {request.simulator_id}")
 
             simulator = next(
@@ -292,29 +495,44 @@ class SandboxRuntimeAPI:
             self._add_log("INFO", "  - Network monitoring: ACTIVE")
 
             self._add_log("INFO", "Executing simulator...")
-            forensic_session = self._services.session_orchestrator.execute_simulator(
+            forensic_session = await asyncio.to_thread(
+                self._services.session_orchestrator.execute_simulator,
                 simulator=simulator,
                 auto_rollback=request.auto_rollback,
+                session_id=session_id,
             )
 
             runtime_session.forensic_session = forensic_session
-            self._add_log("INFO", f"Simulator execution completed (exit code: {forensic_session.exit_code})")
-
-            await self.stream_session_update(session_id, SessionState.ANALYZING, {"message": "Analyzing results"})
-            self._add_log("INFO", "Collecting forensic events...")
-            self._add_log("INFO", "Generating forensic report...")
-
-            runtime_session.state = SessionState.COMPLETED
             runtime_session.updated_at = datetime.now()
 
-            await self.stream_session_update(session_id, SessionState.COMPLETED, {
+            coordinator = getattr(self._services, "monitoring_coordinator", None)
+            if coordinator:
+                raw_events = coordinator.get_events()
+                runtime_session.events = [
+                    e.to_dict() if hasattr(e, 'to_dict') else {"raw": str(e)}
+                    for e in raw_events
+                ]
+                self._add_log("INFO", f"Captured {len(runtime_session.events)} forensic events")
+
+            fs_status = forensic_session.status.value if forensic_session else "failed"
+            fs_exit_code = forensic_session.exit_code if forensic_session else 0
+            metadata = forensic_session.metadata if forensic_session else {}
+            total_events = metadata.get("monitoring_summary", {}).get("total_events", 0)
+            is_failed = fs_status in ("failed", "timeout")
+
+            runtime_session.state = SessionState.FAILED if is_failed else SessionState.COMPLETED
+
+            self._add_log("INFO", f"Simulator execution completed (exit code: {fs_exit_code})")
+            self._add_log("INFO", f"Total events collected: {total_events}")
+
+            target_state = SessionState.FAILED if is_failed else SessionState.COMPLETED
+            await self.stream_session_update(session_id, target_state, {
                 "message": "Session completed",
-                "status": forensic_session.status.value if forensic_session else "completed",
-                "exit_code": forensic_session.exit_code if forensic_session else 0,
+                "status": fs_status,
+                "exit_code": fs_exit_code,
+                "total_events": total_events,
             })
 
-            self._add_log("INFO", "Session completed successfully")
-            self._add_log("INFO", f"Total events collected: {len(forensic_session.events) if forensic_session.events else 0}")
             self._add_log("INFO", "=== Session Finished ===")
 
         except Exception as e:
@@ -327,15 +545,6 @@ class SandboxRuntimeAPI:
                 "message": "Session failed",
                 "error": str(e),
             })
-
-        return SessionResponse(
-            session_id=runtime_session.session_id,
-            state=runtime_session.state,
-            simulator_id=runtime_session.simulator_id,
-            created_at=runtime_session.created_at.isoformat(),
-            updated_at=runtime_session.updated_at.isoformat(),
-            error=runtime_session.error,
-        )
 
     def get_session(self, session_id: str) -> SessionResponse:
         """Get session status."""
@@ -351,6 +560,13 @@ class SandboxRuntimeAPI:
             updated_at=session.updated_at.isoformat(),
             error=session.error,
         )
+
+    def get_session_events(self, session_id: str) -> list[dict]:
+        """Get events for a completed session."""
+        session = self._sessions.get(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return session.events
 
     def get_all_sessions(self) -> list[SessionResponse]:
         """Get all sessions."""
@@ -376,10 +592,16 @@ class SandboxRuntimeAPI:
         self._add_log("INFO", f"Force stop: {force}")
 
         try:
-            if force:
+            if force and self._services:
                 self._add_log("WARNING", "Force stopping VM...")
                 self._services.vm_service.stop_vm(force=True)
                 self._add_log("INFO", "VM force stopped")
+                self._services.vm_service.cleanup_orphaned_vbox_processes(kill_all=True)
+                self._add_log("INFO", "Orphaned VBox processes cleaned up")
+            coordinator = getattr(self._services, "monitoring_coordinator", None) if self._services else None
+            if coordinator and getattr(coordinator, "_is_active", False):
+                coordinator.stop_monitoring()
+                self._add_log("INFO", "Forensic monitoring stopped")
         except Exception as e:
             self._add_log("WARNING", f"Error during force stop: {str(e)}")
 
@@ -393,7 +615,8 @@ class SandboxRuntimeAPI:
         self._add_log("INFO", "Initiating VM rollback...")
 
         try:
-            self._services.session_orchestrator.restore_snapshot()
+            if self._services:
+                self._services.session_orchestrator.restore_snapshot()
             self._add_log("INFO", "Snapshot restored successfully")
             await self.stream_session_update(session_id, SessionState.FAILED, {
                 "message": "Session terminated and rolled back",
@@ -421,6 +644,10 @@ class SandboxRuntimeAPI:
         self._add_log("INFO", "Stopping VM if running...")
 
         try:
+            coordinator = getattr(self._services, "monitoring_coordinator", None)
+            if coordinator and getattr(coordinator, "_is_active", False):
+                coordinator.stop_monitoring()
+                self._add_log("INFO", "Forensic monitoring stopped")
             self._add_log("INFO", "Restoring VM to CleanBaseline snapshot...")
             self._services.session_orchestrator.restore_snapshot()
             self._add_log("INFO", "Snapshot restored successfully")
@@ -439,48 +666,6 @@ class SandboxRuntimeAPI:
             logs = [log for log in logs if log.get("level", "").upper() == level.upper()]
 
         return logs[-limit:]
-
-    def _extract_log_level(self, line: str) -> str:
-        """Extract log level from line."""
-        line_upper = line.upper()
-        if 'ERROR' in line_upper:
-            return 'ERROR'
-        elif 'WARNING' in line_upper or 'WARN' in line_upper:
-            return 'WARNING'
-        elif 'INFO' in line_upper:
-            return 'INFO'
-        elif 'DEBUG' in line_upper:
-            return 'DEBUG'
-        return 'INFO'
-
-    def _generate_runtime_logs(self) -> list[dict]:
-        """Generate runtime logs based on current state."""
-        logs = []
-        now = datetime.now()
-
-        logs.append({
-            "timestamp": now.isoformat(),
-            "message": "Sandbox Runtime API started",
-            "level": "INFO",
-        })
-
-        if self._services:
-            vm_info = self._services.vm_service.get_vm_info()
-            state = vm_info.get('state', 'unknown')
-            logs.append({
-                "timestamp": now.isoformat(),
-                "message": f"VM state: {state}",
-                "level": "INFO",
-            })
-
-            if self._sessions:
-                logs.append({
-                    "timestamp": now.isoformat(),
-                    "message": f"Active sessions: {len(self._sessions)}",
-                    "level": "INFO",
-                })
-
-        return logs
 
     def get_vm_status(self) -> dict:
         """Get current VM status."""
@@ -551,10 +736,26 @@ async def lifespan(app: FastAPI):
     runtime_api = get_runtime_api()
     runtime_api.initialize()
     await runtime_api.start_telemetry_processor()
+    await runtime_api.start_system_log_processor()
+    runtime_api._cleanup_task = asyncio.create_task(runtime_api._cleanup_loop())
+    runtime_api._heartbeat_task = asyncio.create_task(runtime_api._heartbeat_loop())
 
     yield
 
+    if runtime_api._heartbeat_task:
+        runtime_api._heartbeat_task.cancel()
+        try:
+            await runtime_api._heartbeat_task
+        except asyncio.CancelledError:
+            pass
+    if runtime_api._cleanup_task:
+        runtime_api._cleanup_task.cancel()
+        try:
+            await runtime_api._cleanup_task
+        except asyncio.CancelledError:
+            pass
     await runtime_api.stop_telemetry_processor()
+    await runtime_api.stop_system_log_processor()
 
 
 def create_app() -> FastAPI:
@@ -568,11 +769,38 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Shared-secret authentication.
+    # - If SANDBOX_AGENT_SECRET is set: strictly enforce X-Agent-Secret header.
+    # - If unset (dev mode): allow localhost-only requests with a warning.
+    @app.middleware("http")
+    async def verify_agent_secret(request: FastAPIRequest, call_next):
+        # Allow health endpoint without auth for probes
+        if request.url.path == "/health":
+            return await call_next(request)
+
+        secret = os.environ.get("SANDBOX_AGENT_SECRET", "")
+
+        if not secret:
+            # Dev mode: only allow loopback connections
+            client_host = request.client.host if request.client else ""
+            if client_host in ("127.0.0.1", "::1", "localhost"):
+                return await call_next(request)
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Agent auth not configured. Set SANDBOX_AGENT_SECRET environment variable."},
+            )
+
+        # Production mode: require matching secret
+        provided = request.headers.get("x-agent-secret", "")
+        if provided != secret:
+            return JSONResponse(status_code=401, content={"detail": "Invalid agent credentials"})
+        return await call_next(request)
 
     runtime_api = get_runtime_api()
 
@@ -595,6 +823,10 @@ def create_app() -> FastAPI:
     @app.get("/sessions/{session_id}", response_model=SessionResponse)
     async def get_session(session_id: str):
         return runtime_api.get_session(session_id)
+
+    @app.get("/sessions/{session_id}/events")
+    async def get_session_events(session_id: str):
+        return {"events": runtime_api.get_session_events(session_id)}
 
     @app.post("/sessions/{session_id}/stop", response_model=SessionResponse)
     async def stop_session(session_id: str):
@@ -626,22 +858,80 @@ def create_app() -> FastAPI:
 
     @app.websocket("/telemetry/live")
     async def telemetry_websocket(websocket: WebSocket):
-        await runtime_api.connect_websocket(websocket)
         try:
-            while True:
-                await websocket.receive_text()
-        except WebSocketDisconnect:
-            await runtime_api.disconnect_websocket(websocket)
+            await websocket.accept()
+        except RuntimeError:
+            return
+        await runtime_api.connect_telemetry_websocket(websocket)
+        try:
+            async for _ in websocket.iter_text():
+                pass
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+        finally:
+            await runtime_api.disconnect_telemetry_websocket(websocket)
+
+    @app.websocket("/logs/live")
+    async def system_log_websocket(websocket: WebSocket):
+        try:
+            await websocket.accept()
+        except RuntimeError:
+            return
+        await runtime_api.connect_system_log_websocket(websocket)
+        try:
+            for log_entry in list(runtime_api._runtime_logs)[-50:]:
+                try:
+                    await websocket.send_json(log_entry)
+                except Exception:
+                    break
+            async for _ in websocket.iter_text():
+                pass
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+        finally:
+            await runtime_api.disconnect_system_log_websocket(websocket)
 
     return app
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8765) -> None:
-    """Run the FastAPI server."""
+    """Run the FastAPI server with retry on port conflict."""
+    import subprocess
     import uvicorn
+
+    no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW") else 0
+
+    try:
+        result = subprocess.run(
+            ["netstat", "-ano"], capture_output=True, text=True, timeout=10, creationflags=no_window,
+        )
+        for line in result.stdout.splitlines():
+            if f"{host}:{port}" in line and "LISTENING" in line:
+                parts = line.strip().split()
+                pid = parts[-1]
+                if pid and pid != "0":
+                    subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, timeout=5, creationflags=no_window)
+    except Exception:
+        pass
+
     app = create_app()
-    uvicorn.run(app, host=host, port=port)
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            uvicorn.run(app, host=host, port=port)
+            return
+        except OSError as e:
+            if "bind" in str(e).lower() and attempt < max_retries:
+                import time
+                time.sleep(2)
+            else:
+                raise
 
 
 if __name__ == "__main__":
-    run_server()
+    import argparse
+    parser = argparse.ArgumentParser(description="Forensic Sandbox Runtime API")
+    parser.add_argument("--port", type=int, default=8765, help="Port to listen on")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind to")
+    args = parser.parse_args()
+    run_server(host=args.host, port=args.port)

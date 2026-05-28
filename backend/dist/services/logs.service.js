@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logsService = exports.LogsService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const LOGS_DIR = path.resolve(process.cwd(), 'logs');
@@ -138,41 +142,9 @@ function parseLogFile(filePath, options = {}) {
         }
     }
     catch (error) {
-        console.error(`Error reading log file ${filePath}:`, error);
+        logger_1.default.error(`Error reading log file ${filePath}:`, error);
     }
     return entries;
-}
-function generateDemoLogs() {
-    const now = Date.now();
-    const sources = ['app', 'monitoring', 'simulator', 'execution', 'forensics', 'vm', 'sandbox', 'system'];
-    const levels = ['debug', 'info', 'info', 'info', 'warning', 'error'];
-    const messages = {
-        app: ['Application initialized', 'Configuration loaded', 'Service started', 'Health check passed', 'Session authenticated'],
-        monitoring: ['Process monitor started', 'File system monitor active', 'Registry monitor enabled', 'Network monitor tracking', 'Behavior detector initialized', 'Event pipeline active'],
-        simulator: ['Simulator catalog loaded', 'Ransomware simulator ready', 'Spyware simulator ready', 'Trojan simulator ready', 'Credential stealer ready', 'Simulator execution started'],
-        execution: ['VM snapshot restored', 'Guest agent connected', 'Execution started', 'Execution completed', 'Rollback initiated', 'Session terminated'],
-        forensics: ['Forensic event captured', 'Timeline entry created', 'Evidence packaged', 'Report generated', 'Hash computed', 'Integrity verified'],
-        vm: ['VirtualBox connection established', 'VM state: running', 'Snapshot loaded: CleanBaseline', 'Guest additions detected', 'Network isolation active'],
-        sandbox: ['Sandbox session created', 'Isolation policy enforced', 'Execution timeout: 300s', 'Events collected', 'Session ended'],
-        system: ['CPU usage: normal', 'Memory usage: stable', 'Disk I/O: within limits', 'Network: isolated'],
-    };
-    const logs = [];
-    for (let i = 0; i < 100; i++) {
-        const source = sources[Math.floor(Math.random() * sources.length)];
-        const msgs = messages[source] || messages.system;
-        const msg = msgs[Math.floor(Math.random() * msgs.length)];
-        const level = levels[Math.floor(Math.random() * levels.length)];
-        const ts = new Date(now - i * 5000).toISOString();
-        logs.push({
-            id: `demo-${i}`,
-            timestamp: ts,
-            level,
-            category: source,
-            message: msg,
-            source: `forensics-sandbox-agent.${source}`,
-        });
-    }
-    return logs;
 }
 class LogsService {
     async getLogs(options = {}) {
@@ -210,27 +182,9 @@ class LogsService {
             };
             readDir(dir, recursive);
         }
-        // If no real logs found, generate demo logs for UX
+        // If no real logs found, return empty
         if (allLogs.length === 0) {
-            const demoLogs = generateDemoLogs();
-            let filtered = demoLogs;
-            if (options.level) {
-                const levelOrder = { debug: 0, info: 1, warning: 2, error: 3, critical: 4 };
-                const reqLevel = levelOrder[options.level];
-                filtered = filtered.filter(l => levelOrder[l.level] >= reqLevel);
-            }
-            if (options.category) {
-                filtered = filtered.filter(l => l.category === options.category);
-            }
-            if (options.search) {
-                const q = options.search.toLowerCase();
-                filtered = filtered.filter(l => l.message.toLowerCase().includes(q) ||
-                    l.source?.toLowerCase().includes(q));
-            }
-            filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            const page = Math.max(1, options.page || 1);
-            const start = (page - 1) * limit;
-            return { logs: filtered.slice(start, start + limit), total: filtered.length };
+            return { logs: [], total: 0 };
         }
         // Sort by timestamp desc
         allLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -276,14 +230,7 @@ class LogsService {
         };
         scanDir(LOGS_DIR);
         if (stats.files.length === 0) {
-            // Generate demo stats
-            stats.totalLines = 100;
-            stats.byLevel = { debug: 10, info: 60, warning: 20, error: 8, critical: 2 };
-            stats.byCategory = {
-                app: 15, monitoring: 25, simulator: 20, execution: 15,
-                forensics: 10, vm: 8, sandbox: 5, system: 2
-            };
-            stats.files = ['logs/agent.log', 'logs/monitoring/'];
+            return stats;
         }
         return stats;
     }

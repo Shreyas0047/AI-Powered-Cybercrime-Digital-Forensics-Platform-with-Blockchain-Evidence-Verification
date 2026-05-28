@@ -11,7 +11,6 @@ from app.core.models import (
     ForensicFeatureSet,
     ThreatCategory,
     ThreatClassificationResult,
-    ThreatClassificationResult,
     SeverityLevel
 )
 
@@ -76,7 +75,7 @@ class ThreatClassifier:
             score = self._calculate_category_score(features, rules)
 
             if score > 0:
-                confidence = min(score / 10.0, 1.0)  # Cap at 100%
+                confidence = min(score / (len(self.CLASSIFICATION_RULES[category].features) * 3.0), 0.95)
                 indicators = self._extract_indicators(features, rules)
                 reasoning = self._generate_reasoning(category, score, features)
 
@@ -155,16 +154,17 @@ class ThreatClassifier:
             ThreatCategory.DESTRUCTIVE: "destructive behavior",
         }
 
-        reasoning = f"Classification based on analysis of "
-
+        parts = [f"Classification based on analysis of"]
         if features.file_modifications > 10:
-            reasoning += f"{features.file_modifications} file modifications, "
+            parts.append(f"{features.file_modifications} file modifications")
         if features.suspicious_processes > 0:
-            reasoning += f"{features.suspicious_processes} suspicious processes, "
+            parts.append(f"{features.suspicious_processes} suspicious processes")
         if features.network_connections > 0:
-            reasoning += f"{features.network_connections} network connections"
-
-        return reasoning.strip().rstrip(',')
+            parts.append(f"{features.network_connections} network connections")
+        reasoning = ', '.join(parts) + "."
+        if reasoning == "Classification based on analysis of.":
+            reasoning = "Classification based on general behavioral analysis."
+        return reasoning
 
     def get_primary_threat(self, classifications: Dict[ThreatCategory, ThreatClassificationResult]) -> ThreatClassificationResult:
         """Get the primary (highest confidence) threat"""

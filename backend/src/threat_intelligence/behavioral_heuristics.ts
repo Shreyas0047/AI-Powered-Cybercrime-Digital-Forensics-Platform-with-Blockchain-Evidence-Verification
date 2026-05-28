@@ -3,6 +3,7 @@
  * Heuristic-based detection without heavy ML
  */
 
+import logger from '../config/logger';
 import {
   NormalizedEvent,
   ExtractedFeatures,
@@ -257,7 +258,7 @@ export class BehavioralHeuristicsEngine {
           });
         }
       } catch (error) {
-        console.error(`Heuristic ${heuristic.id} failed: ${error}`);
+        logger.error(`Heuristic ${heuristic.id} failed: ${error}`);
       }
     }
 

@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.evidenceArtifactsService = exports.EvidenceArtifactsService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const MONITORING_DIR = path.resolve(process.cwd(), 'logs/monitoring');
@@ -205,7 +209,7 @@ class EvidenceArtifactsService {
                 }
             }
             catch (error) {
-                console.error(`Error scanning directory ${dir}:`, error);
+                logger_1.default.error(`Error scanning directory ${dir}:`, error);
             }
         }
         // Sort by timestamp desc
@@ -252,7 +256,7 @@ class EvidenceArtifactsService {
             }
         }
         catch (error) {
-            console.error(`Error loading artifact detail ${artifact.filePath}:`, error);
+            logger_1.default.error(`Error loading artifact detail ${artifact.filePath}:`, error);
         }
         return {
             ...artifact,

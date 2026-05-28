@@ -49,12 +49,18 @@ export function createTraceContext(req: Request): TraceContext {
 
 // Store trace context
 export function storeTraceContext(correlationId: string, context: TraceContext): void {
+  if (traceContext.size >= 10000) {
+    const oldestKey = traceContext.keys().next().value;
+    if (oldestKey !== undefined) {
+      traceContext.delete(oldestKey);
+    }
+  }
   traceContext.set(correlationId, context);
 
-  // Cleanup after 1 hour
+  // Cleanup after 5 minutes
   setTimeout(() => {
     traceContext.delete(correlationId);
-  }, 60 * 60 * 1000);
+  }, 5 * 60 * 1000);
 }
 
 // Update trace context with response data

@@ -133,10 +133,12 @@ class VBoxManage:
     def _check_vboxmanage_available(self) -> bool:
         """Check if VBoxManage is available."""
         try:
+            creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW") else 0
             result = subprocess.run(
                 [self._vboxmanage_path, "--version"],
                 capture_output=True,
                 timeout=5,
+                creationflags=creationflags,
             )
             return result.returncode == 0
         except Exception:
@@ -238,10 +240,12 @@ class VBoxManage:
             return
         try:
             if os.name == "nt":
+                creationflags = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0
                 subprocess.run(
                     ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                     capture_output=True,
                     timeout=10,
+                    creationflags=creationflags,
                 )
             else:
                 process.kill()
@@ -388,8 +392,8 @@ class VBoxManage:
             self._logger.info(f"Starting VM {vm_name} in HEADLESS mode")
             args = ["startvm", vm_name, "--type", "headless"]
         else:
-            self._logger.info(f"Starting VM {vm_name} in GUI mode (interactive)")
-            args = ["startvm", vm_name]
+            self._logger.info(f"Starting VM {vm_name} in SEPARATE mode (GUI visible, stable session)")
+            args = ["startvm", vm_name, "--type", "separate"]
 
         self._execute_command(args)
         self._logger.info(f"VM start command executed: {vm_name}")
@@ -730,7 +734,17 @@ class VBoxManage:
         self._logger.info(f"Waiting for guest additions on VM: {vm_name} (timeout {timeout}s)")
 
         while time.time() - start_time < timeout:
-            # 1. Low-level check: Is the property even there?
+            # 1. First, check if the VM is still running. 
+            # If it's aborted, we should fail immediately.
+            try:
+                vm_state = self.get_vm_state(vm_name)
+                if vm_state.state.lower() in ("aborted", "poweroff", "powered off"):
+                    self._logger.error(f"VM {vm_name} is not running (state: {vm_state.state}). Stopping wait.")
+                    return False
+            except Exception as e:
+                self._logger.debug(f"Failed to check VM state during wait: {e}")
+
+            # 2. Low-level check: Is the property even there?
             # This is the fastest and least invasive check.
             try:
                 result = self._execute_command(["guestproperty", "get", vm_name, "/VirtualBox/GuestAdd/Version"])
@@ -738,7 +752,7 @@ class VBoxManage:
                     version_info = result.stdout.strip()
                     self._logger.debug(f"Guest Additions property detected: {version_info}")
                     
-                    # 2. Functional check: Try a quick, harmless guest command execution
+                    # 3. Functional check: Try a quick, harmless guest command execution
                     # This verifies that the Guest Control session service is actually listening.
                     try:
                         self._logger.debug("Attempting functional guest command check...")
@@ -757,11 +771,17 @@ class VBoxManage:
                         self._logger.debug(f"Guest command failed (code {exit_code}): {stderr}")
                     except Exception as exec_exc:
                         # VBOX_E_GSTCTL_GUEST_ERROR (0x80bb000f) or crashes are common during boot
+                        if "is not running" in str(exec_exc).lower() or "aborted" in str(exec_exc).lower():
+                            self._logger.error(f"VM {vm_name} crashed during guest command check: {exec_exc}")
+                            return False
                         self._logger.debug(f"Guest command execution not yet ready: {exec_exc}")
                         last_error = exec_exc
                 else:
                     self._logger.debug("Guest Additions property not yet available.")
             except Exception as exc:
+                if "is not running" in str(exc).lower() or "aborted" in str(exc).lower():
+                    self._logger.error(f"VM {vm_name} crashed during property check: {exc}")
+                    return False
                 self._logger.debug(f"Guest property check failed: {exc}")
                 last_error = exc
 

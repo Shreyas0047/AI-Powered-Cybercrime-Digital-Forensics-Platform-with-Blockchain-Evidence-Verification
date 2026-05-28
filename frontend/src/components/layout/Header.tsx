@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
@@ -17,8 +17,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Info,
-  Sun,
-  Moon,
   Command,
   X,
 } from 'lucide-react';
@@ -40,9 +38,8 @@ interface HeaderProps {
 
 export function Header({ breadcrumbs = [], currentPage = '' }: HeaderProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { theme, setTheme, isDark } = useTheme();
+  const { isDark } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,16 +71,6 @@ export function Header({ breadcrumbs = [], currentPage = '' }: HeaderProps) {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
-  };
-
-  const handleThemeToggle = () => {
-    if (theme === 'light') {
-      setTheme('dark');
-    } else if (theme === 'dark') {
-      setTheme('system');
-    } else {
-      setTheme('light');
-    }
   };
 
   const getNotificationIcon = (type: string) => {
@@ -267,44 +254,6 @@ export function Header({ breadcrumbs = [], currentPage = '' }: HeaderProps) {
             </kbd>
           </motion.button>
 
-          {/* Theme Toggle */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleThemeToggle}
-            className={cn(
-              'p-2 rounded-xl transition-colors',
-              isDark
-                ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-300'
-                : 'hover:bg-slate-100 text-slate-500 hover:text-slate-600'
-            )}
-            title={`Current theme: ${theme}`}
-          >
-            <AnimatePresence mode="wait">
-              {isDark ? (
-                <motion.div
-                  key="moon"
-                  initial={{ rotate: -90, opacity: 0 }}
-                  animate={{ rotate: 0, opacity: 1 }}
-                  exit={{ rotate: 90, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Moon className="w-5 h-5" />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="sun"
-                  initial={{ rotate: 90, opacity: 0 }}
-                  animate={{ rotate: 0, opacity: 1 }}
-                  exit={{ rotate: -90, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Sun className="w-5 h-5" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
-
           {/* Connection Status */}
           <ConnectionStatus />
 
@@ -404,7 +353,7 @@ export function Header({ breadcrumbs = [], currentPage = '' }: HeaderProps) {
             >
               <div className={cn(
                 'w-8 h-8 rounded-lg flex items-center justify-center',
-                'bg-gradient-to-br from-blue-500 to-violet-600'
+                'bg-gradient-to-br from-amber-400 to-amber-600'
               )}>
                 <User className="w-4 h-4 text-white" />
               </div>

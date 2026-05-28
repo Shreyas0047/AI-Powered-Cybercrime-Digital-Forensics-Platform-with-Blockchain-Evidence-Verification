@@ -83,6 +83,7 @@ const alertSchema = new Schema({
   // Core identification
   alertId: {
     type: String,
+    required: true,
     unique: true,
     index: true,
   },

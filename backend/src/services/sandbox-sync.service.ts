@@ -4,8 +4,10 @@
  */
 
 import { SandboxSession } from '../models';
+import { TelemetryEvent } from '../models/telemetry-event.model';
 import { SandboxSessionStatus } from '../types';
 import { ConflictError, AppError } from '../middleware';
+import { websocketService } from './websocket.service';
 // import { v4 as uuidv4 } from 'uuid';
 
 export class SandboxSyncService {
@@ -34,6 +36,7 @@ export class SandboxSyncService {
       startTime: new Date(data.startTime),
     });
 
+    websocketService.emitSandboxSessionUpdate(session.sessionId, session);
     return session;
   }
 
@@ -64,6 +67,7 @@ export class SandboxSyncService {
     session.syncedAt = new Date();
 
     await session.save();
+    websocketService.emitSandboxSessionUpdate(session.sessionId, session);
     return session;
   }
 
@@ -85,12 +89,35 @@ export class SandboxSyncService {
       throw new AppError('Session not found', 400, 'NOT_FOUND');
     }
 
-    // In a full implementation, these would be stored in an events collection
-    // For now, we just increment the counter
-    session.eventsCollected += data.events.length;
-    await session.save();
+    const normalizedEvents = data.events.map((event: any, index) => ({
+      sessionId: data.sessionId,
+      eventType: event.type || event.eventType || event.event_type || 'unknown',
+      timestamp: new Date(event.timestamp || Date.now()),
+      processId: event.processId || event.process_id || event.pid,
+      processName: event.processName || event.process_name || event.source,
+      metadata: event.details || event.data || event.metadata || {},
+      raw: event,
+    }));
 
-    return { received: data.events.length };
+    if (normalizedEvents.length > 0) {
+      await TelemetryEvent.insertMany(normalizedEvents, { ordered: false });
+    }
+
+    session.eventsCollected += normalizedEvents.length;
+    (session as any).recentEvents = [
+      ...((session as any).recentEvents || []),
+      ...data.events.map((event: any, index) => ({
+        id: event.id || `${data.sessionId}-${Date.now()}-${index}`,
+        timestamp: event.timestamp || new Date().toISOString(),
+        type: event.type || event.eventType || event.event_type || 'unknown',
+        source: event.source || event.processName || event.process_name || 'sandbox',
+        details: event.details || event.data || event.metadata || {},
+        receivedAt: new Date(),
+      })),
+    ].slice(-200);
+    await session.save();
+    websocketService.emitSandboxTelemetry(data.sessionId, { received: normalizedEvents.length });
+    return { received: normalizedEvents.length };
   }
 
   /**

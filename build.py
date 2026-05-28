@@ -184,9 +184,10 @@ class BuildSystem:
 
         simulators_dir = self.dist_dir / "simulators"
         if simulators_dir.exists():
-            for sim in ["threat_file_1.exe", "threat_file_2.exe",
-                        "windows_patch.exe", "updater_service.exe",
-                        "runtime_helper.exe"]:
+            # Must match SIMULATOR_REGISTRY in domain/simulator_mapping.py
+            for sim in ["system_service_1.exe", "system_monitor.exe",
+                        "update_service.exe", "runtime_helper.exe",
+                        "windows_patch.exe"]:
                 exe_path = simulators_dir / sim
                 validation["simulators"][sim] = exe_path.exists()
 

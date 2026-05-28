@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.aiAnalysisService = exports.AIAnalysisService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const middleware_1 = require("../middleware");
+const websocket_service_1 = require("./websocket.service");
 class AIAnalysisService {
     client;
     timeout;
@@ -25,25 +26,59 @@ class AIAnalysisService {
         });
     }
     /**
+     * Normalize granular simulator event types to coarse AI-service types
+     */
+    normalizeEventType(eventType) {
+        const t = eventType.toLowerCase();
+        if (/file|encrypt|write|delete/.test(t))
+            return 'file';
+        if (/process|start|terminate/.test(t))
+            return 'process';
+        if (/registry/.test(t))
+            return 'registry';
+        if (/network|connect|dns|beacon/.test(t))
+            return 'network';
+        return 'behavior';
+    }
+    /**
      * Analyze telemetry events from sandbox execution
      */
     async analyzeTelemetry(request) {
         try {
+            const normalizedEvents = request.events.map((event) => ({
+                ...event,
+                type: this.normalizeEventType(event.type),
+            }));
             const response = await this.client.post('/api/v1/analyze/telemetry', {
                 session_id: request.sessionId,
                 investigation_id: request.investigationId,
-                events: request.events,
+                events: normalizedEvents,
                 metadata: request.metadata,
             });
             if (!response.data.success) {
                 throw new middleware_1.AppError('AI analysis failed', 500, 'AI_ANALYSIS_FAILED');
             }
-            return response.data.data;
+            const result = response.data.data;
+            websocket_service_1.websocketService.emitAIAnalysisComplete(request.investigationId || request.sessionId, result);
+            return result;
         }
         catch (error) {
             if (axios_1.default.isAxiosError(error)) {
-                if (error.code === 'ECONNREFUSED') {
-                    throw new middleware_1.AppError('AI service unavailable', 503, 'AI_SERVICE_UNAVAILABLE');
+                if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+                    // Degraded mode — return a minimal result instead of crashing
+                    return {
+                        session_id: request.sessionId,
+                        analysis_timestamp: new Date().toISOString(),
+                        total_events: request.events.length,
+                        suspicious_events: 0,
+                        threat_classification: {},
+                        severity_score: 0,
+                        severity_level: 'informational',
+                        anomalies: [],
+                        behavioral_summary: 'AI service unavailable — analysis deferred. Events stored for later processing.',
+                        recommendations: ['AI service is currently unreachable. Retry analysis when service recovers.'],
+                        confidence: 0,
+                    };
                 }
                 if (error.response) {
                     throw new middleware_1.AppError(`AI service error: ${error.response.status}`, error.response.status, 'AI_SERVICE_ERROR');
@@ -64,8 +99,8 @@ class AIAnalysisService {
             return response.data.data;
         }
         catch (error) {
-            if (axios_1.default.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-                throw new middleware_1.AppError('AI service unavailable', 503, 'AI_SERVICE_UNAVAILABLE');
+            if (axios_1.default.isAxiosError(error) && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT')) {
+                return { alert_id: alertData.alertId, ai_severity_assessment: alertData.severity, confidence: 0, analysis_summary: 'AI service unavailable — enrichment deferred.', recommendations: [] };
             }
             throw new middleware_1.AppError('Failed to enrich alert', 500, 'ENRICHMENT_FAILED');
         }
@@ -82,8 +117,8 @@ class AIAnalysisService {
             return response.data.data;
         }
         catch (error) {
-            if (axios_1.default.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-                throw new middleware_1.AppError('AI service unavailable', 503, 'AI_SERVICE_UNAVAILABLE');
+            if (axios_1.default.isAxiosError(error) && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT')) {
+                return { executive_summary: 'AI service unavailable — summary deferred.', key_findings: [], recommendations: ['Retry when AI service recovers.'], confidence: 0 };
             }
             throw new middleware_1.AppError('Failed to generate summary', 500, 'SUMMARIZATION_FAILED');
         }

@@ -25,7 +25,7 @@ export function Card({
     elevated: 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md',
     bordered: 'bg-white dark:bg-slate-800/80 border-2 border-slate-300 dark:border-slate-600',
     ghost: 'bg-transparent border border-transparent',
-    accent: 'bg-white dark:bg-slate-800/80 border border-cyan-200 dark:border-cyan-700/50 shadow-sm',
+    accent: 'bg-white dark:bg-slate-800/80 border border-amber-200 dark:border-amber-700/50 shadow-sm',
   };
 
   const paddingClasses = {

@@ -309,6 +309,7 @@ var AuditAction;
     AuditAction["TOKEN_REFRESH"] = "auth:token_refresh";
     AuditAction["PASSWORD_CHANGE"] = "auth:password_change";
     AuditAction["PASSWORD_RESET_REQUEST"] = "auth:password_reset_request";
+    AuditAction["PASSWORD_RESET_COMPLETE"] = "auth:password_reset_complete";
     // User events
     AuditAction["USER_CREATE"] = "user:create";
     AuditAction["USER_UPDATE"] = "user:update";

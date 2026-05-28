@@ -11,9 +11,14 @@ exports.apiLogger = exports.securityLogger = exports.auditLogger = void 0;
 const winston_1 = __importDefault(require("winston"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-const index_1 = __importDefault(require("./index"));
+// Read logging config directly from env to avoid circular dependency with config/index.ts
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+const LOG_FILE_PATH = process.env.LOG_FILE_PATH || './logs';
+const LOG_MAX_SIZE = process.env.LOG_MAX_SIZE || '10m';
+const LOG_MAX_FILES = parseInt(process.env.LOG_MAX_FILES || '30', 10);
+const NODE_ENV = process.env.NODE_ENV || 'development';
 // Ensure log directory exists
-const logDir = index_1.default.logging.filePath;
+const logDir = LOG_FILE_PATH;
 if (!fs_1.default.existsSync(logDir)) {
     fs_1.default.mkdirSync(logDir, { recursive: true });
 }
@@ -26,7 +31,7 @@ const consoleFormat = winston_1.default.format.combine(winston_1.default.format.
 }));
 // Create loggers
 const logger = winston_1.default.createLogger({
-    level: index_1.default.logging.level,
+    level: LOG_LEVEL,
     format: jsonFormat,
     defaultMeta: { service: 'forensics-platform' },
     transports: [
@@ -34,18 +39,18 @@ const logger = winston_1.default.createLogger({
         new winston_1.default.transports.File({
             filename: path_1.default.join(logDir, 'error.log'),
             level: 'error',
-            maxsize: parseSize(index_1.default.logging.maxSize),
-            maxFiles: index_1.default.logging.maxFiles,
+            maxsize: parseSize(LOG_MAX_SIZE),
+            maxFiles: LOG_MAX_FILES,
         }),
         new winston_1.default.transports.File({
             filename: path_1.default.join(logDir, 'combined.log'),
-            maxsize: parseSize(index_1.default.logging.maxSize),
-            maxFiles: index_1.default.logging.maxFiles,
+            maxsize: parseSize(LOG_MAX_SIZE),
+            maxFiles: LOG_MAX_FILES,
         }),
     ],
 });
 // Add console transport for non-production
-if (index_1.default.server.nodeEnv !== 'production') {
+if (NODE_ENV !== 'production') {
     logger.add(new winston_1.default.transports.Console({
         format: consoleFormat,
     }));
@@ -58,8 +63,8 @@ exports.auditLogger = winston_1.default.createLogger({
     transports: [
         new winston_1.default.transports.File({
             filename: path_1.default.join(logDir, 'audit.log'),
-            maxsize: parseSize(index_1.default.logging.maxSize),
-            maxFiles: index_1.default.logging.maxFiles * 2, // Keep audit logs longer
+            maxsize: parseSize(LOG_MAX_SIZE),
+            maxFiles: LOG_MAX_FILES * 2, // Keep audit logs longer
         }),
     ],
 });
@@ -70,8 +75,8 @@ exports.securityLogger = winston_1.default.createLogger({
     transports: [
         new winston_1.default.transports.File({
             filename: path_1.default.join(logDir, 'security.log'),
-            maxsize: parseSize(index_1.default.logging.maxSize),
-            maxFiles: index_1.default.logging.maxFiles * 2,
+            maxsize: parseSize(LOG_MAX_SIZE),
+            maxFiles: LOG_MAX_FILES * 2,
         }),
     ],
 });
@@ -82,8 +87,8 @@ exports.apiLogger = winston_1.default.createLogger({
     transports: [
         new winston_1.default.transports.File({
             filename: path_1.default.join(logDir, 'api.log'),
-            maxsize: parseSize(index_1.default.logging.maxSize),
-            maxFiles: index_1.default.logging.maxFiles,
+            maxsize: parseSize(LOG_MAX_SIZE),
+            maxFiles: LOG_MAX_FILES,
         }),
     ],
 });

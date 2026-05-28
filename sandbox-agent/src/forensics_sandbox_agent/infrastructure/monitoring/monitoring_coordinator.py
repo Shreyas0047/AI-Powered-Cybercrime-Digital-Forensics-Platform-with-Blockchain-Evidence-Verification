@@ -16,7 +16,10 @@ from forensics_sandbox_agent.infrastructure.monitoring.registry_monitor import R
 from forensics_sandbox_agent.infrastructure.monitoring.network_monitor import NetworkObserver
 from forensics_sandbox_agent.infrastructure.monitoring.forensic_timeline import ForensicTimelineEngine
 from forensics_sandbox_agent.infrastructure.monitoring.behavior_detector import BehaviorDetector
-from forensics_sandbox_agent.infrastructure.monitoring.event_models import ForensicSessionSummary
+from forensics_sandbox_agent.infrastructure.monitoring.event_models import (
+    ForensicSessionSummary,
+    EventOperation,
+)
 
 
 class ForensicMonitoringCoordinator:
@@ -34,6 +37,7 @@ class ForensicMonitoringCoordinator:
         self._pipeline = ForensicEventPipeline(
             config=self._config.storage,
             logger=logger,
+            stream_callback=self._forward_to_telemetry_stream,
         )
 
         self._process_monitor = ProcessMonitor(
@@ -294,6 +298,17 @@ class ForensicMonitoringCoordinator:
 
         self._network_observer.record_listen(port=port, protocol=protocol, source_pid=source_pid)
 
+    @staticmethod
+    def _forward_to_telemetry_stream(session_id: str, event) -> None:
+        """Forward an event to the runtime API's telemetry stream for WebSocket broadcast."""
+        try:
+            from forensics_sandbox_agent.infrastructure.runtime_api import get_runtime_api
+            api = get_runtime_api()
+            if api:
+                api.enqueue_telemetry(session_id, event)
+        except Exception:
+            pass
+
     def get_monitor_status(self) -> dict:
         """Get status of all monitors."""
         return {
@@ -336,6 +351,3 @@ class ForensicMonitoringCoordinator:
     def get_timeline(self) -> list:
         """Get forensic timeline."""
         return self._timeline_engine.get_timeline_for_export()
-
-
-from forensics_sandbox_agent.infrastructure.monitoring.event_models import EventOperation

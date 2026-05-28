@@ -4,7 +4,7 @@
  * Central export for all controllers
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evidenceArtifactsController = exports.settingsController = exports.logsController = exports.reportsController = exports.threatAnalysisController = exports.aiController = exports.syncController = exports.sandboxController = exports.evidenceController = exports.investigationController = exports.userController = exports.authController = void 0;
+exports.analysisController = exports.evidenceArtifactsController = exports.settingsController = exports.logsController = exports.reportsController = exports.threatAnalysisController = exports.aiController = exports.syncController = exports.sandboxController = exports.evidenceController = exports.investigationController = exports.userController = exports.authController = void 0;
 var auth_controller_1 = require("./auth.controller");
 Object.defineProperty(exports, "authController", { enumerable: true, get: function () { return auth_controller_1.authController; } });
 var user_controller_1 = require("./user.controller");
@@ -29,4 +29,6 @@ var settings_controller_1 = require("./settings.controller");
 Object.defineProperty(exports, "settingsController", { enumerable: true, get: function () { return settings_controller_1.settingsController; } });
 var evidence_artifacts_controller_1 = require("./evidence-artifacts.controller");
 Object.defineProperty(exports, "evidenceArtifactsController", { enumerable: true, get: function () { return evidence_artifacts_controller_1.evidenceArtifactsController; } });
+var analysis_controller_1 = require("./analysis.controller");
+Object.defineProperty(exports, "analysisController", { enumerable: true, get: function () { return analysis_controller_1.analysisController; } });
 //# sourceMappingURL=index.js.map

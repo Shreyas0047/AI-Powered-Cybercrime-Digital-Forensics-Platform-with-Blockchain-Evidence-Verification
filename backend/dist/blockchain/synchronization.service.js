@@ -3,8 +3,12 @@
  * Blockchain Synchronization Service
  * Manages evidence registration and verification synchronization with blockchain
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.blockchainSyncService = exports.BlockchainSyncService = exports.SyncOperation = exports.SyncStatus = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const blockchain_model_1 = require("./models/blockchain.model");
 const blockchain_service_1 = require("./blockchain.service");
 const smart_contract_service_1 = require("./smart-contract.service");
@@ -39,6 +43,35 @@ class BlockchainSyncService {
     isProcessing = false;
     MAX_RETRIES = 3;
     PROCESS_INTERVAL = 5000; // 5 seconds
+    autoProcessTimer = null;
+    /**
+     * Start automatic queue processing on an interval.
+     * Called once at service initialization.
+     */
+    startAutoProcessing() {
+        if (this.autoProcessTimer)
+            return;
+        logger_1.default.info('[Sync] Starting automatic queue processing every 5s');
+        this.autoProcessTimer = setInterval(async () => {
+            const pending = this.syncQueue.filter(i => i.status === SyncStatus.PENDING || i.status === SyncStatus.RETRYING).length;
+            if (pending > 0) {
+                const result = await this.processQueue();
+                if (result.processed > 0) {
+                    logger_1.default.info(`[Sync] Auto-processed ${result.processed} items (${result.successful} ok, ${result.failed} failed)`);
+                }
+            }
+        }, this.PROCESS_INTERVAL);
+    }
+    /**
+     * Stop automatic queue processing.
+     */
+    stopAutoProcessing() {
+        if (this.autoProcessTimer) {
+            clearInterval(this.autoProcessTimer);
+            this.autoProcessTimer = null;
+            logger_1.default.info('[Sync] Stopped automatic queue processing');
+        }
+    }
     /**
      * Add evidence to synchronization queue
      */
@@ -159,7 +192,7 @@ class BlockchainSyncService {
         }
         catch (error) {
             // Fall back to local-only registration if blockchain fails
-            console.warn(`[Sync] Blockchain registration failed, using local-only: ${error}`);
+            logger_1.default.warn(`[Sync] Blockchain registration failed, using local-only: ${error}`);
             item.status = SyncStatus.COMPLETED;
         }
     }
@@ -179,7 +212,7 @@ class BlockchainSyncService {
             }
         }
         catch (error) {
-            console.warn(`[Sync] Blockchain verification failed: ${error}`);
+            logger_1.default.warn(`[Sync] Blockchain verification failed: ${error}`);
         }
     }
     /**
@@ -187,13 +220,13 @@ class BlockchainSyncService {
      */
     async registerPackageOnChain(item) {
         // Similar implementation for package registration
-        console.log(`[Sync] Registering package ${item.packageId} on blockchain`);
+        logger_1.default.info(`[Sync] Registering package ${item.packageId} on blockchain`);
     }
     /**
      * Verify package on blockchain
      */
     async verifyPackageOnChain(item) {
-        console.log(`[Sync] Verifying package ${item.packageId} on blockchain`);
+        logger_1.default.info(`[Sync] Verifying package ${item.packageId} on blockchain`);
     }
     /**
      * Handle sync failure with retry logic
@@ -249,7 +282,7 @@ class BlockchainSyncService {
             });
         }
         catch (error) {
-            console.error('[Sync] Failed to log audit:', error);
+            logger_1.default.error('[Sync] Failed to log audit:', error);
         }
     }
     /**
@@ -366,5 +399,6 @@ class BlockchainSyncService {
 }
 exports.BlockchainSyncService = BlockchainSyncService;
 exports.blockchainSyncService = new BlockchainSyncService();
+exports.blockchainSyncService.startAutoProcessing();
 exports.default = exports.blockchainSyncService;
 //# sourceMappingURL=synchronization.service.js.map

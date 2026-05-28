@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.transactionService = exports.TransactionService = exports.TransactionType = exports.TransactionStatus = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const config_1 = require("./config");
 const smart_contract_service_1 = require("./smart-contract.service");
 const uuid_1 = require("uuid");
@@ -300,6 +304,11 @@ class TransactionService {
         const txRecord = this.transactionHistory.get(txId);
         if (!txRecord || !txRecord.transactionHash)
             return;
+        // Clear existing interval if already monitoring this txId
+        if (this.pendingTransactions.has(txId)) {
+            clearInterval(this.pendingTransactions.get(txId));
+            this.pendingTransactions.delete(txId);
+        }
         // Schedule confirmation check
         const intervalId = setInterval(async () => {
             const tx = this.transactionHistory.get(txId);
@@ -332,7 +341,7 @@ class TransactionService {
                 this.transactionHistory.set(txId, tx);
             }
             catch (error) {
-                console.error(`[Transaction] Confirmation check failed for ${txId}:`, error);
+                logger_1.default.error(`[Transaction] Confirmation check failed for ${txId}:`, error);
             }
         }, this.confirmationInterval);
         this.pendingTransactions.set(txId, intervalId);
@@ -416,6 +425,11 @@ class TransactionService {
         const cutoff = Date.now() - maxAge;
         for (const [txId, tx] of this.transactionHistory.entries()) {
             if (tx.updatedAt.getTime() < cutoff) {
+                const interval = this.pendingTransactions.get(txId);
+                if (interval) {
+                    clearInterval(interval);
+                    this.pendingTransactions.delete(txId);
+                }
                 this.transactionHistory.delete(txId);
             }
         }

@@ -3,6 +3,7 @@
  * Manages application settings persistence
  */
 
+import logger from '../config/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { AppSettings, VMSettings, MonitoringSettings, ExecutionSettings, LoggingSettings, NotificationSettings } from '../types/reports';
@@ -54,7 +55,7 @@ function loadSettings(): AppSettings {
       return { ...DEFAULT_SETTINGS, ...saved };
     }
   } catch (error) {
-    console.error('Error loading settings:', error);
+    logger.error('Error loading settings:', error);
   }
   return { ...DEFAULT_SETTINGS };
 }
@@ -67,7 +68,7 @@ function saveSettings(settings: AppSettings): void {
     }
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
   } catch (error) {
-    console.error('Error saving settings:', error);
+    logger.error('Error saving settings:', error);
     throw error;
   }
 }

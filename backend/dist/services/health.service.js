@@ -16,6 +16,7 @@ const logger_1 = __importDefault(require("../config/logger"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const database_optimization_service_1 = require("./database-optimization.service");
 const queue_service_1 = require("./queue.service");
+const models_1 = require("../models");
 /**
  * Health Monitor
  */
@@ -159,6 +160,36 @@ class HealthMonitor {
         };
     }
     /**
+     * Check for stale sandbox sessions (no heartbeat >90s) and mark as failed.
+     * This reconciles the state when an agent disconnects without a clean shutdown.
+     */
+    async checkStaleSessions() {
+        try {
+            const staleThreshold = new Date(Date.now() - 90 * 1000);
+            const result = await models_1.SandboxSession.updateMany({
+                status: 'running',
+                $or: [
+                    { lastHeartbeat: { $lt: staleThreshold } },
+                    { lastHeartbeat: null, createdAt: { $lt: staleThreshold } },
+                ],
+            }, {
+                $set: {
+                    status: 'failed',
+                    endTime: new Date(),
+                    errorMessages: ['Session agent disconnected'],
+                },
+            });
+            if (result.modifiedCount > 0) {
+                logger_1.default.warn(`[StaleSessions] Marked ${result.modifiedCount} stale session(s) as failed (no heartbeat for >90s)`);
+            }
+            return result.modifiedCount;
+        }
+        catch (error) {
+            logger_1.default.error('[StaleSessions] Failed to check for stale sessions:', error);
+            return 0;
+        }
+    }
+    /**
      * Get full health status
      */
     async getHealthStatus() {
@@ -289,4 +320,14 @@ forensics_queue_pending ${Object.values(metrics.workers).reduce((sum, w) => sum 
 forensics_queue_processing ${Object.values(metrics.workers).reduce((sum, w) => sum + w.processing, 0)}
 `.trim();
 }
+// ============================================
+// Stale Session Reconciliation (background task)
+// Runs every 30 seconds to detect and mark sessions
+// whose agent has disconnected without a clean shutdown.
+// ============================================
+setInterval(() => {
+    exports.healthMonitor.checkStaleSessions().catch((err) => {
+        logger_1.default.error('[StaleSessions] Reconciliation interval error:', err);
+    });
+}, 30 * 1000).unref();
 //# sourceMappingURL=health.service.js.map

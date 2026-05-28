@@ -237,9 +237,18 @@ class WebSocketService {
       }
     });
 
+    // Unsubscribe from sandbox updates
+    socket.on('unsubscribe:sandbox', (sessionId: string) => {
+      const connection = this.connections.get(socket.id);
+      if (connection) {
+        socket.leave(`sandbox:${sessionId}`);
+        connection.rooms.delete(`sandbox:${sessionId}`);
+      }
+    });
+
     // Handle disconnect
     socket.on(SocketEvent.DISCONNECT, (reason: string) => {
-      this.handleDisconnect(socket.id, reason);
+      this.handleDisconnect(socket, reason);
     });
 
     // Handle errors
@@ -249,12 +258,18 @@ class WebSocketService {
   }
 
   // Handle disconnection
-  private handleDisconnect(socketId: string, reason: string): void {
-    const connection = this.connections.get(socketId);
+  private handleDisconnect(socket: Socket, reason: string): void {
+    const connection = this.connections.get(socket.id);
     if (connection) {
-      logger.info(`Socket disconnected: ${socketId} - Reason: ${reason} - User: ${connection.userId}`);
-      this.connections.delete(socketId);
-      this.logEvent(SocketEvent.DISCONNECT, socketId, { reason, userId: connection.userId });
+      // Leave all rooms except the default room
+      for (const room of socket.rooms) {
+        if (room !== socket.id) {
+          socket.leave(room);
+        }
+      }
+      this.connections.delete(socket.id);
+      logger.info(`Socket disconnected: ${socket.id} - Reason: ${reason} - User: ${connection.userId}`);
+      this.logEvent(SocketEvent.DISCONNECT, socket.id, { reason, userId: connection.userId });
     }
   }
 

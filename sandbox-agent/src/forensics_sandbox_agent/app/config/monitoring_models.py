@@ -76,7 +76,7 @@ class VmPollingConfig:
     track_processes: bool = True
     track_network: bool = True
     track_files: bool = True
-    poll_directories: list[str] = field(default_factory=lambda: ["C:\\sandbox\\tmp\\tmp"])
+    poll_directories: list[str] = field(default_factory=lambda: ["C:\\sandbox\\tmp"])
     max_poll_duration_seconds: int = 300
     parse_simulator_log: bool = True
 

@@ -40,8 +40,7 @@ export class EvidenceHashingService {
    * Generate SHA-256 fingerprint for raw data
    */
   generateDataFingerprint(data: Buffer | string): string {
-    const content = typeof data === 'string' ? data : data.toString('base64');
-    return createHash('sha256').update(content).digest('hex');
+    return createHash('sha256').update(Buffer.isBuffer(data) ? data : String(data)).digest('hex');
   }
 
   /**
@@ -306,7 +305,17 @@ export class EvidenceHashingService {
    */
   async getCachedHash(filePath: string): Promise<string> {
     if (this.hashCache.has(filePath)) {
-      return this.hashCache.get(filePath)!;
+      const hash = this.hashCache.get(filePath)!;
+      this.hashCache.delete(filePath);
+      this.hashCache.set(filePath, hash);
+      return hash;
+    }
+
+    if (this.hashCache.size >= 1000) {
+      const oldestKey = this.hashCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.hashCache.delete(oldestKey);
+      }
     }
 
     const hash = await this.generateFileFingerprint(filePath);

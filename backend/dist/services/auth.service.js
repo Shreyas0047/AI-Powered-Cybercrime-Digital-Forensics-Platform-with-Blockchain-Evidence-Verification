@@ -16,8 +16,7 @@ const logger_2 = require("../config/logger");
 const models_1 = require("../models");
 const types_1 = require("../types");
 const middleware_1 = require("../middleware");
-// Password validation
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+const constants_1 = require("../constants");
 class AuthService {
     /**
      * Register a new user
@@ -31,9 +30,9 @@ class AuthService {
             ]);
         }
         // Validate password strength
-        if (!PASSWORD_REGEX.test(data.password)) {
-            throw new middleware_1.ValidationError('Password does not meet security requirements', [
-                { field: 'password', message: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character' },
+        if (!constants_1.PASSWORD_REGEX.test(data.password)) {
+            throw new middleware_1.ValidationError(constants_1.PASSWORD_ERROR, [
+                { field: 'password', message: constants_1.PASSWORD_ERROR },
             ]);
         }
         // Validate role assignment permissions
@@ -71,13 +70,18 @@ class AuthService {
      * Login with email and password
      */
     async login(email, password, ipAddress, userAgent) {
+        // Validate inputs
+        if (!email || !password) {
+            throw new middleware_1.UnauthorizedError('Email and password are required');
+        }
         // Find user with password
-        const user = await models_1.User.findOne({ email: email.toLowerCase() }).select('+password');
+        const normalizedEmail = email.toLowerCase();
+        const user = await models_1.User.findOne({ email: normalizedEmail }).select('+password');
         if (!user) {
             // Log failed attempt
             logger_2.securityLogger.warn({
                 message: 'Failed login attempt - user not found',
-                email: email.toLowerCase(),
+                email: normalizedEmail,
                 ipAddress,
             });
             await models_1.AuditLog.log({
@@ -87,7 +91,7 @@ class AuthService {
                 userAgent,
                 status: 'failed',
                 errorMessage: 'User not found',
-                details: { email: email.toLowerCase() },
+                details: { email: normalizedEmail },
             });
             throw new middleware_1.UnauthorizedError('Invalid email or password');
         }
@@ -252,9 +256,9 @@ class AuthService {
             throw new middleware_1.UnauthorizedError('Current password is incorrect');
         }
         // Validate new password
-        if (!PASSWORD_REGEX.test(newPassword)) {
-            throw new middleware_1.ValidationError('New password does not meet security requirements', [
-                { field: 'newPassword', message: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character' },
+        if (!constants_1.PASSWORD_REGEX.test(newPassword)) {
+            throw new middleware_1.ValidationError(constants_1.PASSWORD_ERROR, [
+                { field: 'newPassword', message: constants_1.PASSWORD_ERROR },
             ]);
         }
         // Update password
@@ -263,13 +267,43 @@ class AuthService {
         user.failedLoginAttempts = 0;
         await user.save();
         await models_1.AuditLog.log({
-            userId,
+            userId: user._id.toString(),
             action: types_1.AuditAction.PASSWORD_CHANGE,
             entityType: 'User',
             ipAddress,
             status: 'success',
         });
         logger_1.default.info(`Password changed for user: ${userId}`);
+    }
+    /**
+     * Reset password (forgot password flow)
+     */
+    async resetPassword(email, newPassword, ipAddress) {
+        const normalizedEmail = email.toLowerCase();
+        const user = await models_1.User.findOne({ email: normalizedEmail }).select('+password');
+        if (!user) {
+            throw new middleware_1.UnauthorizedError('Invalid reset request');
+        }
+        if (!user.isActive) {
+            throw new middleware_1.UnauthorizedError('Account is inactive');
+        }
+        if (!constants_1.PASSWORD_REGEX.test(newPassword)) {
+            throw new middleware_1.ValidationError(constants_1.PASSWORD_ERROR, [
+                { field: 'newPassword', message: constants_1.PASSWORD_ERROR },
+            ]);
+        }
+        user.password = newPassword;
+        user.mustChangePassword = false;
+        user.failedLoginAttempts = 0;
+        await user.save();
+        await models_1.AuditLog.log({
+            userId: user._id.toString(),
+            action: types_1.AuditAction.PASSWORD_RESET_COMPLETE,
+            entityType: 'User',
+            ipAddress,
+            status: 'success',
+        });
+        logger_1.default.info(`Password reset completed for user: ${normalizedEmail}`);
     }
     /**
      * Generate JWT tokens

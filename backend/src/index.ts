@@ -12,8 +12,9 @@ import { config, validateConfig } from './config';
 import logger from './config/logger';
 import { connectToDatabase, checkDatabaseHealth, closeDatabase } from './config/database';
 import routes from './routes';
-import { errorHandler, notFoundHandler } from './middleware';
-import { evidenceService } from './services';
+import { errorHandler, notFoundHandler, sanitizeRequest, validateRequestIntegrity, logSecurityEvent } from './middleware';
+import fs from 'fs';
+import { evidenceService, analysisService } from './services';
 import { websocketService } from './services/websocket.service';
 
 // Initialize Express app
@@ -44,7 +45,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
+// Rate limiting — consistent across all environments
 const limiter = rateLimit({
   windowMs: config.security.rateLimitWindowMs,
   max: config.security.rateLimitMaxRequests,
@@ -68,6 +69,25 @@ app.use(morgan('combined', {
 
 // Initialize storage
 evidenceService.initializeStorage();
+if (!fs.existsSync('./uploads/analysis')) {
+  fs.mkdirSync('./uploads/analysis', { recursive: true });
+}
+
+// Request sanitization and integrity check
+app.use(sanitizeRequest);
+app.use((req, res, next) => {
+  const { valid, threats } = validateRequestIntegrity(req);
+  if (!valid) {
+    logSecurityEvent(req, 'REQUEST_INTEGRITY_VIOLATION', {
+      threat: threats.join(', '),
+      severity: 'high',
+      ip: req.ip,
+    });
+    res.status(400).json({ success: false, message: 'Request rejected' });
+    return;
+  }
+  next();
+});
 
 // API routes
 app.use(routes);

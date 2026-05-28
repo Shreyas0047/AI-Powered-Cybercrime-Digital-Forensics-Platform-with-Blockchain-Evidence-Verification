@@ -3,6 +3,7 @@
  * Manages evidence registration and verification synchronization with blockchain
  */
 
+import logger from '../config/logger';
 import { BlockchainVerification, EvidenceIntegrity, BlockchainAudit } from './models/blockchain.model';
 import { blockchainService } from './blockchain.service';
 import { smartContractService } from './smart-contract.service';
@@ -64,6 +65,38 @@ export class BlockchainSyncService {
   private isProcessing = false;
   private readonly MAX_RETRIES = 3;
   private readonly PROCESS_INTERVAL = 5000; // 5 seconds
+  private autoProcessTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Start automatic queue processing on an interval.
+   * Called once at service initialization.
+   */
+  startAutoProcessing(): void {
+    if (this.autoProcessTimer) return;
+    logger.info('[Sync] Starting automatic queue processing every 5s');
+    this.autoProcessTimer = setInterval(async () => {
+      const pending = this.syncQueue.filter(
+        i => i.status === SyncStatus.PENDING || i.status === SyncStatus.RETRYING
+      ).length;
+      if (pending > 0) {
+        const result = await this.processQueue();
+        if (result.processed > 0) {
+          logger.info(`[Sync] Auto-processed ${result.processed} items (${result.successful} ok, ${result.failed} failed)`);
+        }
+      }
+    }, this.PROCESS_INTERVAL);
+  }
+
+  /**
+   * Stop automatic queue processing.
+   */
+  stopAutoProcessing(): void {
+    if (this.autoProcessTimer) {
+      clearInterval(this.autoProcessTimer);
+      this.autoProcessTimer = null;
+      logger.info('[Sync] Stopped automatic queue processing');
+    }
+  }
 
   /**
    * Add evidence to synchronization queue
@@ -219,7 +252,7 @@ export class BlockchainSyncService {
       }
     } catch (error) {
       // Fall back to local-only registration if blockchain fails
-      console.warn(`[Sync] Blockchain registration failed, using local-only: ${error}`);
+      logger.warn(`[Sync] Blockchain registration failed, using local-only: ${error}`);
       item.status = SyncStatus.COMPLETED;
     }
   }
@@ -241,7 +274,7 @@ export class BlockchainSyncService {
         this.syncState.blockchainConfirmed++;
       }
     } catch (error) {
-      console.warn(`[Sync] Blockchain verification failed: ${error}`);
+      logger.warn(`[Sync] Blockchain verification failed: ${error}`);
     }
   }
 
@@ -250,14 +283,14 @@ export class BlockchainSyncService {
    */
   private async registerPackageOnChain(item: SyncQueueItem): Promise<void> {
     // Similar implementation for package registration
-    console.log(`[Sync] Registering package ${item.packageId} on blockchain`);
+    logger.info(`[Sync] Registering package ${item.packageId} on blockchain`);
   }
 
   /**
    * Verify package on blockchain
    */
   private async verifyPackageOnChain(item: SyncQueueItem): Promise<void> {
-    console.log(`[Sync] Verifying package ${item.packageId} on blockchain`);
+    logger.info(`[Sync] Verifying package ${item.packageId} on blockchain`);
   }
 
   /**
@@ -335,7 +368,7 @@ export class BlockchainSyncService {
         metadata,
       });
     } catch (error) {
-      console.error('[Sync] Failed to log audit:', error);
+      logger.error('[Sync] Failed to log audit:', error);
     }
   }
 
@@ -493,4 +526,5 @@ export class BlockchainSyncService {
 }
 
 export const blockchainSyncService = new BlockchainSyncService();
+blockchainSyncService.startAutoProcessing();
 export default blockchainSyncService;

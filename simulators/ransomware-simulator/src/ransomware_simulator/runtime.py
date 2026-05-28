@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import shutil
 import time
 import random
 import string
@@ -272,8 +273,8 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
             with open(mutex_file, "w") as f:
                 f.write(f"{self._encrypted_marker}\n{self._campaign_id}\n")
             self.emit_file_operation("create", mutex_file)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Failed to create mutex: {e}")
         
         time.sleep(random.uniform(0.1, 0.3))
 
@@ -302,8 +303,8 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
                 with open(path, "w") as f:
                     f.write(content)
                 self.emit_file_operation("create", path, technique="T1105")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to create artifact: {e}")
 
     def _simulate_system_discovery(self) -> None:
         """Simulate system information discovery."""
@@ -351,12 +352,13 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
         
         for key_path, value_name in registry_routes:
             self.emit_registry_operation(key_path, modify=True, technique="T1547.001")
-            self._logger.emit_persistence_attempt(
-                "registry_run_key",
-                key_path,
-                technique="T1547.001",
-                tactic="Persistence"
-            )
+            if self._logger:
+                self._logger.emit_persistence_attempt(
+                    "registry_run_key",
+                    key_path,
+                    technique="T1547.001",
+                    tactic="Persistence"
+                )
             time.sleep(0.1)
 
     def _scheduled_task_persistence(self) -> None:
@@ -414,8 +416,8 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
                     with open(filepath, "w") as f:
                         f.write(synthetic_content)
                     self.emit_file_operation("scan", filepath, technique="T1083")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.error(f"Failed to create traversal file: {e}")
                 
                 if i % 5 == 0:
                     self._files_processed += 1
@@ -459,8 +461,8 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
                 with open(filepath, "w") as f:
                     f.write(self._encrypted_marker * 100)
                 self.emit_file_operation("create", filepath, technique="T1074")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to create staging file: {e}")
             
             if i % 5 == 0:
                 time.sleep(0.05)
@@ -495,8 +497,8 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
                         f.write(synthetic_content)
                     self.emit_file_operation("modify", fake_path)
                     self._files_processed += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.error(f"Failed to modify file: {e}")
             
             if i % 15 == 0:
                 self.emit_encryption_sim(fake_path, technique="T1486")
@@ -525,8 +527,8 @@ class RansomwareSimulatorRuntime(BaseSimulatorRuntime):
                         os.rename(str(file_path), str(new_path))
                         self.emit_file_operation("modify", str(new_path))
                         self.emit_encryption_sim(str(new_path), method="extension_rename")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.error(f"Failed to rename extension: {e}")
                     
                     time.sleep(0.02)
 
@@ -554,8 +556,8 @@ For learning purposes only.
                     f.write(ransom_note_content)
                 self.emit_file_operation("create", note_path, technique="T1486")
                 break
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to create ransom note: {e}")
 
     def _simulate_shadow_copy_deletion(self) -> None:
         """Simulate shadow copy deletion."""
@@ -602,14 +604,17 @@ For learning purposes only.
 
     def _clean_staging_files(self) -> None:
         """Clean up staging files."""
-        if os.path.exists(self._staging_dir):
+        if os.path.isdir(self._staging_dir):
             try:
                 for file in os.listdir(self._staging_dir):
                     file_path = os.path.join(self._staging_dir, file)
                     if os.path.isfile(file_path):
-                        self.emit_file_operation("delete", file_path, technique="T1070")
-            except Exception:
-                pass
+                        os.remove(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    self.emit_file_operation("delete", file_path, technique="T1070")
+            except Exception as e:
+                logging.error(f"Cleanup error: {e}")
 
     def _log_tampering_simulation(self) -> None:
         """Simulate event log tampering."""
@@ -670,9 +675,9 @@ def main():
     """Entry point for ransomware simulator."""
     manifest = SimulatorManifest(
         simulator_id="ransomware-simulator",
-        display_name="Ransomware Simulator",
+        display_name="Sample Alpha",
         version="1.0.0",
-        description="Simulates ransomware-like behavior for forensic training",
+        description="Unknown threat sample - awaiting behavioral analysis",
         category=SimulatorCategory.RANSOMWARE,
         entry_point="ransomware_simulator.runtime",
         allowed_directories=["C:/Windows/Temp", "C:/sandbox", "C:/temp"],

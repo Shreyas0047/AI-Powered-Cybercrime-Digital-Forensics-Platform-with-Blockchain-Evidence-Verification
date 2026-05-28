@@ -22,19 +22,19 @@ router.get('/patterns', middleware_1.authenticate, analytics_controller_1.analyt
  * @desc    Analyze process behavior
  * @access  Private (Authenticated, Admin/Analyst)
  */
-router.post('/analyze-behavior', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'analyst']), analytics_controller_1.analyticsController.analyzeProcessBehavior);
+router.post('/analyze-behavior', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'forensic_analyst']), analytics_controller_1.analyticsController.analyzeProcessBehavior);
 /**
  * @route   POST /api/v1/analytics/detect-anomalies
  * @desc    Detect anomalies in evidence
  * @access  Private (Authenticated, Admin/Analyst)
  */
-router.post('/detect-anomalies', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'analyst']), analytics_controller_1.analyticsController.detectAnomalies);
+router.post('/detect-anomalies', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'forensic_analyst']), analytics_controller_1.analyticsController.detectAnomalies);
 /**
  * @route   POST /api/v1/analytics/baseline
  * @desc    Analyze behavioral baseline
  * @access  Private (Authenticated, Admin/Analyst)
  */
-router.post('/baseline', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'analyst']), analytics_controller_1.analyticsController.analyzeBaseline);
+router.post('/baseline', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'forensic_analyst']), analytics_controller_1.analyticsController.analyzeBaseline);
 // ============================================
 // INVESTIGATION CORRELATION
 // ============================================
@@ -55,7 +55,7 @@ router.get('/clusters/:investigationId/relationships', middleware_1.authenticate
  * @desc    Score relationship between investigations
  * @access  Private (Authenticated, Admin/Analyst)
  */
-router.post('/clusters/:investigationId/score', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'analyst']), analytics_controller_1.analyticsController.scoreRelationship);
+router.post('/clusters/:investigationId/score', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'forensic_analyst']), analytics_controller_1.analyticsController.scoreRelationship);
 /**
  * @route   GET /api/v1/analytics/insights
  * @desc    Get correlation insights
@@ -73,6 +73,18 @@ router.get('/cluster-visualization', middleware_1.authenticate, analytics_contro
  * @desc    Get analytics dashboard data
  * @access  Private (Authenticated, Admin/Analyst)
  */
-router.get('/dashboard', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'analyst']), analytics_controller_1.analyticsController.getDashboardData);
+router.get('/dashboard', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'forensic_analyst']), analytics_controller_1.analyticsController.getDashboardData);
+/**
+ * @route   POST /api/v1/analytics/session/analyze
+ * @desc    Analyze a sandbox session
+ * @access  Private (Authenticated, Admin/Forensic Analyst)
+ */
+router.post('/session/analyze', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'forensic_analyst']), (0, middleware_1.asyncHandler)(analytics_controller_1.analyticsController.analyzeSession));
+/**
+ * @route   POST /api/v1/analytics/sessions/compare
+ * @desc    Compare multiple sandbox sessions
+ * @access  Private (Authenticated, Admin/Forensic Analyst)
+ */
+router.post('/sessions/compare', middleware_1.authenticate, (0, middleware_1.authorize)(['admin', 'forensic_analyst']), (0, middleware_1.asyncHandler)(analytics_controller_1.analyticsController.compareSessions));
 exports.default = router;
 //# sourceMappingURL=analytics.routes.js.map

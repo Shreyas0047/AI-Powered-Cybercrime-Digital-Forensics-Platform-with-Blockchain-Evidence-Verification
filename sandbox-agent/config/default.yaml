@@ -44,14 +44,14 @@ execution_policy:
     simulator_transfer_path: "C:/sandbox/simulators"
     guest_username: "guestuser"
     guest_password: "guest"
-    guest_additions_timeout_seconds: 300
+    guest_additions_timeout_seconds: 600
     start_headless: false
     transfer_runtime_dlls: false
     enable_auto_rollback: true
     max_concurrent_sessions: 1
-    vm_startup_timeout_seconds: 60
-    vm_shutdown_timeout_seconds: 30
-    snapshot_restore_timeout_seconds: 120
+    vm_startup_timeout_seconds: 120
+    vm_shutdown_timeout_seconds: 60
+    snapshot_restore_timeout_seconds: 180
   rollback_policy:
     enabled: true
     always_rollback_on_completion: true
@@ -126,3 +126,13 @@ monitoring:
     detect_suspicious_registry: true
     detect_unusual_network: true
     detect_suspicious_paths: true
+  vm_polling:
+    enabled: true
+    poll_interval_seconds: 5
+    track_processes: true
+    track_network: true
+    track_files: true
+    poll_directories:
+      - "C:\\sandbox\\tmp"
+    max_poll_duration_seconds: 600
+    parse_simulator_log: true

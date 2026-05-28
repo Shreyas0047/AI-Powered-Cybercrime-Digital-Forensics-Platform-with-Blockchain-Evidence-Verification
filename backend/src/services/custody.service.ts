@@ -114,32 +114,35 @@ export class ChainOfCustodyService {
       metadata,
     };
 
-    // Update chain
-    chain.events.push(event);
-    chain.eventCount = chain.events.length;
-    chain.lastEventAt = new Date();
-    chain.chainHash = eventHash;
+    // Atomic update — prevents race conditions on concurrent evidence uploads
+    const updateFields: Record<string, any> = {
+      $push: { events: event },
+      $inc: { eventCount: 1 },
+      $set: {
+        lastEventAt: new Date(),
+        chainHash: eventHash,
+      },
+    };
 
-    // Update custody holder if transferred
     if (eventType === CustodyEventType.CUSTODY_TRANSFERRED) {
-      chain.currentHolder = performedBy as any;
-      chain.currentHolderName = performedByName;
+      updateFields.$set.currentHolder = performedBy;
+      updateFields.$set.currentHolderName = performedByName;
     }
-
-    // Update integrity status if provided
     if (integrityStatus) {
-      chain.integrityStatus = integrityStatus;
-      chain.lastIntegrityCheck = new Date();
+      updateFields.$set.integrityStatus = integrityStatus;
+      updateFields.$set.lastIntegrityCheck = new Date();
     }
-
-    // Update blockchain info if synced
     if (transactionHash && blockNumber) {
-      chain.blockchainVerified = true;
-      chain.blockchainTxHash = transactionHash;
-      chain.blockchainBlockNumber = blockNumber;
+      updateFields.$set.blockchainVerified = true;
+      updateFields.$set.blockchainTxHash = transactionHash;
+      updateFields.$set.blockchainBlockNumber = blockNumber;
     }
 
-    await chain.save();
+    chain = await ChainOfCustody.findOneAndUpdate(
+      { evidenceId },
+      updateFields,
+      { new: true }
+    );
 
     // Add verification to history
     if (eventType === CustodyEventType.VERIFICATION_COMPLETED || eventType === CustodyEventType.VERIFICATION_FAILED) {

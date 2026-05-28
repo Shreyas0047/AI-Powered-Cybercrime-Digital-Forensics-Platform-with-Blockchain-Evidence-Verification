@@ -5,9 +5,6 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { AppError } from '../middleware';
-import { spawn } from 'child_process';
-import { existsSync } from 'fs';
-import { join } from 'path';
 
 export interface RuntimeHealth {
   status: string;
@@ -41,10 +38,12 @@ export interface StartSessionRequest {
 }
 
 let runtimeStarted = false;
+let runtimeCheckInProgress = false;
 
 export class SandboxRuntimeService {
   private client: AxiosInstance;
   private baseUrl: string;
+  private sessionMonitors: Map<string, boolean> = new Map();
 
   constructor() {
     this.baseUrl = process.env.SANDBOX_RUNTIME_URL || 'http://127.0.0.1:8765';
@@ -53,34 +52,65 @@ export class SandboxRuntimeService {
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
+        'X-Agent-Secret': process.env.SANDBOX_AGENT_SECRET || '',
       },
     });
   }
 
+  async monitorSessionCompletion(
+    sessionId: string,
+    onComplete: (session: RuntimeSession) => Promise<void>,
+  ): Promise<void> {
+    if (this.sessionMonitors.has(sessionId)) return;
+    this.sessionMonitors.set(sessionId, true);
+
+    const poll = async (attempts: number) => {
+      if (!this.sessionMonitors.has(sessionId)) return;
+      if (attempts >= 90) {
+        this.sessionMonitors.delete(sessionId);
+        return;
+      }
+      try {
+        const session = await this.getSession(sessionId);
+        const state = session.state.toUpperCase();
+        if (state === 'COMPLETED' || state === 'FAILED') {
+          this.sessionMonitors.delete(sessionId);
+          await onComplete(session);
+          return;
+        }
+      } catch {
+        // retry
+      }
+      setTimeout(() => poll(attempts + 1), 3000);
+    };
+
+    setTimeout(() => poll(0), 3000);
+  }
+
   private async ensureRuntimeStarted(): Promise<void> {
     if (runtimeStarted) return;
+    if (runtimeCheckInProgress) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      return;
+    }
+
+    runtimeCheckInProgress = true;
 
     try {
-      await this.getHealth();
-      runtimeStarted = true;
-      return;
-    } catch {
-      const runtimePath = join(process.cwd(), 'sandbox-agent', 'src', 'forensics_sandbox_agent', 'infrastructure', '__main__.py');
-      const altPath = 'C:\\Users\\shreyas\\Desktop\\cybersec projects\\gowda virus project\\sandbox-agent\\src\\forensics_sandbox_agent\\infrastructure\\__main__.py';
-
-      let finalPath = existsSync(runtimePath) ? runtimePath : (existsSync(altPath) ? altPath : null);
-
-      if (finalPath) {
-        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-        spawn(pythonCmd, ['-m', 'forensics_sandbox_agent.infrastructure.runtime_api', '--port', '8765'], {
-          detached: true,
-          stdio: 'ignore',
-          shell: false,
-        });
-
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        runtimeStarted = true;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await this.client.get('/health', { timeout: 3000 });
+          runtimeStarted = true;
+          return;
+        } catch {
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
       }
+      // Runtime is not reachable — do NOT auto-spawn; operator must start manually
+    } finally {
+      runtimeCheckInProgress = false;
     }
   }
 
@@ -100,7 +130,9 @@ export class SandboxRuntimeService {
 
   async getHealth(): Promise<RuntimeHealth> {
     try {
-      await this.ensureRuntimeStarted();
+      if (!runtimeStarted) {
+        await this.ensureRuntimeStarted();
+      }
       const response = await this.client.get<RuntimeHealth>('/health');
       return response.data;
     } catch (error) {
@@ -110,7 +142,7 @@ export class SandboxRuntimeService {
 
   async isAvailable(): Promise<boolean> {
     try {
-      await this.client.get('/health', { timeout: 2000 });
+      await this.client.get('/health', { timeout: 5000 });
       return true;
     } catch {
       return false;
@@ -128,7 +160,12 @@ export class SandboxRuntimeService {
 
   async startSession(request: StartSessionRequest): Promise<RuntimeSession> {
     try {
-      const response = await this.client.post<RuntimeSession>('/sessions/start', request);
+      if (!runtimeStarted) {
+        await this.ensureRuntimeStarted();
+      }
+      const response = await this.client.post<RuntimeSession>('/sessions/start', request, {
+        timeout: 15000,
+      });
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -137,7 +174,22 @@ export class SandboxRuntimeService {
 
   async getSession(sessionId: string): Promise<RuntimeSession> {
     try {
+      if (!runtimeStarted) {
+        await this.ensureRuntimeStarted();
+      }
       const response = await this.client.get<RuntimeSession>(`/sessions/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getSessionEvents(sessionId: string): Promise<{ events: any[] }> {
+    try {
+      if (!runtimeStarted) {
+        await this.ensureRuntimeStarted();
+      }
+      const response = await this.client.get<{ events: any[] }>(`/sessions/${sessionId}/events`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -184,6 +236,10 @@ async stopSession(sessionId: string): Promise<RuntimeSession> {
 
   getTelemetryUrl(): string {
     return `${this.baseUrl.replace('http', 'ws')}/telemetry/live`;
+  }
+
+  getLogsUrl(): string {
+    return `${this.baseUrl.replace('http', 'ws')}/logs/live`;
   }
 
   async resetVm(): Promise<{ status: string; message: string }> {

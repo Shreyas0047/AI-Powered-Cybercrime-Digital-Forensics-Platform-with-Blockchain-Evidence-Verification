@@ -15,3 +15,4 @@ export { reportsController } from './reports.controller';
 export { logsController } from './logs.controller';
 export { settingsController } from './settings.controller';
 export { evidenceArtifactsController } from './evidence-artifacts.controller';
+export { analysisController } from './analysis.controller';

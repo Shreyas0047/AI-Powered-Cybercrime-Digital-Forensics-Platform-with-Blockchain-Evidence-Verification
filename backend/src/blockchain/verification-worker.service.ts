@@ -3,6 +3,7 @@
  * Handles parallel verification workflows and scheduling
  */
 
+import logger from '../config/logger';
 import { BlockchainVerification, EvidenceIntegrity, BlockchainAudit } from './models/blockchain.model';
 import { blockchainService } from './blockchain.service';
 import { evidenceHashingService } from './hashing.service';
@@ -115,7 +116,7 @@ export class DistributedVerificationService {
     if (this.isWorkerRunning) return;
 
     this.isWorkerRunning = true;
-    console.log('[VerificationWorker] Started');
+    logger.info('[VerificationWorker] Started');
 
     this.processQueue();
   }
@@ -125,7 +126,7 @@ export class DistributedVerificationService {
    */
   async stopWorker(): Promise<void> {
     this.isWorkerRunning = false;
-    console.log('[VerificationWorker] Stopped');
+    logger.info('[VerificationWorker] Stopped');
   }
 
   /**
@@ -168,7 +169,7 @@ export class DistributedVerificationService {
         job.progress = (completed / job.evidenceIds.length) * 100;
       }
     } catch (error) {
-      console.error('[VerificationWorker] Queue processing error:', error);
+      logger.error('[VerificationWorker] Queue processing error:', error);
     }
 
     // Schedule next iteration
@@ -442,7 +443,7 @@ export class DistributedVerificationService {
         metadata,
       });
     } catch (error) {
-      console.error('[DistributedVerification] Failed to log audit:', error);
+      logger.error('[DistributedVerification] Failed to log audit:', error);
     }
   }
 }

@@ -19,7 +19,7 @@ import {
   HardDrive,
   Lock,
   ArrowRight,
-  Circle,
+  Search,
 } from 'lucide-react';
 import { useTheme } from '../../providers/ThemeProvider';
 import { cn } from '../../design-system';
@@ -28,7 +28,7 @@ interface ChainStage {
   id: string;
   name: string;
   icon: React.ElementType;
-  status: 'completed' | 'in-progress' | 'detected' | 'blocked';
+  status: 'completed' | 'in-progress' | 'detected' | 'blocked' | 'pending';
   timestamp?: string;
   events: number;
   severity?: 'critical' | 'high' | 'medium' | 'low';
@@ -67,102 +67,6 @@ const statusConfig = {
   },
 };
 
-const defaultStages: ChainStage[] = [
-  {
-    id: '1',
-    name: 'Initial Access',
-    icon: Shield,
-    status: 'completed',
-    timestamp: '2024-05-15 14:23:45',
-    events: 5,
-    severity: 'high',
-    description: 'Phishing email with malicious attachment',
-  },
-  {
-    id: '2',
-    name: 'Execution',
-    icon: Terminal,
-    status: 'completed',
-    timestamp: '2024-05-15 14:24:12',
-    events: 12,
-    severity: 'critical',
-    description: 'PowerShell script execution from macro',
-  },
-  {
-    id: '3',
-    name: 'Persistence',
-    icon: Fingerprint,
-    status: 'detected',
-    timestamp: '2024-05-15 14:25:33',
-    events: 7,
-    severity: 'high',
-    description: 'Registry Run key modification',
-  },
-  {
-    id: '4',
-    name: 'Privilege Escalation',
-    icon: ArrowRight,
-    status: 'in-progress',
-    events: 3,
-    severity: 'critical',
-    description: 'Attempting to exploit service configuration',
-  },
-  {
-    id: '5',
-    name: 'Defense Evasion',
-    icon: Shield,
-    status: 'blocked',
-    events: 2,
-    severity: 'medium',
-    description: 'Clearing event logs - blocked by SIEM',
-  },
-  {
-    id: '6',
-    name: 'Credential Access',
-    icon: Lock,
-    status: 'pending',
-    events: 0,
-    severity: 'critical',
-    description: 'LSASS process access attempt',
-  },
-  {
-    id: '7',
-    name: 'Discovery',
-    icon: Search,
-    status: 'pending',
-    events: 0,
-    severity: 'medium',
-    description: 'Network enumeration and system scanning',
-  },
-  {
-    id: '8',
-    name: 'Lateral Movement',
-    icon: Network,
-    status: 'pending',
-    events: 0,
-    severity: 'critical',
-    description: 'Attempting SMB lateral movement',
-  },
-  {
-    id: '9',
-    name: 'Collection',
-    icon: HardDrive,
-    status: 'pending',
-    events: 0,
-    severity: 'high',
-    description: 'Collecting sensitive documents',
-  },
-  {
-    id: '10',
-    name: 'Exfiltration',
-    icon: FileText,
-    status: 'pending',
-    events: 0,
-    severity: 'critical',
-    description: 'Exfiltrating data to C2 server',
-  },
-];
-
 const iconMap: Record<string, typeof Shield> = {
   Shield,
   Terminal,
@@ -177,7 +81,7 @@ const iconMap: Record<string, typeof Shield> = {
   Skull,
 };
 
-export function AttackChain({ stages = defaultStages, title = 'Attack Chain' }: AttackChainProps) {
+export function AttackChain({ stages = [], title = 'Attack Chain' }: AttackChainProps) {
   const { isDark } = useTheme();
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
 
@@ -226,7 +130,7 @@ export function AttackChain({ stages = defaultStages, title = 'Attack Chain' }: 
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-blue-500 to-violet-500"
+              className="h-full bg-gradient-to-r from-amber-400 to-amber-600"
             />
           </div>
         </div>
@@ -234,6 +138,13 @@ export function AttackChain({ stages = defaultStages, title = 'Attack Chain' }: 
 
       {/* Chain Visualization */}
       <div className="p-5">
+        {stages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Target className="w-12 h-12 text-slate-400 mb-3" />
+            <p className="text-sm font-medium text-slate-500">No attack chain data available</p>
+            <p className="text-xs text-slate-400 mt-1">Data will appear after sandbox session analysis</p>
+          </div>
+        ) : (
         <div className="relative">
           {/* Vertical Line */}
           <div className={cn(
@@ -412,6 +323,7 @@ export function AttackChain({ stages = defaultStages, title = 'Attack Chain' }: 
             })}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

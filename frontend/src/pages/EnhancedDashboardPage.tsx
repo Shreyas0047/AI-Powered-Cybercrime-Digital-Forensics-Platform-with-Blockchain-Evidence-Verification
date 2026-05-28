@@ -1,42 +1,147 @@
 /**
- * Enterprise Dashboard Page
- * Modernized SOC-style dashboard with cohesive design system
+ * Intelligence Dashboard — Editorial Dark
+ * Warm dark surfaces, cream typography, amber accent.
+ * Bento grid: 4 KPI tiles + 2:1 investigations/alerts split + status footer.
  */
 
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Search,
-  AlertTriangle,
-  FileText,
-  BarChart3,
-  CheckCircle,
-  Activity,
-  Bell,
+  Search, AlertTriangle, FileText, Activity, Plus, ArrowUpRight,
+  TrendingUp, Bell, type LucideIcon,
 } from 'lucide-react';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { SeverityBadge, CountBadge } from '../components/ui/Badge';
-import { PageHeader, PageGrid } from '../layouts/PageContainer';
-import { DashboardGrid, DashboardCard, DashboardHeader, DashboardStat, DashboardList } from '../components/enterprise/DashboardGrid';
 import { useInvestigationStore } from '../stores/investigationStore';
 import { useAlertStore } from '../stores/alertStore';
 import { useSandboxStore } from '../stores/sandboxStore';
-import { cn, formatDate } from '../design-system';
+import { cn } from '../design-system';
 
-const severityDistribution = [
-  { severity: 'critical', count: 0 },
-  { severity: 'high', count: 0 },
-  { severity: 'medium', count: 0 },
-  { severity: 'low', count: 0 },
-  { severity: 'info', count: 0 },
-];
+const stagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+};
+const fadeUp = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } },
+};
 
-const mockActivity: { icon: React.ElementType; color: string; bg: string; text: string; time: string }[] = [];
+// ─────────────────────────────────────────────────────────────────
+// KPI Tile
+// ─────────────────────────────────────────────────────────────────
+interface KPITileProps {
+  label: string;
+  value: number | string;
+  icon: LucideIcon;
+  trend?: string;
+  accent?: 'amber' | 'rose' | 'violet' | 'emerald';
+  onClick?: () => void;
+}
 
-const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
+const accentMap = {
+  amber: { icon: 'text-amber-400', dot: 'bg-amber-500' },
+  rose: { icon: 'text-rose-400', dot: 'bg-rose-500' },
+  violet: { icon: 'text-violet-400', dot: 'bg-violet-500' },
+  emerald: { icon: 'text-emerald-400', dot: 'bg-emerald-500' },
+};
 
+const KPITile = memo(({ label, value, icon: Icon, trend, accent = 'amber', onClick }: KPITileProps) => {
+  const colors = accentMap[accent];
+  return (
+    <motion.button
+      variants={fadeUp}
+      onClick={onClick}
+      className="surface surface-interactive group text-left p-5 w-full"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className={cn('w-1 h-4 rounded-full', colors.dot)} />
+          <span className="overline">{label}</span>
+        </div>
+        <Icon strokeWidth={1.5} className={cn('w-4 h-4 transition-opacity', colors.icon, 'opacity-50 group-hover:opacity-100')} />
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span
+          className="font-display text-3xl font-semibold tracking-tight tabular-nums"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {value}
+        </span>
+        {trend && (
+          <span className="text-[11px] font-mono" style={{ color: 'var(--text-tertiary)' }}>
+            {trend}
+          </span>
+        )}
+      </div>
+      <div className="mt-4 h-px" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0.08), transparent)' }} />
+      <div
+        className="mt-3 flex items-center gap-1.5 text-[11px] font-medium"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        View details
+        <ArrowUpRight strokeWidth={1.5} className="w-3 h-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </div>
+    </motion.button>
+  );
+});
+KPITile.displayName = 'KPITile';
+
+// ─────────────────────────────────────────────────────────────────
+// Section
+// ─────────────────────────────────────────────────────────────────
+interface SectionProps {
+  title: string;
+  meta?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}
+
+const Section = memo(({ title, meta, action, children, className }: SectionProps) => (
+  <motion.section variants={fadeUp} className={cn('surface p-5', className)}>
+    <header className="flex items-center justify-between mb-4">
+      <div>
+        <h2
+          className="font-display text-[15px] font-semibold tracking-tight"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {title}
+        </h2>
+        {meta && <p className="overline mt-1">{meta}</p>}
+      </div>
+      {action}
+    </header>
+    {children}
+  </motion.section>
+));
+Section.displayName = 'Section';
+
+// ─────────────────────────────────────────────────────────────────
+// Severity Badge
+// ─────────────────────────────────────────────────────────────────
+const severityColors: Record<string, string> = {
+  critical: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+  high: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+  medium: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  low: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  info: 'bg-white/5 text-[#a09b93] border-white/10',
+};
+
+const SeverityBadge = ({ severity }: { severity: string }) => (
+  <span
+    className={cn(
+      'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-medium border uppercase tracking-wider',
+      severityColors[severity] || severityColors.info
+    )}
+  >
+    {severity}
+  </span>
+);
+
+// ─────────────────────────────────────────────────────────────────
+// Main Dashboard
+// ─────────────────────────────────────────────────────────────────
 export function EnhancedDashboardPage() {
+  const navigate = useNavigate();
   const { investigations, fetchInvestigations } = useInvestigationStore();
   const { alerts, fetchAlerts } = useAlertStore();
   const { stats: sandboxStats, fetchSessions, fetchStats } = useSandboxStore();
@@ -51,209 +156,261 @@ export function EnhancedDashboardPage() {
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const activeInvestigations = investigations.length;
   const totalEvidence = investigations.reduce((acc, inv) => acc + (inv.evidenceCount || 0), 0);
+  const runningSessions = sandboxStats?.byStatus?.running || 0;
+
+  const severityDist = [
+    { severity: 'critical', count: alerts.filter(a => a.severity === 'critical').length, color: 'bg-rose-500' },
+    { severity: 'high', count: alerts.filter(a => a.severity === 'high').length, color: 'bg-orange-500' },
+    { severity: 'medium', count: alerts.filter(a => a.severity === 'medium').length, color: 'bg-amber-500' },
+    { severity: 'low', count: alerts.filter(a => a.severity === 'low').length, color: 'bg-emerald-500' },
+  ];
+  const maxCount = Math.max(...severityDist.map(s => s.count), 1);
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      {/* Page Header */}
-      <PageHeader
-        title="Operations Dashboard"
-        subtitle="Real-time threat intelligence and investigation overview"
-        actions={
-          <>
-            <Button variant="solid" size="sm">
-              <BarChart3 className="w-4 h-4" />
+    <motion.div
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+      className="relative max-w-[1440px] mx-auto"
+    >
+      <div className="relative z-10 space-y-6">
+        {/* ─── Header ─── */}
+        <motion.div variants={fadeUp} className="flex items-end justify-between pt-2">
+          <div>
+            <p className="overline mb-1.5">
+              Operations · {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+            <h1
+              className="font-display text-[32px] font-semibold tracking-[-0.02em] leading-none"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              Intelligence Dashboard
+            </h1>
+            <p className="text-[13px] mt-2" style={{ color: 'var(--text-secondary)' }}>
+              Real-time threat posture across {activeInvestigations} active investigations
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/reports')}
+              className="h-9 px-3.5 inline-flex items-center gap-2 text-[13px] font-medium rounded-md transition-colors"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-secondary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+            >
+              <TrendingUp strokeWidth={1.5} className="w-4 h-4" />
               Reports
-            </Button>
-            <Button size="sm">
-              <Search className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => navigate('/investigations')}
+              className="h-9 px-3.5 inline-flex items-center gap-2 text-[13px] font-medium rounded-md text-white shadow-sm transition-colors"
+              style={{ background: 'linear-gradient(135deg, #f59e0b, #b45309)' }}
+            >
+              <Plus strokeWidth={1.75} className="w-4 h-4" />
               New Investigation
-            </Button>
-          </>
-        }
-      />
+            </button>
+          </div>
+        </motion.div>
 
-      {/* Stats Grid */}
-      <PageGrid columns={4}>
-        <DashboardCard>
-          <DashboardStat
-            label="Active Investigations"
+        {/* ─── KPI Row ─── */}
+        <div className="grid grid-cols-4 gap-4">
+          <KPITile
+            label="Active Cases"
             value={activeInvestigations}
-            change={{ value: 12, type: 'increase' }}
-            icon={<Search className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />}
+            icon={Search}
+            trend={`${investigations.filter(i => i.status === 'active').length} active`}
+            accent="amber"
+            onClick={() => navigate('/investigations')}
           />
-        </DashboardCard>
-
-        <DashboardCard>
-          <DashboardStat
+          <KPITile
             label="Critical Alerts"
             value={criticalAlerts}
-            change={{ value: 3, type: 'decrease' }}
-            icon={<AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />}
+            icon={AlertTriangle}
+            trend={criticalAlerts > 0 ? 'Action required' : 'All clear'}
+            accent="rose"
+            onClick={() => navigate('/alerts')}
           />
-        </DashboardCard>
-
-        <DashboardCard>
-          <DashboardStat
-            label="Total Evidence"
+          <KPITile
+            label="Evidence Items"
             value={totalEvidence}
-            change={{ value: 28, type: 'increase' }}
-            icon={<FileText className="w-5 h-5 text-violet-600 dark:text-violet-400" />}
+            icon={FileText}
+            trend="Across cases"
+            accent="violet"
+            onClick={() => navigate('/evidence')}
           />
-        </DashboardCard>
-
-        <DashboardCard>
-          <DashboardStat
+          <KPITile
             label="Sandbox Sessions"
             value={sandboxStats?.total || 0}
-            change={{ value: 5, type: 'increase' }}
-            icon={<Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+            icon={Activity}
+            trend={`${runningSessions} running`}
+            accent="emerald"
+            onClick={() => navigate('/sandbox')}
           />
-        </DashboardCard>
-      </PageGrid>
-
-      {/* Main Content Grid */}
-      <DashboardGrid className="lg:grid-cols-3">
-        {/* Left Column - Investigations & Charts */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Recent Investigations */}
-          <DashboardCard>
-            <DashboardHeader
-              title="Active Investigations"
-              subtitle="Latest investigation cases"
-              action={<Button variant="ghost" size="sm">View All</Button>}
-            />
-            <DashboardList
-              items={investigations.slice(0, 5).map((inv) => ({
-                id: inv.id,
-                title: inv.title,
-                subtitle: inv.caseNumber,
-                status: 'default' as const,
-                meta: (
-                  <div className="flex items-center gap-2">
-                    <SeverityBadge severity={inv.priority as any} size="sm" />
-                  </div>
-                ),
-              }))}
-            />
-          </DashboardCard>
-
-          {/* Distribution Cards */}
-          <PageGrid columns={2}>
-            <Card>
-              <Card.Header title="Alert Severity Distribution" />
-              <Card.Content>
-                <div className="space-y-3">
-                  {severityDistribution.map((item) => (
-                    <div key={item.severity} className="flex items-center gap-3">
-                      <SeverityBadge severity={item.severity as any} size="sm" />
-                      <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            'h-full rounded-full',
-                            item.severity === 'critical' && 'bg-red-500',
-                            item.severity === 'high' && 'bg-orange-500',
-                            item.severity === 'medium' && 'bg-amber-500',
-                            item.severity === 'low' && 'bg-emerald-500',
-                            item.severity === 'info' && 'bg-sky-500'
-                          )}
-                          style={{ width: `${(item.count / 177) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400 w-8 text-right">
-                        {item.count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </Card.Content>
-            </Card>
-
-            <Card>
-              <Card.Header title="AI Analysis Engine" />
-              <Card.Content>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                    <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">127</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Analyses</p>
-                  </div>
-                  <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                    <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">94%</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Accuracy</p>
-                  </div>
-                  <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">2.3s</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Avg Response</p>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-100 dark:border-cyan-800/50">
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
-                    <span className="font-medium">Latest Insight:</span> Detected potential ransomware behavior pattern in sandbox session.
-                  </p>
-                </div>
-              </Card.Content>
-            </Card>
-          </PageGrid>
         </div>
 
-        {/* Right Column - Alerts & Activity */}
-        <div className="space-y-6">
-          {/* Active Alerts */}
-          <DashboardCard>
-            <DashboardHeader
-              title="Active Alerts"
-              action={<CountBadge count={criticalAlerts} variant="danger" />}
-            />
-            <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {alerts.slice(0, 5).map((alert) => (
-                <div key={alert.id} className="px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
-                  <div className="flex items-start gap-3">
-                    <div className={cn(
-                      'mt-1 p-1.5 rounded-lg',
-                      alert.severity === 'critical' && 'bg-red-50 dark:bg-red-900/20',
-                      alert.severity === 'high' && 'bg-orange-50 dark:bg-orange-900/20',
-                      alert.severity === 'medium' && 'bg-amber-50 dark:bg-amber-900/20'
-                    )}>
-                      <AlertTriangle className={cn(
-                        'w-4 h-4',
-                        alert.severity === 'critical' && 'text-red-600 dark:text-red-400',
-                        alert.severity === 'high' && 'text-orange-600 dark:text-orange-400',
-                        alert.severity === 'medium' && 'text-amber-600 dark:text-amber-400'
-                      )} />
-                    </div>
+        {/* ─── Bento: Investigations + Alerts ─── */}
+        <div className="grid grid-cols-3 gap-4">
+          <Section
+            title="Active Investigations"
+            meta={`${investigations.length} cases · Last 7 days`}
+            action={
+              <button
+                onClick={() => navigate('/investigations')}
+                className="text-[11px] font-mono font-medium uppercase tracking-wider transition-colors"
+                style={{ color: 'var(--text-tertiary)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+              >
+                View All →
+              </button>
+            }
+            className="col-span-2"
+          >
+            {investigations.length === 0 ? (
+              <div className="py-12 text-center">
+                <div
+                  className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.03)' }}
+                >
+                  <Search strokeWidth={1.5} className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+                </div>
+                <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>No active investigations</p>
+                <button
+                  onClick={() => navigate('/investigations')}
+                  className="mt-3 text-[12px] font-medium transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  Create your first case →
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
+                {investigations.slice(0, 5).map((inv, i) => (
+                  <motion.button
+                    key={inv.id}
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 + i * 0.04, duration: 0.24 }}
+                    onClick={() => navigate(`/investigations/${inv.id}`)}
+                    className="w-full flex items-center gap-3 py-3 px-1 -mx-1 rounded-md transition-colors text-left group"
+                    style={{ background: 'transparent' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">{alert.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{alert.source || 'unknown'}</span>
-                        <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
-                        <span className="text-xs text-slate-400 dark:text-slate-500">{formatDate(alert.createdAt || alert.detectedAt || new Date().toISOString(), 'relative')}</span>
-                      </div>
+                      <p
+                        className="text-[13px] font-medium truncate"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        {inv.title}
+                      </p>
+                      <p
+                        className="text-[11px] font-mono mt-0.5 truncate"
+                        style={{ color: 'var(--text-tertiary)' }}
+                      >
+                        {inv.caseNumber}
+                      </p>
                     </div>
-                    <SeverityBadge severity={alert.severity as any} size="sm" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </DashboardCard>
+                    <SeverityBadge severity={inv.priority || 'info'} />
+                  </motion.button>
+                ))}
+              </div>
+            )}
+          </Section>
 
-          {/* Activity Timeline */}
-          <DashboardCard>
-            <DashboardHeader title="Recent Activity" />
-            <div className="p-5 space-y-4">
-              {mockActivity.map((activity, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', activity.bg)}>
-                    <activity.icon className={cn('w-4 h-4', activity.color)} />
+          <Section title="Alert Distribution" meta={`${alerts.length} total events`}>
+            <div className="space-y-3 mb-5">
+              {severityDist.map((item) => (
+                <div key={item.severity} className="flex items-center gap-3">
+                  <span
+                    className="text-[10px] font-mono w-12 capitalize"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
+                    {item.severity}
+                  </span>
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(item.count / maxCount) * 100}%` }}
+                      transition={{ duration: 0.6, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      className={cn('h-full rounded-full', item.color)}
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{activity.text}</p>
-                  </div>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{activity.time}</span>
+                  <span
+                    className="text-[11px] font-mono font-medium w-6 text-right tabular-nums"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    {item.count}
+                  </span>
                 </div>
               ))}
             </div>
-          </DashboardCard>
+
+            <div className="pt-3 space-y-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              {alerts.slice(0, 3).map((alert, i) => (
+                <motion.div
+                  key={alert.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 + i * 0.04 }}
+                  className="flex items-center gap-2 py-1"
+                >
+                  <Bell strokeWidth={1.5} className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+                  <span className="text-[12px] truncate flex-1" style={{ color: 'var(--text-secondary)' }}>
+                    {alert.title}
+                  </span>
+                  <SeverityBadge severity={alert.severity || 'info'} />
+                </motion.div>
+              ))}
+              {alerts.length === 0 && (
+                <p className="text-[12px] text-center py-2" style={{ color: 'var(--text-tertiary)' }}>
+                  No alerts to display
+                </p>
+              )}
+            </div>
+          </Section>
         </div>
-      </DashboardGrid>
+
+        {/* ─── System Status ─── */}
+        <motion.div variants={fadeUp} className="surface p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="relative w-1.5 h-1.5 rounded-full bg-emerald-400">
+                  <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                </div>
+                <span className="overline">System Status</span>
+              </div>
+              <div className="flex items-center gap-8 text-[12px]">
+                <div>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Backend</span>
+                  <span className="ml-2 font-mono text-emerald-400 font-medium">Operational</span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-tertiary)' }}>AI Engine</span>
+                  <span className="ml-2 font-mono text-emerald-400 font-medium">Operational</span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Sandbox</span>
+                  <span className="ml-2 font-mono font-medium" style={{ color: 'var(--text-tertiary)' }}>Standby</span>
+                </div>
+              </div>
+            </div>
+            <span className="overline">v2.0 · Enterprise</span>
+          </div>
+        </motion.div>
+      </div>
     </motion.div>
   );
 }

@@ -3,6 +3,7 @@
  * Blockchain interaction layer for forensic smart contracts
  */
 
+import logger from '../config/logger';
 import { ethers } from 'ethers';
 import { config } from '../config';
 import { blockchainConfig } from './config';
@@ -60,6 +61,21 @@ export enum ContractType {
   AUDIT = 'audit'
 }
 
+/** Evidence state machine: PENDING → REGISTERED → TRANSFERRED → LOCKED */
+export enum EvidenceState {
+  PENDING = 0,
+  REGISTERED = 1,
+  TRANSFERRED = 2,
+  LOCKED = 3,
+}
+
+const VALID_TRANSITIONS: Record<EvidenceState, EvidenceState[]> = {
+  [EvidenceState.PENDING]: [EvidenceState.REGISTERED],
+  [EvidenceState.REGISTERED]: [EvidenceState.TRANSFERRED, EvidenceState.LOCKED],
+  [EvidenceState.TRANSFERRED]: [EvidenceState.LOCKED],
+  [EvidenceState.LOCKED]: [],
+};
+
 export interface ContractConfig {
   address: string;
   abi: any[];
@@ -104,7 +120,7 @@ export class SmartContractService {
     if (this.initialized) return;
 
     if (!blockchainConfig.enabled) {
-      console.log('[SmartContract] Blockchain disabled - running in local verification mode');
+      logger.info('[SmartContract] Blockchain disabled - running in local verification mode');
       return;
     }
 
@@ -114,7 +130,7 @@ export class SmartContractService {
 
       // Verify connection
       const network = await this.provider.getNetwork();
-      console.log(`[SmartContract] Connected to network: ${network.name}`);
+      logger.info(`[SmartContract] Connected to network: ${network.name}`);
 
       // Initialize contracts if addresses are configured
       if (blockchainConfig.contractAddress) {
@@ -123,8 +139,8 @@ export class SmartContractService {
 
       this.initialized = true;
     } catch (error) {
-      console.warn('[SmartContract] Failed to initialize:', error);
-      console.warn('[SmartContract] Running in offline mode');
+      logger.warn('[SmartContract] Failed to initialize:', error);
+      logger.warn('[SmartContract] Running in offline mode');
     }
   }
 
@@ -148,7 +164,7 @@ export class SmartContractService {
       this.provider
     );
 
-    console.log('[SmartContract] Contracts initialized');
+    logger.info('[SmartContract] Contracts initialized');
   }
 
   /**
@@ -193,7 +209,7 @@ export class SmartContractService {
         gasUsed: receipt.gasUsed.toString(),
       };
     } catch (error: any) {
-      console.error('[SmartContract] Registration failed:', error);
+      logger.error('[SmartContract] Registration failed:', error);
       return { success: false, error: error.message };
     }
   }
@@ -230,7 +246,7 @@ export class SmartContractService {
         gasUsed: receipt.gasUsed.toString(),
       };
     } catch (error: any) {
-      console.error('[SmartContract] Batch registration failed:', error);
+      logger.error('[SmartContract] Batch registration failed:', error);
       return { success: false, error: error.message };
     }
   }
@@ -262,7 +278,7 @@ export class SmartContractService {
         blockNumber: receipt.blockNumber,
       };
     } catch (error: any) {
-      console.error('[SmartContract] Verification failed:', error);
+      logger.error('[SmartContract] Verification failed:', error);
       return { verified: false, status: 0 };
     }
   }
@@ -288,7 +304,7 @@ export class SmartContractService {
         metadata: result.metadata,
       };
     } catch (error) {
-      console.error('[SmartContract] Get evidence failed:', error);
+      logger.error('[SmartContract] Get evidence failed:', error);
       return null;
     }
   }
@@ -357,7 +373,7 @@ export class SmartContractService {
         gasUsed: receipt.gasUsed.toString(),
       };
     } catch (error: any) {
-      console.error('[SmartContract] Audit entry failed:', error);
+      logger.error('[SmartContract] Audit entry failed:', error);
       return { success: false, error: error.message };
     }
   }
@@ -391,7 +407,7 @@ export class SmartContractService {
         gasUsed: receipt.gasUsed.toString(),
       };
     } catch (error: any) {
-      console.error('[SmartContract] Audit registration failed:', error);
+      logger.error('[SmartContract] Audit registration failed:', error);
       return { success: false, error: error.message };
     }
   }
@@ -431,7 +447,7 @@ export class SmartContractService {
         gasUsed: receipt.gasUsed.toString(),
       };
     } catch (error: any) {
-      console.error('[SmartContract] Verification audit failed:', error);
+      logger.error('[SmartContract] Verification audit failed:', error);
       return { success: false, error: error.message };
     }
   }
@@ -469,7 +485,7 @@ export class SmartContractService {
         gasUsed: receipt.gasUsed.toString(),
       };
     } catch (error: any) {
-      console.error('[SmartContract] Tamper detection audit failed:', error);
+      logger.error('[SmartContract] Tamper detection audit failed:', error);
       return { success: false, error: error.message };
     }
   }
@@ -524,6 +540,69 @@ export class SmartContractService {
    */
   getExplorerUrl(txHash: string): string {
     return `${blockchainConfig.explorerUrl}/tx/${txHash}`;
+  }
+
+  /**
+   * Transition evidence through the state machine.
+   * Validates allowed transitions: PENDING→REGISTERED→TRANSFERRED→LOCKED
+   */
+  async transitionState(evidenceId: string, newState: EvidenceState): Promise<TransactionResult> {
+    if (!this.evidenceContract || !this.provider) {
+      return { success: false, error: 'Blockchain not available' };
+    }
+
+    try {
+      // Get current state
+      const currentState: number = await this.evidenceContract.getEvidenceStatus(evidenceId);
+      const allowed = VALID_TRANSITIONS[currentState as EvidenceState] || [];
+
+      if (!allowed.includes(newState)) {
+        return { success: false, error: `Invalid transition: ${EvidenceState[currentState]} → ${EvidenceState[newState]}` };
+      }
+
+      const tx = await this.evidenceContract.updateEvidenceStatus(evidenceId, newState);
+      const receipt = await tx.wait();
+
+      logger.info(`[SmartContract] Evidence ${evidenceId} transitioned to ${EvidenceState[newState]}`);
+      return { success: true, transactionHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed.toString() };
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('[SmartContract] State transition failed:', msg);
+      return { success: false, error: msg };
+    }
+  }
+
+  /**
+   * Reconciliation: compare MongoDB hash against on-chain hash.
+   * Returns tamper alert if mismatch detected.
+   */
+  async reconcileEvidence(evidenceId: string, dbHash: string): Promise<{ match: boolean; chainHash?: string; alert?: string }> {
+    if (!this.evidenceContract) {
+      return { match: true }; // Can't verify — skip
+    }
+
+    try {
+      const chainHashRaw = await this.evidenceContract.getEvidenceHash(evidenceId);
+      const chainHash = chainHashRaw.toString();
+
+      // Normalize: compare hex without 0x prefix and zero-padding
+      const normalizedDb = dbHash.replace(/^0x/, '').toLowerCase();
+      const normalizedChain = chainHash.replace(/^0x/, '').replace(/^0+/, '').toLowerCase();
+
+      if (normalizedDb !== normalizedChain && normalizedChain.length > 0) {
+        logger.warn(`[Reconciliation] TAMPER_ALERT: Evidence ${evidenceId} hash mismatch. DB=${normalizedDb.slice(0, 16)}... Chain=${normalizedChain.slice(0, 16)}...`);
+        return {
+          match: false,
+          chainHash,
+          alert: `Hash mismatch detected for evidence ${evidenceId}. Database hash does not match blockchain record.`,
+        };
+      }
+
+      return { match: true, chainHash };
+    } catch (error) {
+      logger.error('[Reconciliation] Check failed:', error);
+      return { match: true }; // Fail-open for reconciliation (don't block on network errors)
+    }
   }
 
   /**

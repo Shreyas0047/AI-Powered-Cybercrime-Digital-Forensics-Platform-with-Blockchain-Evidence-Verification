@@ -12,7 +12,42 @@ import { UserRole, Permission } from '../types';
 
 const router = Router();
 
-// All sync routes require authentication
+// ============================================
+// SERVICE-TO-SERVICE AUTH (shared secret)
+// ============================================
+
+function requireAgentSecret(req: Request, res: Response, next: NextFunction): void {
+  const secret = process.env.SANDBOX_AGENT_SECRET;
+  if (!secret) {
+    // Dev mode: only allow loopback connections
+    const clientIp = (req.ip || '').replace(/^::ffff:/, '');
+    if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost') {
+      next();
+      return;
+    }
+    res.status(503).json({ success: false, message: 'Agent auth not configured. Set SANDBOX_AGENT_SECRET in .env.' });
+    return;
+  }
+  const provided = req.headers['x-agent-secret'] as string;
+  if (!provided || provided !== secret) {
+    res.status(401).json({ success: false, message: 'Invalid agent credentials' });
+    return;
+  }
+  next();
+}
+
+// Session heartbeat — requires agent shared secret
+router.post(
+  '/sessions/:sessionId/heartbeat',
+  requireAgentSecret,
+  asyncHandler(syncController.sessionHeartbeat)
+);
+
+// ============================================
+// AUTHENTICATED ROUTES
+// ============================================
+
+// All remaining sync routes require authentication
 router.use(authenticate);
 
 // ============================================
@@ -98,13 +133,6 @@ router.get(
 // ============================================
 // SANDBOX SESSION SYNC
 // ============================================
-
-// Session heartbeat
-router.post(
-  '/sessions/:sessionId/heartbeat',
-  authorize(UserRole.SANDBOX_OPERATOR, UserRole.FORENSIC_ANALYST, UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  asyncHandler(syncController.sessionHeartbeat)
-);
 
 // Rollback status report
 router.post(

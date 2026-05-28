@@ -4,7 +4,7 @@
  * Central export point for all Mongoose models
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TelemetryEvent = exports.InvestigationMetrics = exports.DailySummary = exports.Analytics = exports.AuditLog = exports.SandboxSession = exports.AlertSource = exports.AlertStatus = exports.AlertSeverity = exports.AlertType = exports.Alert = exports.ReportSeverity = exports.ReportStatus = exports.ReportType = exports.Report = exports.EvidenceStatus = exports.EvidenceSource = exports.EvidenceType = exports.Evidence = exports.InvestigationPhase = exports.InvestigationCategory = exports.InvestigationPriority = exports.InvestigationStatus = exports.Investigation = exports.User = void 0;
+exports.IntegrityStatus = exports.CustodyEventType = exports.VerificationReport = exports.TamperInvestigation = exports.VerificationHistory = exports.EvidenceLineage = exports.ChainOfCustody = exports.MITRETactics = exports.IOCStatus = exports.IOCSeverity = exports.IOCTypes = exports.ThreatAnalytics = exports.ThreatEnrichment = exports.ThreatCorrelation = exports.IOC = exports.AnalysisReport = exports.TelemetryEvent = exports.InvestigationMetrics = exports.DailySummary = exports.Analytics = exports.AuditLog = exports.SandboxSession = exports.AlertSource = exports.AlertStatus = exports.AlertSeverity = exports.AlertType = exports.Alert = exports.ReportSeverity = exports.ReportStatus = exports.ReportType = exports.Report = exports.EvidenceStatus = exports.EvidenceSource = exports.EvidenceType = exports.Evidence = exports.InvestigationPhase = exports.InvestigationCategory = exports.InvestigationPriority = exports.InvestigationStatus = exports.Investigation = exports.User = void 0;
 var user_model_1 = require("./user.model");
 Object.defineProperty(exports, "User", { enumerable: true, get: function () { return user_model_1.User; } });
 var investigation_model_1 = require("./investigation.model");
@@ -39,4 +39,23 @@ Object.defineProperty(exports, "DailySummary", { enumerable: true, get: function
 Object.defineProperty(exports, "InvestigationMetrics", { enumerable: true, get: function () { return analytics_model_1.InvestigationMetrics; } });
 var telemetry_event_model_1 = require("./telemetry-event.model");
 Object.defineProperty(exports, "TelemetryEvent", { enumerable: true, get: function () { return telemetry_event_model_1.TelemetryEvent; } });
+var analysis_report_model_1 = require("./analysis-report.model");
+Object.defineProperty(exports, "AnalysisReport", { enumerable: true, get: function () { return analysis_report_model_1.AnalysisReport; } });
+var threat_model_1 = require("./threat.model");
+Object.defineProperty(exports, "IOC", { enumerable: true, get: function () { return threat_model_1.IOC; } });
+Object.defineProperty(exports, "ThreatCorrelation", { enumerable: true, get: function () { return threat_model_1.ThreatCorrelation; } });
+Object.defineProperty(exports, "ThreatEnrichment", { enumerable: true, get: function () { return threat_model_1.ThreatEnrichment; } });
+Object.defineProperty(exports, "ThreatAnalytics", { enumerable: true, get: function () { return threat_model_1.ThreatAnalytics; } });
+Object.defineProperty(exports, "IOCTypes", { enumerable: true, get: function () { return threat_model_1.IOCTypes; } });
+Object.defineProperty(exports, "IOCSeverity", { enumerable: true, get: function () { return threat_model_1.IOCSeverity; } });
+Object.defineProperty(exports, "IOCStatus", { enumerable: true, get: function () { return threat_model_1.IOCStatus; } });
+Object.defineProperty(exports, "MITRETactics", { enumerable: true, get: function () { return threat_model_1.MITRETactics; } });
+var custody_model_1 = require("./custody.model");
+Object.defineProperty(exports, "ChainOfCustody", { enumerable: true, get: function () { return custody_model_1.ChainOfCustody; } });
+Object.defineProperty(exports, "EvidenceLineage", { enumerable: true, get: function () { return custody_model_1.EvidenceLineage; } });
+Object.defineProperty(exports, "VerificationHistory", { enumerable: true, get: function () { return custody_model_1.VerificationHistory; } });
+Object.defineProperty(exports, "TamperInvestigation", { enumerable: true, get: function () { return custody_model_1.TamperInvestigation; } });
+Object.defineProperty(exports, "VerificationReport", { enumerable: true, get: function () { return custody_model_1.VerificationReport; } });
+Object.defineProperty(exports, "CustodyEventType", { enumerable: true, get: function () { return custody_model_1.CustodyEventType; } });
+Object.defineProperty(exports, "IntegrityStatus", { enumerable: true, get: function () { return custody_model_1.IntegrityStatus; } });
 //# sourceMappingURL=index.js.map

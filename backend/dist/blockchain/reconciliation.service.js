@@ -3,8 +3,12 @@
  * Blockchain Reconciliation Service
  * Handles detection and resolution of blockchain inconsistencies
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.blockchainReconciliationService = exports.BlockchainReconciliationService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const blockchain_model_1 = require("./models/blockchain.model");
 const synchronization_service_1 = require("./synchronization.service");
 const types_1 = require("./types");
@@ -17,7 +21,7 @@ class BlockchainReconciliationService {
     async performFullReconciliation() {
         const issues = [];
         let resolved = 0;
-        console.log('[Reconciliation] Starting full reconciliation...');
+        logger_1.default.info('[Reconciliation] Starting full reconciliation...');
         // Check 1: Hash consistency between verification and integrity records
         const verificationRecords = await blockchain_model_1.BlockchainVerification.find().lean();
         for (const verification of verificationRecords) {
@@ -73,11 +77,12 @@ class BlockchainReconciliationService {
                 resolved++;
             }
         }
-        // Update active issues
-        this.activeIssues.clear();
+        // Update active issues — build local accumulator first, then bulk-assign
+        const newIssues = new Map();
         for (const issue of issues.filter(i => !i.resolved)) {
-            this.activeIssues.set(issue.id, issue);
+            newIssues.set(issue.id, issue);
         }
+        this.activeIssues = newIssues;
         const report = {
             id: (0, uuid_1.v4)(),
             timestamp: new Date(),
@@ -89,7 +94,7 @@ class BlockchainReconciliationService {
         };
         // Log to audit
         await this.logAudit(null, types_1.BlockchainEventType.CHAIN_SYNC_COMPLETE, `Reconciliation completed: ${issues.length} issues found, ${resolved} resolved`, 'system', { issuesFound: issues.length, resolved, remaining: issues.length - resolved });
-        console.log(`[Reconciliation] Completed: ${issues.length} issues found, ${resolved} resolved`);
+        logger_1.default.info(`[Reconciliation] Completed: ${issues.length} issues found, ${resolved} resolved`);
         return report;
     }
     /**
@@ -165,7 +170,7 @@ class BlockchainReconciliationService {
             }
         }
         catch (error) {
-            console.error(`[Reconciliation] Auto-resolution failed for ${issue.id}:`, error);
+            logger_1.default.error(`[Reconciliation] Auto-resolution failed for ${issue.id}:`, error);
         }
         return false;
     }
@@ -269,7 +274,7 @@ class BlockchainReconciliationService {
             });
         }
         catch (error) {
-            console.error('[Reconciliation] Failed to log audit:', error);
+            logger_1.default.error('[Reconciliation] Failed to log audit:', error);
         }
     }
     /**

@@ -28,7 +28,7 @@ const telemetryEventSchema = new Schema({
   timestamp: {
     type: Date,
     default: Date.now,
-    index: true,
+    index: { expireAfterSeconds: 2592000 },
   },
   processId: String,
   processName: String,

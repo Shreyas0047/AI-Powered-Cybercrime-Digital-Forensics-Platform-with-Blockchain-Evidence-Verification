@@ -3,8 +3,12 @@
  * Event Normalizer
  * Converts raw forensic telemetry into standardized behavioral events
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eventNormalizer = exports.EventNormalizer = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const uuid_1 = require("uuid");
 const threat_models_1 = require("./threat_models");
 const RANSOMWARE_EXTENSIONS = ['.encrypted', '.locked', '.crypto', '.ransom', '.key', '.encrypted'];
@@ -42,7 +46,7 @@ class EventNormalizer {
                 }
             }
             catch (error) {
-                console.error(`Failed to normalize event: ${error}`);
+                logger_1.default.error(`Failed to normalize event: ${error}`);
             }
         }
         return this.enrichWithBehavioralPatterns(normalizedEvents);

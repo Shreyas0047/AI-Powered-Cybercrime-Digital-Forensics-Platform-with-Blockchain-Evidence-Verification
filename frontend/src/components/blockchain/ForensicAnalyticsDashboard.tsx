@@ -59,49 +59,25 @@ interface DashboardData {
 
 export const ForensicAnalyticsDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+  const [anomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'clusters' | 'anomalies'>('overview');
 
   useEffect(() => {
     fetchDashboardData();
-    fetchAnomalies();
   }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await api.get<{ metrics: DashboardData }>('/analytics/dashboard');
+      const response = await api.get<DashboardData>('/analytics/dashboard');
       if (response.success && response.data) {
-        setDashboardData(response.data.metrics);
+        setDashboardData(response.data);
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchAnomalies = async () => {
-    try {
-      const response = await api.get<{ patterns: BehavioralPattern[] }>('/analytics/patterns');
-      if (response.success && response.data) {
-        // Generate sample anomalies based on patterns
-        const patterns = response.data.patterns || [];
-        const sampleAnomalies: Anomaly[] = patterns.slice(0, 5).map((p: BehavioralPattern) => ({
-          anomalyId: `AN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          severity: p.severity,
-          title: p.name,
-          description: p.description,
-          confidence: 75,
-          indicators: p.mitreTactics,
-          threatScore: p.severity === 'high' ? 80 : p.severity === 'medium' ? 50 : 30,
-          status: 'new',
-        }));
-        setAnomalies(sampleAnomalies);
-      }
-    } catch (error) {
-      console.error('Failed to fetch anomalies:', error);
     }
   };
 
@@ -364,7 +340,11 @@ export const ForensicAnalyticsDashboard: React.FC = () => {
 
         {activeTab === 'anomalies' && (
           <div className="space-y-3">
-            {anomalies.map((anomaly) => (
+            {anomalies.length === 0 ? (
+              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-6 text-center text-sm text-slate-400">
+                No anomaly results available. Run evidence anomaly detection from an evidence record to populate this view.
+              </div>
+            ) : anomalies.map((anomaly) => (
               <div
                 key={anomaly.anomalyId}
                 className={`border rounded-lg p-4 ${getSeverityColor(anomaly.severity)}`}

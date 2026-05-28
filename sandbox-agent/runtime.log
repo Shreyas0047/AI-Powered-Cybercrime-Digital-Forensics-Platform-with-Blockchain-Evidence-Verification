@@ -1,0 +1,638 @@
+INFO:     Started server process [20204]
+INFO:     Waiting for application startup.
+2026-05-24 22:23:50,084 | INFO | forensics_sandbox_agent | Initializing Sandbox Runtime API service
+2026-05-24 22:23:50,084 | INFO | forensics_sandbox_agent | Sandbox Runtime API starting...
+2026-05-24 22:23:50,084 | INFO | forensics_sandbox_agent | Version: 1.0.0
+2026-05-24 22:23:50,084 | INFO | forensics_sandbox_agent | Platform: Windows
+2026-05-24 22:23:50,328 | INFO | forensics_sandbox_agent | Loading simulator catalog from: C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\simulators
+2026-05-24 22:23:50,332 | WARNING | forensics_sandbox_agent | Simulator catalog path had no manifests; using built-in defaults
+2026-05-24 22:23:50,334 | INFO | forensics_sandbox_agent | Initializing session context for environment=development
+2026-05-24 22:23:50,335 | INFO | forensics_sandbox_agent | Validating VM environment
+2026-05-24 22:23:50,899 | INFO | forensics_sandbox_agent | Verifying clean snapshot: CleanBaseline
+2026-05-24 22:23:51,030 | INFO | forensics_sandbox_agent | Clean snapshot verified: CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063)
+2026-05-24 22:23:51,193 | INFO | forensics_sandbox_agent | VM environment validation completed
+2026-05-24 22:23:51,193 | INFO | forensics_sandbox_agent | Report service initialized with schema version 1.0.0
+2026-05-24 22:23:51,194 | INFO | forensics_sandbox_agent | Session context initialized successfully
+2026-05-24 22:23:51,194 | INFO | forensics_sandbox_agent | Service registry initialized
+2026-05-24 22:23:51,194 | INFO | forensics_sandbox_agent | Sandbox Runtime API initialized successfully
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55463 - "WebSocket /logs/live" [accepted]
+2026-05-24 22:23:51,386 | INFO | forensics_sandbox_agent | System log WS client connected. Total: 1
+INFO:     connection open
+INFO:     127.0.0.1:51163 - "WebSocket /telemetry/live" [accepted]
+2026-05-24 22:23:51,406 | INFO | forensics_sandbox_agent | Telemetry WS client connected. Total: 1
+INFO:     connection open
+INFO:     127.0.0.1:52212 - "WebSocket /logs/live" [accepted]
+2026-05-24 22:23:51,431 | INFO | forensics_sandbox_agent | System log WS client connected. Total: 2
+INFO:     connection open
+INFO:     127.0.0.1:52213 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52213 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52213 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52213 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50428 - "WebSocket /telemetry/live" [accepted]
+2026-05-24 22:23:53,472 | INFO | forensics_sandbox_agent | Telemetry WS client connected. Total: 2
+INFO:     connection open
+2026-05-24 22:23:53,474 | INFO | forensics_sandbox_agent | Telemetry WS client disconnected. Total: 1
+INFO:     connection closed
+INFO:     127.0.0.1:52213 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52213 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59372 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59373 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54247 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54248 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54249 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58162 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58163 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58164 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     Started server process [10512]
+INFO:     Waiting for application startup.
+2026-05-24 22:30:20,939 | INFO | forensics_sandbox_agent | Initializing Sandbox Runtime API service
+2026-05-24 22:30:20,940 | INFO | forensics_sandbox_agent | Sandbox Runtime API starting...
+2026-05-24 22:30:20,940 | INFO | forensics_sandbox_agent | Version: 1.0.0
+2026-05-24 22:30:20,940 | INFO | forensics_sandbox_agent | Platform: Windows
+2026-05-24 22:30:21,171 | INFO | forensics_sandbox_agent | Loading simulator catalog from: C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\simulators
+2026-05-24 22:30:21,174 | WARNING | forensics_sandbox_agent | Simulator catalog path had no manifests; using built-in defaults
+2026-05-24 22:30:21,176 | INFO | forensics_sandbox_agent | Initializing session context for environment=development
+2026-05-24 22:30:21,176 | INFO | forensics_sandbox_agent | Validating VM environment
+2026-05-24 22:30:21,651 | INFO | forensics_sandbox_agent | Verifying clean snapshot: CleanBaseline
+2026-05-24 22:30:21,768 | INFO | forensics_sandbox_agent | Clean snapshot verified: CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063)
+2026-05-24 22:30:21,913 | INFO | forensics_sandbox_agent | VM environment validation completed
+2026-05-24 22:30:21,913 | INFO | forensics_sandbox_agent | Report service initialized with schema version 1.0.0
+2026-05-24 22:30:21,913 | INFO | forensics_sandbox_agent | Session context initialized successfully
+2026-05-24 22:30:21,913 | INFO | forensics_sandbox_agent | Service registry initialized
+2026-05-24 22:30:21,913 | INFO | forensics_sandbox_agent | Sandbox Runtime API initialized successfully
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO:     127.0.0.1:52212 - "WebSocket /telemetry/live" [accepted]
+2026-05-24 22:30:22,325 | INFO | forensics_sandbox_agent | Telemetry WS client connected. Total: 1
+INFO:     connection open
+INFO:     127.0.0.1:58147 - "WebSocket /logs/live" [accepted]
+2026-05-24 22:30:22,341 | INFO | forensics_sandbox_agent | System log WS client connected. Total: 1
+INFO:     connection open
+INFO:     127.0.0.1:58566 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58567 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58567 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58567 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58567 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58566 - "GET /simulators HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58566 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58567 - "GET /simulators HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58567 - "GET /simulators HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55927 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55928 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55929 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:30:34,254 | INFO | forensics_sandbox_agent | === Starting New Session: 82716c40-1ce0-4fa0-8f53-2619e9d4eb2e ===
+2026-05-24 22:30:34,255 | INFO | forensics_sandbox_agent | Simulator: system_service_1
+2026-05-24 22:30:34,255 | INFO | forensics_sandbox_agent | Auto-rollback: True
+2026-05-24 22:30:34,255 | INFO | forensics_sandbox_agent | Timeout: 300s
+2026-05-24 22:30:34,257 | INFO | forensics_sandbox_agent | Preparing environment...
+2026-05-24 22:30:34,257 | INFO | forensics_sandbox_agent | Preparing VM for execution
+2026-05-24 22:30:34,257 | INFO | forensics_sandbox_agent | VM lifecycle managed by execution pipeline
+2026-05-24 22:30:34,257 | INFO | forensics_sandbox_agent | Starting simulator execution
+2026-05-24 22:30:34,257 | INFO | forensics_sandbox_agent | Loading simulator: system_service_1
+2026-05-24 22:30:34,257 | INFO | forensics_sandbox_agent | Simulator loaded: Sample Alpha
+2026-05-24 22:30:34,258 | INFO | forensics_sandbox_agent | Starting forensic monitoring...
+2026-05-24 22:30:34,258 | INFO | forensics_sandbox_agent |   - Process monitoring: ACTIVE
+2026-05-24 22:30:34,258 | INFO | forensics_sandbox_agent |   - File system monitoring: ACTIVE
+2026-05-24 22:30:34,258 | INFO | forensics_sandbox_agent |   - Registry monitoring: ACTIVE
+2026-05-24 22:30:34,258 | INFO | forensics_sandbox_agent |   - Network monitoring: ACTIVE
+2026-05-24 22:30:34,258 | INFO | forensics_sandbox_agent | Executing simulator...
+2026-05-24 22:30:34,258 | INFO | forensics_sandbox_agent | Orchestrating simulator execution: system_service_1
+2026-05-24 22:30:34,259 | INFO | forensics_sandbox_agent | Starting VM telemetry poller: vm=ForensicsSandbox, interval=2s, max_duration=300s
+INFO:     127.0.0.1:49250 - "POST /sessions/start HTTP/1.1" 200 OK
+2026-05-24 22:30:34,260 | INFO | forensics_sandbox_agent | VM telemetry polling loop started
+2026-05-24 22:30:34,260 | INFO | forensics_sandbox_agent | VM telemetry poller started for session 82716c40-1ce0-4fa0-8f53-2619e9d4eb2e
+2026-05-24 22:30:34,261 | INFO | forensics_sandbox_agent | Starting forensic monitoring: session=82716c40-1ce0-4fa0-8f53-2619e9d4eb2e, simulator=system_service_1
+2026-05-24 22:30:34,261 | INFO | forensics_sandbox_agent | Started forensic session: session_id=82716c40-1ce0-4fa0-8f53-2619e9d4eb2e, simulator=system_service_1
+2026-05-24 22:30:34,261 | INFO | forensics_sandbox_agent | Forensic timeline tracking started
+2026-05-24 22:30:34,262 | INFO | forensics_sandbox_agent | Process monitoring started
+2026-05-24 22:30:34,263 | INFO | forensics_sandbox_agent | File system monitoring started
+2026-05-24 22:30:34,263 | INFO | forensics_sandbox_agent | Registry monitoring started
+2026-05-24 22:30:34,264 | INFO | forensics_sandbox_agent | Network observation started
+2026-05-24 22:30:34,264 | INFO | forensics_sandbox_agent | Behavior detection started
+2026-05-24 22:30:34,296 | INFO | forensics_sandbox_agent | Executing simulator: system_service_1
+2026-05-24 22:30:34,297 | INFO | forensics_sandbox_agent | Simulator executable path: C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\dist\simulators\system_service_1.exe
+2026-05-24 22:30:34,297 | INFO | forensics_sandbox_agent | Validating simulator: system_service_1
+2026-05-24 22:30:34,297 | INFO | forensics_sandbox_agent |   - display_name: Sample Alpha
+2026-05-24 22:30:34,297 | INFO | forensics_sandbox_agent |   - executable_path: 'C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\dist\simulators\system_service_1.exe'
+2026-05-24 22:30:34,297 | INFO | forensics_sandbox_agent |   - executable_path exists: True
+2026-05-24 22:30:34,298 | INFO | forensics_sandbox_agent | APPROVED: Simulator system_service_1 is valid
+2026-05-24 22:30:34,298 | INFO | forensics_sandbox_agent | Phase 1/6: Powering off VM
+2026-05-24 22:30:34,424 | INFO | forensics_sandbox_agent | Phase 2/6: Restoring clean snapshot
+2026-05-24 22:30:34,424 | INFO | forensics_sandbox_agent | Restoring VM to clean snapshot: CleanBaseline
+2026-05-24 22:30:34,424 | INFO | forensics_sandbox_agent | Verifying clean snapshot: CleanBaseline
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:30:34,594 | INFO | forensics_sandbox_agent | Clean snapshot verified: CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063)
+2026-05-24 22:30:34,594 | INFO | forensics_sandbox_agent | Stopping VM before snapshot restoration
+2026-05-24 22:30:34,691 | INFO | forensics_sandbox_agent | VM already stopped, proceeding with snapshot restore
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:31:07,390 | WARNING | forensics_sandbox_agent | SessionState did not reach 'none' within 30s after VM stop, proceeding anyway
+2026-05-24 22:31:07,513 | INFO | forensics_sandbox_agent | Restored VM ForensicsSandbox to snapshot: CleanBaseline
+2026-05-24 22:31:07,513 | INFO | forensics_sandbox_agent | Successfully restored snapshot: CleanBaseline
+2026-05-24 22:31:07,513 | INFO | forensics_sandbox_agent | Phase 3/6: Starting VM for execution
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+2026-05-24 22:31:07,616 | INFO | forensics_sandbox_agent | Starting VM: ForensicsSandbox (headless=True)
+2026-05-24 22:31:08,044 | INFO | forensics_sandbox_agent | Starting VM ForensicsSandbox in HEADLESS mode
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+2026-05-24 22:31:13,512 | INFO | forensics_sandbox_agent | VM start command executed: ForensicsSandbox
+2026-05-24 22:31:14,055 | INFO | forensics_sandbox_agent | VM started successfully: ForensicsSandbox
+2026-05-24 22:31:14,055 | INFO | forensics_sandbox_agent | Phase 4/6: Waiting for Guest Additions...
+2026-05-24 22:31:14,055 | INFO | forensics_sandbox_agent | Waiting for guest additions on VM: ForensicsSandbox (timeout 300s)
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61796 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+2026-05-24 22:31:24,117 | INFO | forensics_sandbox_agent | Cleaning up 3 tracked VBox PIDs
+INFO:     127.0.0.1:61796 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61797 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61290 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61291 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61291 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61290 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50971 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50971 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50971 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50971 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56266 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53182 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53182 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53182 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53182 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53182 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53182 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61289 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50970 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62186 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62187 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62187 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62187 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62187 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62187 - "GET /sessions/82716c40-1ce0-4fa0-8f53-2619e9d4eb2e HTTP/1.1" 200 OK
+2026-05-24 22:34:38,601 | INFO | forensics_sandbox_agent | Telemetry WS client disconnected. Total: 0
+2026-05-24 22:34:38,601 | INFO | forensics_sandbox_agent | System log WS client disconnected. Total: 0
+INFO:     connection closed
+INFO:     connection closed
+2026-05-24 22:34:59,835 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (225s elapsed)
+2026-05-24 22:35:14,460 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (240s elapsed)
+2026-05-24 22:35:36,301 | INFO | forensics_sandbox_agent | Max poll duration reached (302.0s), stopping
+2026-05-24 22:35:36,301 | INFO | forensics_sandbox_agent | VM telemetry polling loop ended
+2026-05-24 22:36:04,258 | ERROR | forensics_sandbox_agent | Session 82716c40-1ce0-4fa0-8f53-2619e9d4eb2e timed out after 300s
+2026-05-24 22:36:04,258 | ERROR | forensics_sandbox_agent | Session timed out
+2026-05-24 22:36:14,065 | WARNING | forensics_sandbox_agent | Guest additions not ready after 300s; last error: VBoxManage command failed: guestcontrol ForensicsSandbox run --username guestuser --password guest --exe C:\Windows\System32\cmd.exe --wait-stdout --wait-stderr --timeout=5000 -- /c echo ready (exit 1): VBoxManage.EXE: error: Machine "ForensicsSandbox" is not running (currently aborted)!
+
+2026-05-24 22:36:14,065 | ERROR | forensics_sandbox_agent | Simulator execution failed: Guest Additions not ready - cannot transfer simulator to VM
+2026-05-24 22:36:14,065 | INFO | forensics_sandbox_agent | Executing snapshot rollback
+2026-05-24 22:36:14,065 | INFO | forensics_sandbox_agent | Restoring VM to clean snapshot: CleanBaseline
+2026-05-24 22:36:14,065 | INFO | forensics_sandbox_agent | Verifying clean snapshot: CleanBaseline
+2026-05-24 22:36:14,173 | INFO | forensics_sandbox_agent | Clean snapshot verified: CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063)
+2026-05-24 22:36:14,173 | INFO | forensics_sandbox_agent | Stopping VM before snapshot restoration
+2026-05-24 22:36:14,315 | INFO | forensics_sandbox_agent | VM already stopped, proceeding with snapshot restore
+2026-05-24 22:36:25,547 | INFO | forensics_sandbox_agent | Cleaned up 1 terminal sessions from registry
+2026-05-24 22:36:46,457 | WARNING | forensics_sandbox_agent | SessionState did not reach 'none' within 30s after VM stop, proceeding anyway
+2026-05-24 22:36:46,559 | INFO | forensics_sandbox_agent | Restored VM ForensicsSandbox to snapshot: CleanBaseline
+2026-05-24 22:36:46,560 | INFO | forensics_sandbox_agent | Successfully restored snapshot: CleanBaseline
+2026-05-24 22:36:46,560 | INFO | forensics_sandbox_agent | Verifying snapshot restoration
+2026-05-24 22:36:46,645 | INFO | forensics_sandbox_agent | VM state verified: poweroff
+2026-05-24 22:36:46,646 | INFO | forensics_sandbox_agent | Rollback completed successfully
+2026-05-24 22:36:47,843 | INFO | forensics_sandbox_agent | Stopping VM telemetry poller
+2026-05-24 22:36:47,843 | INFO | forensics_sandbox_agent | VM telemetry poller stopped: 84 polls in 373.6s
+2026-05-24 22:36:47,843 | INFO | forensics_sandbox_agent | VM telemetry poller stopped (84 polls)
+2026-05-24 22:36:48,284 | INFO | forensics_sandbox_agent | Stopping forensic monitoring
+2026-05-24 22:36:48,285 | INFO | forensics_sandbox_agent | Process monitoring stopped - tracked 0 processes
+2026-05-24 22:36:48,285 | INFO | forensics_sandbox_agent | File system monitoring stopped - tracked 0 operations
+2026-05-24 22:36:48,285 | INFO | forensics_sandbox_agent | Registry monitoring stopped - tracked 0 operations
+2026-05-24 22:36:48,285 | INFO | forensics_sandbox_agent | Network observation stopped - tracked 0 connections
+2026-05-24 22:36:48,285 | INFO | forensics_sandbox_agent | Behavior detection stopped - generated 0 alerts
+2026-05-24 22:36:48,288 | INFO | forensics_sandbox_agent | Saved 2 forensic events to C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\logs\monitoring\forensic_events_82716c40-1ce0-4fa0-8f53-2619e9d4eb2e_20260524_223648.json
+2026-05-24 22:36:48,289 | INFO | forensics_sandbox_agent | Forensic monitoring complete: 2 events
+2026-05-24 22:36:48,289 | INFO | forensics_sandbox_agent | Monitoring summary: 2 events
+INFO:     127.0.0.1:61547 - "GET /simulators HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61548 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61549 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61550 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64291 - "WebSocket /telemetry/live" [accepted]
+2026-05-24 22:38:04,535 | INFO | forensics_sandbox_agent | Telemetry WS client connected. Total: 1
+INFO:     connection open
+INFO:     127.0.0.1:63294 - "GET /logs?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61548 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60989 - "WebSocket /logs/live" [accepted]
+2026-05-24 22:38:04,909 | INFO | forensics_sandbox_agent | System log WS client connected. Total: 1
+INFO:     connection open
+INFO:     127.0.0.1:63294 - "GET /simulators HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61550 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61549 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61547 - "GET /logs?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60821 - "WebSocket /telemetry/live" [accepted]
+2026-05-24 22:38:04,924 | INFO | forensics_sandbox_agent | Telemetry WS client connected. Total: 2
+INFO:     connection open
+INFO:     127.0.0.1:61547 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50239 - "WebSocket /logs/live" [accepted]
+2026-05-24 22:38:05,318 | INFO | forensics_sandbox_agent | System log WS client connected. Total: 2
+INFO:     127.0.0.1:61549 - "GET /simulators HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:61550 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63294 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61548 - "GET /logs?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61548 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65213 - "WebSocket /telemetry/live" [accepted]
+2026-05-24 22:38:05,720 | INFO | forensics_sandbox_agent | Telemetry WS client connected. Total: 3
+INFO:     connection open
+INFO:     127.0.0.1:63294 - "GET /simulators HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61550 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61549 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61547 - "GET /logs?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61547 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53155 - "WebSocket /logs/live" [accepted]
+2026-05-24 22:38:06,080 | INFO | forensics_sandbox_agent | System log WS client connected. Total: 3
+INFO:     connection open
+INFO:     127.0.0.1:61547 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61549 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61550 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:38:10,047 | INFO | forensics_sandbox_agent | === VM Reset Requested ===
+2026-05-24 22:38:10,047 | INFO | forensics_sandbox_agent | Stopping VM if running...
+2026-05-24 22:38:10,048 | INFO | forensics_sandbox_agent | Restoring VM to CleanBaseline snapshot...
+2026-05-24 22:38:10,048 | INFO | forensics_sandbox_agent | Restoring clean snapshot
+2026-05-24 22:38:10,150 | INFO | forensics_sandbox_agent | Restoring VM to clean snapshot: CleanBaseline
+2026-05-24 22:38:10,150 | INFO | forensics_sandbox_agent | Verifying clean snapshot: CleanBaseline
+2026-05-24 22:38:10,283 | INFO | forensics_sandbox_agent | Clean snapshot verified: CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063)
+2026-05-24 22:38:10,284 | INFO | forensics_sandbox_agent | Stopping VM before snapshot restoration
+2026-05-24 22:38:10,372 | INFO | forensics_sandbox_agent | VM already stopped, proceeding with snapshot restore
+2026-05-24 22:38:42,658 | WARNING | forensics_sandbox_agent | SessionState did not reach 'none' within 30s after VM stop, proceeding anyway
+2026-05-24 22:38:42,743 | INFO | forensics_sandbox_agent | Restored VM ForensicsSandbox to snapshot: CleanBaseline
+2026-05-24 22:38:42,743 | INFO | forensics_sandbox_agent | Successfully restored snapshot: CleanBaseline
+2026-05-24 22:38:42,743 | INFO | forensics_sandbox_agent | Snapshot restored successfully
+2026-05-24 22:38:42,743 | INFO | forensics_sandbox_agent | VM reset complete
+2026-05-24 22:38:42,743 | INFO | forensics_sandbox_agent | === VM Ready for New Session ===
+INFO:     127.0.0.1:61549 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61547 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55008 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54734 - "GET /health HTTP/1.1" 200 OK
+2026-05-24 22:38:43,470 | INFO | forensics_sandbox_agent | === Starting New Session: 38f262d6-6cbd-4ae9-a4bc-0edbfe621ff4 ===
+2026-05-24 22:38:43,470 | INFO | forensics_sandbox_agent | Simulator: system_service_4
+2026-05-24 22:38:43,470 | INFO | forensics_sandbox_agent | Auto-rollback: True
+2026-05-24 22:38:43,470 | INFO | forensics_sandbox_agent | Timeout: 300s
+2026-05-24 22:38:43,805 | INFO | forensics_sandbox_agent | Preparing environment...
+2026-05-24 22:38:43,805 | INFO | forensics_sandbox_agent | Preparing VM for execution
+2026-05-24 22:38:43,805 | INFO | forensics_sandbox_agent | VM lifecycle managed by execution pipeline
+2026-05-24 22:38:43,805 | INFO | forensics_sandbox_agent | Starting simulator execution
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent | Loading simulator: system_service_4
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent | Simulator loaded: Sample Delta
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent | Starting forensic monitoring...
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent |   - Process monitoring: ACTIVE
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent |   - File system monitoring: ACTIVE
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent |   - Registry monitoring: ACTIVE
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent |   - Network monitoring: ACTIVE
+2026-05-24 22:38:43,806 | INFO | forensics_sandbox_agent | Executing simulator...
+INFO:     127.0.0.1:54735 - "GET /monitoring/status HTTP/1.1" 200 OK
+2026-05-24 22:38:43,807 | INFO | forensics_sandbox_agent | Orchestrating simulator execution: system_service_4
+2026-05-24 22:38:43,808 | INFO | forensics_sandbox_agent | Starting VM telemetry poller: vm=ForensicsSandbox, interval=2s, max_duration=300s
+2026-05-24 22:38:43,809 | INFO | forensics_sandbox_agent | VM telemetry polling loop started
+INFO:     127.0.0.1:54736 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:38:43,810 | INFO | forensics_sandbox_agent | VM telemetry poller started for session 38f262d6-6cbd-4ae9-a4bc-0edbfe621ff4
+2026-05-24 22:38:43,811 | INFO | forensics_sandbox_agent | Starting forensic monitoring: session=38f262d6-6cbd-4ae9-a4bc-0edbfe621ff4, simulator=system_service_4
+2026-05-24 22:38:43,811 | INFO | forensics_sandbox_agent | Started forensic session: session_id=38f262d6-6cbd-4ae9-a4bc-0edbfe621ff4, simulator=system_service_4
+2026-05-24 22:38:43,811 | INFO | forensics_sandbox_agent | Forensic timeline tracking started
+2026-05-24 22:38:43,812 | INFO | forensics_sandbox_agent | Process monitoring started
+2026-05-24 22:38:43,812 | INFO | forensics_sandbox_agent | File system monitoring started
+2026-05-24 22:38:43,812 | INFO | forensics_sandbox_agent | Registry monitoring started
+2026-05-24 22:38:43,812 | INFO | forensics_sandbox_agent | Network observation started
+INFO:     127.0.0.1:55872 - "GET /health HTTP/1.1" 200 OK
+2026-05-24 22:38:43,813 | INFO | forensics_sandbox_agent | Behavior detection started
+2026-05-24 22:38:43,814 | INFO | forensics_sandbox_agent | Executing simulator: system_service_4
+2026-05-24 22:38:43,814 | INFO | forensics_sandbox_agent | Simulator executable path: C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\dist\simulators\runtime_helper.exe
+2026-05-24 22:38:43,815 | INFO | forensics_sandbox_agent | Validating simulator: system_service_4
+2026-05-24 22:38:43,815 | INFO | forensics_sandbox_agent |   - display_name: Sample Delta
+2026-05-24 22:38:43,815 | INFO | forensics_sandbox_agent |   - executable_path: 'C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\dist\simulators\runtime_helper.exe'
+2026-05-24 22:38:43,815 | INFO | forensics_sandbox_agent |   - executable_path exists: True
+2026-05-24 22:38:43,815 | INFO | forensics_sandbox_agent | APPROVED: Simulator system_service_4 is valid
+2026-05-24 22:38:43,816 | INFO | forensics_sandbox_agent | Phase 1/6: Powering off VM
+2026-05-24 22:38:43,920 | INFO | forensics_sandbox_agent | Phase 2/6: Restoring clean snapshot
+2026-05-24 22:38:43,920 | INFO | forensics_sandbox_agent | Restoring VM to clean snapshot: CleanBaseline
+2026-05-24 22:38:43,920 | INFO | forensics_sandbox_agent | Verifying clean snapshot: CleanBaseline
+2026-05-24 22:38:44,104 | INFO | forensics_sandbox_agent | Clean snapshot verified: CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063)
+2026-05-24 22:38:44,104 | INFO | forensics_sandbox_agent | Stopping VM before snapshot restoration
+INFO:     127.0.0.1:60152 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62671 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60718 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60719 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60720 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65472 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65474 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65475 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62671 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62671 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:38:46,271 | INFO | forensics_sandbox_agent | VM already stopped, proceeding with snapshot restore
+INFO:     127.0.0.1:62671 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /monitoring/status HTTP/1.1" 200 OK
+2026-05-24 22:39:20,752 | WARNING | forensics_sandbox_agent | SessionState did not reach 'none' within 30s after VM stop, proceeding anyway
+2026-05-24 22:39:20,832 | INFO | forensics_sandbox_agent | Restored VM ForensicsSandbox to snapshot: CleanBaseline
+2026-05-24 22:39:20,832 | INFO | forensics_sandbox_agent | Successfully restored snapshot: CleanBaseline
+2026-05-24 22:39:20,832 | INFO | forensics_sandbox_agent | Phase 3/6: Starting VM for execution
+2026-05-24 22:39:20,923 | INFO | forensics_sandbox_agent | Starting VM: ForensicsSandbox (headless=True)
+2026-05-24 22:39:21,344 | INFO | forensics_sandbox_agent | Starting VM ForensicsSandbox in HEADLESS mode
+2026-05-24 22:39:25,709 | INFO | forensics_sandbox_agent | VM start command executed: ForensicsSandbox
+2026-05-24 22:39:26,312 | INFO | forensics_sandbox_agent | VM started successfully: ForensicsSandbox
+2026-05-24 22:39:26,312 | INFO | forensics_sandbox_agent | Phase 4/6: Waiting for Guest Additions...
+2026-05-24 22:39:26,312 | INFO | forensics_sandbox_agent | Waiting for guest additions on VM: ForensicsSandbox (timeout 300s)
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:39:44,906 | INFO | forensics_sandbox_agent | Cleaning up 3 tracked VBox PIDs
+INFO:     127.0.0.1:60153 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62670 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:40:56,365 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (90s elapsed)
+INFO:     127.0.0.1:50770 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60870 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60872 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60873 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49349 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49350 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49351 - "GET /execution/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49351 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49350 - "GET /monitoring/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49349 - "GET /execution/status HTTP/1.1" 200 OK
+2026-05-24 22:42:11,556 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (165s elapsed)
+2026-05-24 22:42:21,663 | INFO | forensics_sandbox_agent | Telemetry WS client disconnected. Total: 2
+2026-05-24 22:42:21,664 | INFO | forensics_sandbox_agent | System log WS client disconnected. Total: 2
+2026-05-24 22:42:21,665 | INFO | forensics_sandbox_agent | System log WS client disconnected. Total: 1
+2026-05-24 22:42:21,666 | INFO | forensics_sandbox_agent | Telemetry WS client disconnected. Total: 1
+2026-05-24 22:42:21,666 | INFO | forensics_sandbox_agent | System log WS client disconnected. Total: 0
+2026-05-24 22:42:21,667 | INFO | forensics_sandbox_agent | Telemetry WS client disconnected. Total: 0
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+2026-05-24 22:42:41,453 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (195s elapsed)
+2026-05-24 22:42:56,786 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (210s elapsed)
+2026-05-24 22:43:11,466 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (225s elapsed)
+2026-05-24 22:43:26,758 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (240s elapsed)
+2026-05-24 22:43:51,398 | INFO | forensics_sandbox_agent | Max poll duration reached (307.6s), stopping
+2026-05-24 22:43:51,399 | INFO | forensics_sandbox_agent | VM telemetry polling loop ended
+2026-05-24 22:43:56,735 | INFO | forensics_sandbox_agent | Still waiting for Guest OS to stabilize... (270s elapsed)
+2026-05-24 22:44:13,811 | ERROR | forensics_sandbox_agent | Session 38f262d6-6cbd-4ae9-a4bc-0edbfe621ff4 timed out after 300s
+2026-05-24 22:44:13,811 | ERROR | forensics_sandbox_agent | Session timed out
+2026-05-24 22:44:26,509 | WARNING | forensics_sandbox_agent | Guest additions not ready after 300s; last error: VBoxManage command failed: guestcontrol ForensicsSandbox run --username guestuser --password guest --exe C:\Windows\System32\cmd.exe --wait-stdout --wait-stderr --timeout=5000 -- /c echo ready (exit 1): VBoxManage.EXE: error: Machine "ForensicsSandbox" is not running (currently aborted)!
+
+2026-05-24 22:44:26,509 | ERROR | forensics_sandbox_agent | Simulator execution failed: Guest Additions not ready - cannot transfer simulator to VM
+2026-05-24 22:44:26,509 | INFO | forensics_sandbox_agent | Executing snapshot rollback
+2026-05-24 22:44:26,509 | INFO | forensics_sandbox_agent | Restoring VM to clean snapshot: CleanBaseline
+2026-05-24 22:44:26,509 | INFO | forensics_sandbox_agent | Verifying clean snapshot: CleanBaseline
+2026-05-24 22:44:26,611 | INFO | forensics_sandbox_agent | Clean snapshot verified: CleanBaseline (UUID: 6a954b97-a1db-477a-8054-2d76de85a063)
+2026-05-24 22:44:26,611 | INFO | forensics_sandbox_agent | Stopping VM before snapshot restoration
+2026-05-24 22:44:26,727 | INFO | forensics_sandbox_agent | VM already stopped, proceeding with snapshot restore
+2026-05-24 22:44:46,521 | INFO | forensics_sandbox_agent | Cleaned up 1 terminal sessions from registry
+2026-05-24 22:44:59,028 | WARNING | forensics_sandbox_agent | SessionState did not reach 'none' within 30s after VM stop, proceeding anyway
+2026-05-24 22:44:59,120 | INFO | forensics_sandbox_agent | Restored VM ForensicsSandbox to snapshot: CleanBaseline
+2026-05-24 22:44:59,120 | INFO | forensics_sandbox_agent | Successfully restored snapshot: CleanBaseline
+2026-05-24 22:44:59,121 | INFO | forensics_sandbox_agent | Verifying snapshot restoration
+2026-05-24 22:44:59,207 | INFO | forensics_sandbox_agent | VM state verified: poweroff
+2026-05-24 22:44:59,207 | INFO | forensics_sandbox_agent | Rollback completed successfully
+2026-05-24 22:45:00,240 | INFO | forensics_sandbox_agent | Stopping VM telemetry poller
+2026-05-24 22:45:00,240 | INFO | forensics_sandbox_agent | VM telemetry poller stopped: 95 polls in 376.4s
+2026-05-24 22:45:00,240 | INFO | forensics_sandbox_agent | VM telemetry poller stopped (95 polls)
+2026-05-24 22:45:00,636 | INFO | forensics_sandbox_agent | Stopping forensic monitoring
+2026-05-24 22:45:00,636 | INFO | forensics_sandbox_agent | Process monitoring stopped - tracked 0 processes
+2026-05-24 22:45:00,636 | INFO | forensics_sandbox_agent | File system monitoring stopped - tracked 0 operations
+2026-05-24 22:45:00,636 | INFO | forensics_sandbox_agent | Registry monitoring stopped - tracked 0 operations
+2026-05-24 22:45:00,636 | INFO | forensics_sandbox_agent | Network observation stopped - tracked 0 connections
+2026-05-24 22:45:00,636 | INFO | forensics_sandbox_agent | Behavior detection stopped - generated 0 alerts
+2026-05-24 22:45:00,639 | INFO | forensics_sandbox_agent | Saved 2 forensic events to C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\logs\monitoring\forensic_events_38f262d6-6cbd-4ae9-a4bc-0edbfe621ff4_20260524_224500.json
+2026-05-24 22:45:00,639 | INFO | forensics_sandbox_agent | Forensic monitoring complete: 2 events
+2026-05-24 22:45:00,639 | INFO | forensics_sandbox_agent | Monitoring summary: 2 events

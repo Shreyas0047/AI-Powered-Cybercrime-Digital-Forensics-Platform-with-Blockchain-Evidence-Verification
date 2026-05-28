@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.blockchainVerificationService = exports.BlockchainVerificationService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const types_1 = require("./types");
 const blockchain_service_1 = require("./blockchain.service");
 const hashing_service_1 = require("./hashing.service");
@@ -50,7 +54,7 @@ class BlockchainVerificationService {
      */
     async initialize() {
         await blockchain_service_1.blockchainService.initialize();
-        console.log('[BlockchainVerification] Service initialized');
+        logger_1.default.info('[BlockchainVerification] Service initialized');
     }
     /**
      * Register evidence for blockchain verification
@@ -320,6 +324,7 @@ class BlockchainVerificationService {
             networkName: networkInfo.networkName,
             chainId: networkInfo.chainId,
             blockNumber: networkInfo.blockNumber,
+            verificationMode: networkInfo.available ? 'on-chain' : 'local-only',
         };
     }
     /**

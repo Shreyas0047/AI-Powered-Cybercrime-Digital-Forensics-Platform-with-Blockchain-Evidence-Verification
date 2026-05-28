@@ -99,6 +99,7 @@ const alertSchema = new mongoose_1.Schema({
     // Core identification
     alertId: {
         type: String,
+        required: true,
         unique: true,
         index: true,
     },

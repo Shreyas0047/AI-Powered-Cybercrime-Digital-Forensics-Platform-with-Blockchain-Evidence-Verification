@@ -26,6 +26,8 @@ const logs_routes_1 = __importDefault(require("./logs.routes"));
 const settings_routes_1 = __importDefault(require("./settings.routes"));
 const evidence_artifacts_routes_1 = __importDefault(require("./evidence-artifacts.routes"));
 const threat_analysis_routes_1 = __importDefault(require("./threat-analysis.routes"));
+const alerts_routes_1 = __importDefault(require("./alerts.routes"));
+const analysis_routes_1 = __importDefault(require("./analysis.routes"));
 const router = (0, express_1.Router)();
 // API version prefix
 const API_PREFIX = `/api/${config_1.config.server.apiVersion}`;
@@ -47,6 +49,8 @@ router.use(`${API_PREFIX}/logs`, logs_routes_1.default);
 router.use(`${API_PREFIX}/settings`, settings_routes_1.default);
 router.use(`${API_PREFIX}/evidence/artifacts`, evidence_artifacts_routes_1.default);
 router.use(`${API_PREFIX}/threat-analysis`, threat_analysis_routes_1.default);
+router.use(`${API_PREFIX}/alerts`, alerts_routes_1.default);
+router.use(`${API_PREFIX}/analysis`, analysis_routes_1.default);
 // Health check endpoint
 router.get('/health', (req, res) => {
     res.json({

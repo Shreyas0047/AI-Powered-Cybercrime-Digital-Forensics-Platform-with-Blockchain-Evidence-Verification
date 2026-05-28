@@ -3,6 +3,7 @@
  * Reads and processes forensic reports from the filesystem
  */
 
+import logger from '../config/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import { config } from '../config';
@@ -113,7 +114,7 @@ function parseReportFile(filePath: string): ForensicReportDetail | null {
       },
     };
   } catch (error) {
-    console.error(`Error parsing report ${filePath}:`, error);
+    logger.error(`Error parsing report ${filePath}:`, error);
     return null;
   }
 }

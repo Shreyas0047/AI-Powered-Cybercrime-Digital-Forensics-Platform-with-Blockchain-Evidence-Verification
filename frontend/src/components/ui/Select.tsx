@@ -3,7 +3,7 @@
  * Consistent dropdown selection system
  */
 
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 import { cn } from '../../design-system';
 import { ChevronDown } from 'lucide-react';
 
@@ -26,7 +26,9 @@ interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
   label, error, helperText, options, placeholder = 'Select an option', fullWidth = false, onChange, className, id, value, ...props
 }, ref) => {
-  const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const selectId = id || `select-${generatedId}`;
+  const hasEmptyOption = options.some((option) => option.value === '');
 
   return (
     <div className={cn('flex flex-col gap-1.5', fullWidth && 'w-full')}>
@@ -48,7 +50,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
           )}
           {...props}
         >
-          <option value="" disabled>{placeholder}</option>
+          {!hasEmptyOption && <option value="" disabled>{placeholder}</option>}
           {options.map((option) => (
             <option key={option.value} value={option.value} disabled={option.disabled}>
               {option.label}

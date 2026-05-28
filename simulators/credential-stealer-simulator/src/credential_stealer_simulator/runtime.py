@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import shutil
 import time
 import random
 import logging
@@ -197,8 +198,8 @@ class CredentialStealerSimulatorRuntime(BaseSimulatorRuntime):
             with open(config_path, "w") as f:
                 f.write(config_data)
             self.emit_file_operation("create", config_path, technique="T1105")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Failed to create config: {e}")
 
     def _initialize_collection_buffers(self) -> None:
         """Initialize collection buffers."""
@@ -207,8 +208,8 @@ class CredentialStealerSimulatorRuntime(BaseSimulatorRuntime):
             try:
                 with open(buf_path, "wb") as f:
                     f.write(os.urandom(1024))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to init buffer: {e}")
 
     def _simulate_system_discovery(self) -> None:
         """Simulate system discovery."""
@@ -360,8 +361,8 @@ class CredentialStealerSimulatorRuntime(BaseSimulatorRuntime):
                 with open(cred_file, "w") as f:
                     f.write(f"SYNTHETIC_BROWSER_CREDS_{random.randint(1000,9999)}")
                 self.emit_file_operation("create", cred_file, technique="T1555.003")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to harvest browser creds: {e}")
             
             time.sleep(0.15)
 
@@ -428,8 +429,8 @@ class CredentialStealerSimulatorRuntime(BaseSimulatorRuntime):
                         technique="T1560",
                         tactic="Collection"
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to create credential archive: {e}")
             time.sleep(0.1)
 
     def _encrypt_credential_data(self) -> None:
@@ -447,8 +448,8 @@ class CredentialStealerSimulatorRuntime(BaseSimulatorRuntime):
             try:
                 with open(enc_file, "wb") as f:
                     f.write(os.urandom(512))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to encrypt cred data: {e}")
             time.sleep(0.08)
 
     def _generate_credential_hashes(self) -> None:
@@ -467,8 +468,8 @@ class CredentialStealerSimulatorRuntime(BaseSimulatorRuntime):
             try:
                 with open(hash_file, "w") as f:
                     f.write(hash_value)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to generate cred hash: {e}")
 
     def _beaconing(self) -> None:
         """Simulate beaconing."""
@@ -498,10 +499,24 @@ class CredentialStealerSimulatorRuntime(BaseSimulatorRuntime):
 
     def _remove_credentials_from_disk(self) -> None:
         """Remove credentials from disk."""
+        removed_count = 0
+        if os.path.isdir(self._staging_dir):
+            try:
+                for file in os.listdir(self._staging_dir):
+                    file_path = os.path.join(self._staging_dir, file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    self.emit_file_operation("delete", file_path, technique="T1070")
+                    removed_count += 1
+            except Exception as e:
+                logging.error(f"Credential cleanup error: {e}")
+        
         if self._logger:
             self._logger.emit_suspicious_behavior(
                 "credential_cleanup",
-                {"files_removed": len(os.listdir(self._staging_dir)) if os.path.exists(self._staging_dir) else 0},
+                {"files_removed": removed_count},
                 technique="T1070",
                 tactic="DefenseEvasion",
                 risk_score=40
@@ -523,9 +538,9 @@ def main():
     """Entry point for credential stealer simulator."""
     manifest = SimulatorManifest(
         simulator_id="credential-stealer-simulator",
-        display_name="Credential Stealer Simulator",
+        display_name="Sample Epsilon",
         version="1.0.0",
-        description="Simulates credential access behavior for forensic training",
+        description="Unknown threat sample - awaiting behavioral analysis",
         category=SimulatorCategory.CREDENTIAL_STEALER,
         entry_point="credential_stealer_simulator.runtime",
         allowed_directories=["C:/Windows/Temp", "C:/sandbox", "C:/temp"],

@@ -45,6 +45,13 @@ router.get(
   asyncHandler(userController.findById)
 );
 
+// Get user activity
+router.get(
+  '/:id/activity',
+  authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.FORENSIC_ANALYST),
+  asyncHandler(userController.getActivity)
+);
+
 // Create user (admin only)
 router.post(
   '/',
@@ -54,6 +61,13 @@ router.post(
 
 // Update user
 router.put(
+  '/:id',
+  requirePermission(Permission.USER_UPDATE),
+  asyncHandler(userController.update)
+);
+
+// Update user (PATCH alias for frontend compatibility)
+router.patch(
   '/:id',
   requirePermission(Permission.USER_UPDATE),
   asyncHandler(userController.update)

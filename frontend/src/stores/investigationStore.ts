@@ -58,7 +58,7 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
   },
 
   fetchInvestigation: async (id: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, currentInvestigation: null });
     try {
       const response = await api.getInvestigation(id);
       if (response.success && response.data) {

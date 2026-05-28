@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import shutil
 import time
 import random
 import logging
@@ -194,8 +195,8 @@ class SpywareSimulatorRuntime(BaseSimulatorRuntime):
             with open(config_path, "w") as f:
                 f.write(config_data)
             self.emit_file_operation("create", config_path, technique="T1105")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Failed to write config: {e}")
 
     def _simulate_system_discovery(self) -> None:
         """Simulate system discovery."""
@@ -328,8 +329,8 @@ class SpywareSimulatorRuntime(BaseSimulatorRuntime):
                 with open(capture_file, "w") as f:
                     f.write(screenshot_data)
                 self.emit_file_operation("create", capture_file, technique="T1113")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to write capture: {e}")
             
             self._collected_data_size += len(screenshot_data)
             time.sleep(0.3)
@@ -353,23 +354,16 @@ class SpywareSimulatorRuntime(BaseSimulatorRuntime):
 
     def _collect_application_data(self) -> None:
         """Collect application data."""
-        app_paths = [
-            "C:\\Users\\Default\\Documents",
-            "C:\\Users\\Default\\Desktop",
-            "C:\\Users\\Default\\Downloads",
-        ]
-        
-        for app_path in app_paths:
-            os.makedirs(app_path, exist_ok=True)
-            for i in range(6):
-                file_path = f"{app_path}\\file_{i}.txt"
-                try:
-                    with open(file_path, "w") as f:
-                        f.write(f"SYNTHETIC_APP_DATA_{i}")
-                    self.emit_file_operation("scan", file_path, technique="T1083")
-                    self._collected_data_size += 100
-                except Exception:
-                    pass
+        os.makedirs(self._staging_dir, exist_ok=True)
+        for i in range(18):
+            file_path = os.path.join(self._staging_dir, f"app_data_{i}.txt")
+            try:
+                with open(file_path, "w") as f:
+                    f.write(f"SYNTHETIC_APP_DATA_{i}")
+                self.emit_file_operation("scan", file_path, technique="T1083")
+                self._collected_data_size += 100
+            except Exception as e:
+                logging.error(f"Failed to write app data: {e}")
             time.sleep(0.1)
 
     def _create_data_archives(self) -> None:
@@ -383,8 +377,8 @@ class SpywareSimulatorRuntime(BaseSimulatorRuntime):
                     f.write(f"SYNTHETIC_ARCHIVE_{random.randint(1000,9999)}\n" * 30)
                 self.emit_file_operation("create", archive_path, technique="T1560")
                 self._collected_data_size += 2000
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to create archive: {e}")
             
             if self._logger:
                 self._logger.emit_suspicious_behavior(
@@ -411,8 +405,8 @@ class SpywareSimulatorRuntime(BaseSimulatorRuntime):
             try:
                 with open(enc_file, "wb") as f:
                     f.write(os.urandom(256))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to encrypt: {e}")
             time.sleep(0.05)
 
     def _beaconing_pattern(self) -> None:
@@ -446,14 +440,17 @@ class SpywareSimulatorRuntime(BaseSimulatorRuntime):
 
     def _remove_evidence(self) -> None:
         """Remove evidence."""
-        if os.path.exists(self._staging_dir):
+        if os.path.isdir(self._staging_dir):
             try:
                 for file in os.listdir(self._staging_dir):
                     file_path = os.path.join(self._staging_dir, file)
                     if os.path.isfile(file_path):
-                        self.emit_file_operation("delete", file_path, technique="T1070")
-            except Exception:
-                pass
+                        os.remove(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    self.emit_file_operation("delete", file_path, technique="T1070")
+            except Exception as e:
+                logging.error(f"Evidence removal error: {e}")
 
     def _finalize(self) -> None:
         """Finalize."""
@@ -471,9 +468,9 @@ def main():
     """Entry point for spyware simulator."""
     manifest = SimulatorManifest(
         simulator_id="spyware-simulator",
-        display_name="Spyware Simulator",
+        display_name="Sample Beta",
         version="1.0.0",
-        description="Simulates spyware-like behavior for forensic training",
+        description="Unknown threat sample - awaiting behavioral analysis",
         category=SimulatorCategory.SPYWARE,
         entry_point="spyware_simulator.runtime",
         allowed_directories=["C:/Windows/Temp", "C:/sandbox", "C:/temp"],

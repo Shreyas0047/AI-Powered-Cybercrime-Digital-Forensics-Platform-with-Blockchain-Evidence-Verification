@@ -4,6 +4,7 @@ Forensic Feature Extraction Module
 Extracts structured features from raw telemetry data for AI analysis.
 """
 
+import logging
 import re
 from typing import List, Dict, Any
 from datetime import datetime
@@ -13,6 +14,9 @@ from app.core.models import (
     ForensicFeatureSet,
     ThreatCategory
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class ForensicFeatureExtractor:
@@ -31,6 +35,17 @@ class ForensicFeatureExtractor:
         r'Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce',
         r'Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved',
         r'System\\CurrentControlSet\\Services',
+    ]
+
+    # Credential-related registry key patterns
+    CREDENTIAL_KEY_PATTERNS = [
+        r'SAM',
+        r'SECURITY',
+        r'CredentialManager',
+        r'CurrentVersion\\Authentication',
+        r'LSA',
+        r'Windows NT\\CurrentVersion\\ProfileList',
+        r'Microsoft\\Windows NT\\CurrentVersion\\ProfileGuid',
     ]
 
     # Suspicious command patterns
@@ -62,12 +77,28 @@ class ForensicFeatureExtractor:
 
             if event_type == 'process':
                 self._extract_process_features(features, details)
+                self._extract_credential_access_features(features, details)
             elif event_type == 'file':
                 self._extract_file_features(features, details)
+                self._extract_credential_access_features(features, details)
             elif event_type == 'registry':
                 self._extract_registry_features(features, details)
+                self._extract_credential_access_features(features, details)
             elif event_type == 'network':
                 self._extract_network_features(features, details)
+            else:
+                logger.warning(f"Unrecognized event type: {event_type}")
+                if 'file' in event_type or 'encrypt' in event_type or 'write' in event_type or 'delete' in event_type:
+                    self._extract_file_features(features, details)
+                    self._extract_credential_access_features(features, details)
+                elif 'process' in event_type or 'start' in event_type or 'terminate' in event_type:
+                    self._extract_process_features(features, details)
+                    self._extract_credential_access_features(features, details)
+                elif 'registry' in event_type:
+                    self._extract_registry_features(features, details)
+                    self._extract_credential_access_features(features, details)
+                elif 'network' in event_type or 'connect' in event_type or 'dns' in event_type or 'beacon' in event_type:
+                    self._extract_network_features(features, details)
 
         return features
 
@@ -133,6 +164,40 @@ class ForensicFeatureExtractor:
             for pattern in self.PERSISTENCE_KEY_PATTERNS:
                 if pattern.lower() in key.lower():
                     features.persistence_keys.append(key[:100])
+                    break
+
+        # Check for credential-related registry keys
+        if key:
+            for pattern in self.CREDENTIAL_KEY_PATTERNS:
+                if pattern.lower() in key.lower():
+                    features.credential_access_indicators += 1
+                    break
+
+    def _extract_credential_access_features(self, features: ForensicFeatureSet, details: Dict[str, Any]):
+        """Extract credential access indicators from events"""
+        command = details.get('commandLine', '') or details.get('command', '')
+        path = details.get('path', '') or details.get('targetPath', '')
+        key = details.get('key', '') or details.get('path', '')
+
+        if 'lsass.exe' in command.lower() or 'vaultcli.exe' in command.lower():
+            features.credential_access_indicators += 1
+
+        credential_paths = [
+            r'system32\config\SAM',
+            r'system32\config\SECURITY',
+            r'system32\config\RegBack\SAM',
+            r'system32\config\RegBack\SECURITY',
+            r'System32\LSA',
+        ]
+        for cp in credential_paths:
+            if cp.lower() in path.lower():
+                features.credential_access_indicators += 1
+                break
+
+        if key:
+            for pattern in self.CREDENTIAL_KEY_PATTERNS:
+                if pattern.lower() in key.lower():
+                    features.credential_access_indicators += 1
                     break
 
     def _extract_network_features(self, features: ForensicFeatureSet, details: Dict[str, Any]):

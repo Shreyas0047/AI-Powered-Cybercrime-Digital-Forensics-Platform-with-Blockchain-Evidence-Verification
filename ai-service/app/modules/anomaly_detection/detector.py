@@ -67,9 +67,10 @@ class AnomalyDetector:
         event_counts = {}
         for event in events:
             try:
-                timestamp = event.timestamp[:16]  # Minute precision
+                ts = event.timestamp
+                timestamp = ts[:16] if len(ts) >= 16 else ts  # Minute precision
                 event_counts[timestamp] = event_counts.get(timestamp, 0) + 1
-            except:
+            except Exception:
                 continue
 
         if not event_counts:

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -7,7 +7,6 @@ import {
   Copy,
   Download,
   CheckCircle,
-  Clock,
   FileText,
   Database,
   Network,
@@ -15,7 +14,6 @@ import {
   Activity,
   Hexagon,
   Shield,
-  Link,
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -23,7 +21,8 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardCard, DashboardStat } from '../components/enterprise/DashboardGrid';
-import { formatDateTime, formatFileSize, cn } from '../utils/helpers';
+import { formatDateTime, formatFileSize } from '../utils/helpers';
+import { cn } from '../design-system';
 import api from '../services/api';
 import type { EvidenceArtifact, ForensicEvidenceDetail } from '../types/reports';
 
@@ -233,9 +232,17 @@ export function EvidenceArtifactsPage() {
                 <Button variant="outline" size="sm" onClick={() => fetchArtifacts()}>Retry</Button>
               </div>
             ) : artifacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
+              <div className="flex flex-col items-center justify-center py-12 px-6">
                 <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">No artifacts found. Run simulations to generate reports.</p>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">No Evidence Artifacts Available</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center max-w-md">
+                  Artifacts are generated when the Sandbox Agent completes a simulation run. 
+                  To populate this page: start an investigation → run a simulator in the sandbox → 
+                  wait for the session to complete and sync evidence back to the server.
+                </p>
+                <div className="mt-4 text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded px-3 py-2">
+                  Expected data path: <code className="text-cyan-600 dark:text-cyan-400">uploads/evidence/</code> and <code className="text-cyan-600 dark:text-cyan-400">uploads/sandbox-logs/</code>
+                </div>
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-700/50">

@@ -28,7 +28,7 @@ exports.userSchemas = {
         role: joi_1.default.string().valid('super_admin', 'admin', 'forensic_analyst', 'security_reviewer', 'sandbox_operator', 'auditor'),
     }),
     login: joi_1.default.object({
-        username: joi_1.default.string().required(),
+        email: joi_1.default.string().email().required(),
         password: joi_1.default.string().required(),
     }),
     updateProfile: joi_1.default.object({

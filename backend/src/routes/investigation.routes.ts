@@ -44,6 +44,13 @@ router.put(
   asyncHandler(investigationController.update)
 );
 
+// Get forensic report for investigation
+router.get(
+  '/:id/forensic-report',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(investigationController.getForensicReport)
+);
+
 router.delete(
   '/:id',
   requirePermission(Permission.INVESTIGATION_DELETE),

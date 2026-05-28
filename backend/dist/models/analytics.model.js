@@ -223,7 +223,6 @@ const investigationMetricsSchema = new mongoose_1.Schema({
 });
 // TTL - keep investigation metrics for 5 years
 investigationMetricsSchema.index({ createdAt: 1 }, { expireAfterSeconds: 157680000 });
-investigationMetricsSchema.index({ investigationId: 1 });
 investigationMetricsSchema.index({ primaryAnalyst: 1, createdAt: -1 });
 // ============================================
 // EXPORT MODELS

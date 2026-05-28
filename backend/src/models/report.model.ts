@@ -59,8 +59,8 @@ export interface ReportFinding {
   indicators: string[];
   evidence: string[];
   recommendations: string[];
-  'mitre Tactics'?: string[];
-  'mitre Techniques'?: string[];
+  mitreTactics: string[];
+  mitreTechniques?: string[];
 }
 
 // ============================================
@@ -229,6 +229,7 @@ const reportSchema = new Schema({
   generatedAt: {
     type: Date,
     default: Date.now,
+    // NOTE: duplicates createdAt from timestamps:true - use createdAt instead
   },
   generatedBy: {
     type: Schema.Types.ObjectId,
@@ -320,7 +321,6 @@ const reportSchema = new Schema({
 
 reportSchema.index({ investigationId: 1, type: 1 });
 reportSchema.index({ investigationId: 1, status: 1 });
-reportSchema.index({ status: 1 });
 reportSchema.index({ generatedAt: -1 });
 reportSchema.index({ generatedBy: 1 });
 reportSchema.index({ tags: 1 });

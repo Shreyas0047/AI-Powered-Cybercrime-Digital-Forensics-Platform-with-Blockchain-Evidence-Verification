@@ -7,7 +7,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Shield,
-  Info,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -40,120 +39,13 @@ const severityColors = {
   low: { bg: 'bg-emerald-500', text: 'text-emerald-500', ring: 'ring-emerald-500/30' },
 };
 
-const mockTactics: TacticData[] = [
-  {
-    id: 'TA0001',
-    name: 'Initial Access',
-    techniques: [
-      { id: 'T1566', name: 'Phishing', count: 5, severity: 'high' },
-      { id: 'T1190', name: 'Exploit Public App', count: 2, severity: 'medium' },
-      { id: 'T1133', name: 'External Remote Services', count: 1, severity: 'low' },
-    ],
-  },
-  {
-    id: 'TA0002',
-    name: 'Execution',
-    techniques: [
-      { id: 'T1059', name: 'Command & Script', count: 12, severity: 'critical' },
-      { id: 'T1204', name: 'User Execution', count: 8, severity: 'high' },
-      { id: 'T1203', name: 'Exploitation for Execution', count: 3, severity: 'medium' },
-    ],
-  },
-  {
-    id: 'TA0003',
-    name: 'Persistence',
-    techniques: [
-      { id: 'T1547', name: 'Boot or Logon Autostart', count: 7, severity: 'high' },
-      { id: 'T1053', name: 'Scheduled Task', count: 4, severity: 'medium' },
-      { id: 'T1136', name: 'Create Account', count: 2, severity: 'medium' },
-    ],
-  },
-  {
-    id: 'TA0004',
-    name: 'Privilege Escalation',
-    techniques: [
-      { id: 'T1068', name: 'Exploitation for Priv Esc', count: 6, severity: 'critical' },
-      { id: 'T1548', name: 'Abuse Elevation Control', count: 3, severity: 'high' },
-      { id: 'T1134', name: 'Access Token Manipulation', count: 1, severity: 'medium' },
-    ],
-  },
-  {
-    id: 'TA0005',
-    name: 'Defense Evasion',
-    techniques: [
-      { id: 'T1070', name: 'Indicator Removal', count: 9, severity: 'high' },
-      { id: 'T1036', name: 'Masquerading', count: 5, severity: 'medium' },
-      { id: 'T1027', name: 'Obfuscated Files', count: 4, severity: 'medium' },
-    ],
-  },
-  {
-    id: 'TA0006',
-    name: 'Credential Access',
-    techniques: [
-      { id: 'T1003', name: 'OS Credential Dumping', count: 8, severity: 'critical' },
-      { id: 'T1555', name: 'Credentials from Stores', count: 4, severity: 'high' },
-      { id: 'T1056', name: 'Input Capture', count: 2, severity: 'medium' },
-    ],
-  },
-  {
-    id: 'TA0007',
-    name: 'Discovery',
-    techniques: [
-      { id: 'T1087', name: 'Account Discovery', count: 6, severity: 'medium' },
-      { id: 'T1083', name: 'File Discovery', count: 5, severity: 'medium' },
-      { id: 'T1046', name: 'Network Service Discovery', count: 3, severity: 'low' },
-    ],
-  },
-  {
-    id: 'TA0008',
-    name: 'Lateral Movement',
-    techniques: [
-      { id: 'T1021', name: 'Remote Services', count: 4, severity: 'high' },
-      { id: 'T1570', name: 'Lateral Tool Transfer', count: 2, severity: 'medium' },
-    ],
-  },
-  {
-    id: 'TA0009',
-    name: 'Collection',
-    techniques: [
-      { id: 'T1560', name: 'Archive Collected Data', count: 5, severity: 'medium' },
-      { id: 'T1119', name: 'Automated Collection', count: 3, severity: 'low' },
-    ],
-  },
-  {
-    id: 'TA0011',
-    name: 'Command & Control',
-    techniques: [
-      { id: 'T1071', name: 'Application Layer Protocol', count: 7, severity: 'high' },
-      { id: 'T1132', name: 'Data Encoding', count: 4, severity: 'medium' },
-    ],
-  },
-  {
-    id: 'TA0010',
-    name: 'Exfiltration',
-    techniques: [
-      { id: 'T1041', name: 'Exfiltration Over C2', count: 3, severity: 'critical' },
-      { id: 'T1567', name: 'Exfiltration Over Web Service', count: 2, severity: 'high' },
-    ],
-  },
-  {
-    id: 'TA0040',
-    name: 'Impact',
-    techniques: [
-      { id: 'T1486', name: 'Data Encrypted for Impact', count: 15, severity: 'critical' },
-      { id: 'T1489', name: 'Service Stop', count: 4, severity: 'high' },
-      { id: 'T1529', name: 'System Shutdown', count: 1, severity: 'medium' },
-    ],
-  },
-];
-
 export function MITREHeatmap({ data, title = 'MITRE ATT&CK Heatmap' }: MITREHeatmapProps) {
   const { isDark } = useTheme();
   const [expandedTactic, setExpandedTactic] = useState<string | null>(null);
   const [hoveredTechnique, setHoveredTechnique] = useState<string | null>(null);
 
-  const tactics = data || mockTactics;
-  const maxCount = Math.max(...tactics.flatMap((t) => t.techniques.map((tech) => tech.count)));
+  const tactics = data || [];
+  const maxCount = Math.max(1, ...tactics.flatMap((t) => t.techniques.map((tech) => tech.count || 0)));
 
   const getIntensity = (count: number) => {
     const ratio = count / maxCount;
@@ -198,13 +90,11 @@ export function MITREHeatmap({ data, title = 'MITRE ATT&CK Heatmap' }: MITREHeat
               Intensity:
             </span>
             <div className="flex gap-0.5">
-              {[1, 0.6, 0.3].map((opacity, i) => (
+              {['#ef4444', '#ef444499', '#ef44444d'].map((color, i) => (
                 <div
                   key={i}
-                  className={cn(
-                    'w-4 h-4 rounded',
-                    `bg-red-500/${opacity * 100}`
-                  )}
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: color }}
                 />
               ))}
             </div>
@@ -229,11 +119,16 @@ export function MITREHeatmap({ data, title = 'MITRE ATT&CK Heatmap' }: MITREHeat
 
       {/* Heatmap Grid */}
       <div className="p-5">
+        {tactics.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Shield className="w-12 h-12 text-slate-400 mb-3" />
+            <p className="text-sm font-medium text-slate-500">No MITRE ATT&CK data available</p>
+            <p className="text-xs text-slate-400 mt-1">Technique mapping will appear after analysis</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {tactics.map((tactic) => {
             const isExpanded = expandedTactic === tactic.id;
-            const totalTechniques = tactic.techniques.reduce((sum, t) => sum + t.count, 0);
-
             return (
               <motion.div
                 key={tactic.id}
@@ -399,6 +294,7 @@ export function MITREHeatmap({ data, title = 'MITRE ATT&CK Heatmap' }: MITREHeat
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

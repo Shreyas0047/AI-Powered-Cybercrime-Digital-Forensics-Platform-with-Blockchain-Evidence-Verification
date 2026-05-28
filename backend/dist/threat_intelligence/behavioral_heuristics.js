@@ -3,8 +3,12 @@
  * Behavioral Heuristics Engine
  * Heuristic-based detection without heavy ML
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.behavioralHeuristicsEngine = exports.BehavioralHeuristicsEngine = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const threat_models_1 = require("./threat_models");
 const HEURISTICS = [
     {
@@ -246,7 +250,7 @@ class BehavioralHeuristicsEngine {
                 }
             }
             catch (error) {
-                console.error(`Heuristic ${heuristic.id} failed: ${error}`);
+                logger_1.default.error(`Heuristic ${heuristic.id} failed: ${error}`);
             }
         }
         return results.sort((a, b) => b.score - a.score);

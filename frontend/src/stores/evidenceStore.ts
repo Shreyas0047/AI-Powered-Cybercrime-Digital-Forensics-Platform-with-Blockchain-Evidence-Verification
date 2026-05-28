@@ -56,7 +56,7 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
   },
 
   fetchEvidenceByInvestigation: async (investigationId: string, params: PaginationParams) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, evidence: [] });
     try {
       const response = await api.getEvidenceByInvestigation(investigationId, params);
       if (response.success && response.data) {

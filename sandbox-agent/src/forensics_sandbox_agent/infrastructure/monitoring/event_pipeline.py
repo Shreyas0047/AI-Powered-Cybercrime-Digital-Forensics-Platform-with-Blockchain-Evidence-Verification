@@ -25,10 +25,13 @@ from forensics_sandbox_agent.infrastructure.monitoring.event_models import (
 class ForensicEventPipeline:
     """Centralized pipeline for forensic event collection and processing."""
 
+    MAX_EVENTS = 10000
+
     def __init__(
         self,
         config: ForensicStorageConfig,
         logger: logging.Logger,
+        stream_callback=None,
     ) -> None:
         self._config = config
         self._logger = logger
@@ -37,6 +40,7 @@ class ForensicEventPipeline:
         self._current_session_id: Optional[str] = None
         self._current_simulator_id: Optional[str] = None
         self._session_start_time: Optional[datetime] = None
+        self._stream_callback = stream_callback
 
         self._event_counts_by_category: dict[EventCategory, int] = defaultdict(int)
         self._event_counts_by_severity: dict[EventSeverity, int] = defaultdict(int)
@@ -73,11 +77,15 @@ class ForensicEventPipeline:
         details: dict,
         suspicious_indicators: list[SuspiciousIndicator] = None,
         raw_data: Optional[str] = None,
-    ) -> ForensicEvent:
+    ) -> Optional[ForensicEvent]:
         """Emit a standardized forensic event to the pipeline."""
         if not self._current_session_id:
             self._logger.warning("No active session - event not recorded")
-            raise RuntimeError("No active forensic session")
+            return None
+
+        if len(self._events) >= self.MAX_EVENTS:
+            self._logger.warning(f"Event buffer full ({self.MAX_EVENTS}) — dropping event from {source}")
+            return None
 
         event = ForensicEvent(
             event_id=str(uuid.uuid4()),
@@ -99,6 +107,12 @@ class ForensicEventPipeline:
 
         if suspicious_indicators:
             self._log_suspicious_activity(event)
+
+        if self._stream_callback:
+            try:
+                self._stream_callback(self._current_session_id, event)
+            except Exception:
+                pass
 
         self._logger.debug(
             f"Forensic event: {category.value}/{operation.value} from {source}"

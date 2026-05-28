@@ -11,7 +11,34 @@ const controllers_1 = require("../controllers");
 const middleware_1 = require("../middleware");
 const types_1 = require("../types");
 const router = (0, express_1.Router)();
-// All sync routes require authentication
+// ============================================
+// SERVICE-TO-SERVICE AUTH (shared secret)
+// ============================================
+function requireAgentSecret(req, res, next) {
+    const secret = process.env.SANDBOX_AGENT_SECRET;
+    if (!secret) {
+        // Dev mode: only allow loopback connections
+        const clientIp = (req.ip || '').replace(/^::ffff:/, '');
+        if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost') {
+            next();
+            return;
+        }
+        res.status(503).json({ success: false, message: 'Agent auth not configured. Set SANDBOX_AGENT_SECRET in .env.' });
+        return;
+    }
+    const provided = req.headers['x-agent-secret'];
+    if (!provided || provided !== secret) {
+        res.status(401).json({ success: false, message: 'Invalid agent credentials' });
+        return;
+    }
+    next();
+}
+// Session heartbeat — requires agent shared secret
+router.post('/sessions/:sessionId/heartbeat', requireAgentSecret, (0, middleware_1.asyncHandler)(controllers_1.syncController.sessionHeartbeat));
+// ============================================
+// AUTHENTICATED ROUTES
+// ============================================
+// All remaining sync routes require authentication
 router.use(middleware_1.authenticate);
 // ============================================
 // EVIDENCE UPLOAD
@@ -49,8 +76,6 @@ router.get('/telemetry/:sessionId', (0, middleware_1.authorize)(types_1.UserRole
 // ============================================
 // SANDBOX SESSION SYNC
 // ============================================
-// Session heartbeat
-router.post('/sessions/:sessionId/heartbeat', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.sessionHeartbeat));
 // Rollback status report
 router.post('/sessions/:sessionId/rollback', (0, middleware_1.authorize)(types_1.UserRole.SANDBOX_OPERATOR, types_1.UserRole.FORENSIC_ANALYST, types_1.UserRole.ADMIN, types_1.UserRole.SUPER_ADMIN), (0, middleware_1.asyncHandler)(controllers_1.syncController.reportRollback));
 // ============================================

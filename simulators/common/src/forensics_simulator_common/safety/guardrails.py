@@ -71,6 +71,10 @@ class SafetyGuardrails:
     def enforce_runtime_limit(max_seconds: int) -> None:
         """Enforce runtime limit with immediate exit."""
         import time
-        time.sleep(max_seconds)
-        logging.info(f"Simulator reached max runtime of {max_seconds}s, exiting safely")
-        sys.exit(0)
+        start = time.time()
+        while True:
+            elapsed = time.time() - start
+            if elapsed >= max_seconds:
+                logging.info(f"Simulator reached max runtime of {max_seconds}s, exiting safely")
+                sys.exit(1)
+            time.sleep(1)

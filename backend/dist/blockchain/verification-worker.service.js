@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.distributedVerificationService = exports.DistributedVerificationService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const blockchain_model_1 = require("./models/blockchain.model");
 const hashing_service_1 = require("./hashing.service");
 const types_1 = require("./types");
@@ -91,7 +95,7 @@ class DistributedVerificationService {
         if (this.isWorkerRunning)
             return;
         this.isWorkerRunning = true;
-        console.log('[VerificationWorker] Started');
+        logger_1.default.info('[VerificationWorker] Started');
         this.processQueue();
     }
     /**
@@ -99,7 +103,7 @@ class DistributedVerificationService {
      */
     async stopWorker() {
         this.isWorkerRunning = false;
-        console.log('[VerificationWorker] Stopped');
+        logger_1.default.info('[VerificationWorker] Stopped');
     }
     /**
      * Process verification queue
@@ -135,7 +139,7 @@ class DistributedVerificationService {
             }
         }
         catch (error) {
-            console.error('[VerificationWorker] Queue processing error:', error);
+            logger_1.default.error('[VerificationWorker] Queue processing error:', error);
         }
         // Schedule next iteration
         setTimeout(() => this.processQueue(), 500);
@@ -346,7 +350,7 @@ class DistributedVerificationService {
             });
         }
         catch (error) {
-            console.error('[DistributedVerification] Failed to log audit:', error);
+            logger_1.default.error('[DistributedVerification] Failed to log audit:', error);
         }
     }
 }

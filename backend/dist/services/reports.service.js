@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reportsService = exports.ReportsService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const REPORTS_DIR = path.resolve(process.cwd(), 'uploads/reports');
@@ -139,7 +143,7 @@ function parseReportFile(filePath) {
         };
     }
     catch (error) {
-        console.error(`Error parsing report ${filePath}:`, error);
+        logger_1.default.error(`Error parsing report ${filePath}:`, error);
         return null;
     }
 }

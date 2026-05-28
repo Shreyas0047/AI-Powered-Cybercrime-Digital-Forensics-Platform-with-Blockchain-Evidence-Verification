@@ -135,38 +135,55 @@ class VmTelemetryPoller:
             poll_start = time.time()
             poll_issues = []
 
+            # Check if VM is responsive before polling
+            is_ready = False
             try:
-                if self._config.track_processes:
-                    try:
-                        self._poll_processes()
-                    except Exception as e:
-                        poll_issues.append(f"process poll: {e}")
-                        self._logger.debug(f"Process poll failed: {e}")
+                # Use a lightweight property check instead of full guestcontrol
+                result = self._vbox._execute_command(["guestproperty", "get", self._vm_name, "/VirtualBox/GuestAdd/Version"])
+                if "Value:" in result.stdout:
+                    is_ready = True
+                else:
+                    self._logger.debug("Guest Additions not ready in poller yet")
+            except Exception:
+                self._logger.debug("VM not ready for polling yet")
 
-                if self._config.track_network:
-                    try:
-                        self._poll_network()
-                    except Exception as e:
-                        poll_issues.append(f"network poll: {e}")
-                        self._logger.debug(f"Network poll failed: {e}")
+            if is_ready:
+                try:
+                    if self._config.track_processes:
+                        try:
+                            self._poll_processes()
+                        except Exception as e:
+                            poll_issues.append(f"process poll: {e}")
+                            self._logger.debug(f"Process poll failed: {e}")
 
-                if self._config.track_files:
-                    try:
-                        self._poll_files()
-                    except Exception as e:
-                        poll_issues.append(f"file poll: {e}")
-                        self._logger.debug(f"File poll failed: {e}")
+                    if self._config.track_network:
+                        try:
+                            self._poll_network()
+                        except Exception as e:
+                            poll_issues.append(f"network poll: {e}")
+                            self._logger.debug(f"Network poll failed: {e}")
 
-                self._polls_completed += 1
+                    if self._config.track_files:
+                        try:
+                            self._poll_files()
+                        except Exception as e:
+                            poll_issues.append(f"file poll: {e}")
+                            self._logger.debug(f"File poll failed: {e}")
 
-                if self._polls_completed % 10 == 0:
-                    self._logger.debug(
-                        f"Poller status: poll #{self._polls_completed}, "
-                        f"elapsed={time.time() - (self._start_time or 0):.1f}s"
-                    )
+                    self._polls_completed += 1
 
-            except Exception as e:
-                self._logger.warning(f"Poll cycle error: {e}")
+                    if self._polls_completed % 10 == 0:
+                        self._logger.debug(
+                            f"Poller status: poll #{self._polls_completed}, "
+                            f"elapsed={time.time() - (self._start_time or 0):.1f}s"
+                        )
+
+                except Exception as e:
+                    self._logger.warning(f"Poll cycle error: {e}")
+            else:
+                # If not ready, wait a bit longer before next check
+                self._stop_event.wait(timeout=5.0)
+                continue
 
             elapsed = time.time() - poll_start
             interval = self._config.poll_interval_seconds
@@ -419,14 +436,14 @@ class VmTelemetryPoller:
                     modified_time="",
                 )
 
-            prev_files = {
+            current_poll_dirs = [d.lower() for d in self._config.poll_directories]
+            prev_in_current_dirs = {
                 k: v for k, v in self._prev_files.items()
-                if not any(k.startswith(d.lower().replace("\\", "_")) for d in self._config.poll_directories)
+                if any(k.startswith(d) for d in current_poll_dirs)
             }
-            prev_files.update(self._prev_files)
 
-            new_files = set(current_files.keys()) - set(prev_files.keys())
-            gone_files = set(prev_files.keys()) - set(current_files.keys())
+            new_files = set(current_files.keys()) - set(self._prev_files.keys())
+            gone_files = set(prev_in_current_dirs.keys()) - set(current_files.keys())
 
             for fp in new_files:
                 snap = current_files[fp]
@@ -437,13 +454,13 @@ class VmTelemetryPoller:
                 self._logger.debug(f"File created: {snap.path} ({snap.size} bytes)")
 
             for fp in gone_files:
-                snap = prev_files[fp]
+                snap = prev_in_current_dirs[fp]
                 self._coordinator.record_file_delete(file_path=snap.path)
                 self._logger.debug(f"File deleted: {snap.path}")
 
-            for fp in set(current_files.keys()) & set(prev_files.keys()):
+            for fp in set(current_files.keys()) & set(prev_in_current_dirs.keys()):
                 curr = current_files[fp]
-                prev = prev_files[fp]
+                prev = prev_in_current_dirs[fp]
                 if curr.size != prev.size:
                     self._coordinator.record_file_modify(
                         file_path=curr.path,

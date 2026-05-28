@@ -13,6 +13,13 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
+// List all evidence
+router.get(
+  '/',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SECURITY_REVIEWER, UserRole.SANDBOX_OPERATOR, UserRole.AUDITOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(evidenceController.findAll)
+);
+
 // Evidence upload (multipart/form-data)
 router.post(
   '/upload',

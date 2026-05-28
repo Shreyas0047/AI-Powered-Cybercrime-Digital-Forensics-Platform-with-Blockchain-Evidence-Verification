@@ -9,6 +9,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
 exports.validateConfig = validateConfig;
+const logger_1 = __importDefault(require("./logger"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 // Load environment variables
@@ -87,13 +88,15 @@ exports.config = {
         autoVerifyOnUpload: getEnvBool('AUTO_VERIFY_ON_UPLOAD', false),
         storeHashesOnChain: getEnvBool('STORE_HASHES_ON_CHAIN', false),
     },
+    otpDevMode: getEnvBool('OTP_DEV_MODE', false),
+    otpTokenSecret: getEnv('OTP_TOKEN_SECRET', ''),
 };
 // Validation
 function validateConfig() {
     const requiredVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGODB_URI'];
     const missing = requiredVars.filter(v => !process.env[v]);
     if (missing.length > 0) {
-        console.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
+        logger_1.default.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
     }
 }
 exports.default = exports.config;

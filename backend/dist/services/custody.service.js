@@ -77,28 +77,29 @@ class ChainOfCustodyService {
             currentEventHash: eventHash,
             metadata,
         };
-        // Update chain
-        chain.events.push(event);
-        chain.eventCount = chain.events.length;
-        chain.lastEventAt = new Date();
-        chain.chainHash = eventHash;
-        // Update custody holder if transferred
+        // Atomic update — prevents race conditions on concurrent evidence uploads
+        const updateFields = {
+            $push: { events: event },
+            $inc: { eventCount: 1 },
+            $set: {
+                lastEventAt: new Date(),
+                chainHash: eventHash,
+            },
+        };
         if (eventType === custody_model_1.CustodyEventType.CUSTODY_TRANSFERRED) {
-            chain.currentHolder = performedBy;
-            chain.currentHolderName = performedByName;
+            updateFields.$set.currentHolder = performedBy;
+            updateFields.$set.currentHolderName = performedByName;
         }
-        // Update integrity status if provided
         if (integrityStatus) {
-            chain.integrityStatus = integrityStatus;
-            chain.lastIntegrityCheck = new Date();
+            updateFields.$set.integrityStatus = integrityStatus;
+            updateFields.$set.lastIntegrityCheck = new Date();
         }
-        // Update blockchain info if synced
         if (transactionHash && blockNumber) {
-            chain.blockchainVerified = true;
-            chain.blockchainTxHash = transactionHash;
-            chain.blockchainBlockNumber = blockNumber;
+            updateFields.$set.blockchainVerified = true;
+            updateFields.$set.blockchainTxHash = transactionHash;
+            updateFields.$set.blockchainBlockNumber = blockNumber;
         }
-        await chain.save();
+        chain = await custody_model_1.ChainOfCustody.findOneAndUpdate({ evidenceId }, updateFields, { new: true });
         // Add verification to history
         if (eventType === custody_model_1.CustodyEventType.VERIFICATION_COMPLETED || eventType === custody_model_1.CustodyEventType.VERIFICATION_FAILED) {
             await this.recordVerification({

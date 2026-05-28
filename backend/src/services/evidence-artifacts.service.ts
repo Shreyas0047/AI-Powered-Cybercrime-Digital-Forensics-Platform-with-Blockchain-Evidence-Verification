@@ -3,6 +3,7 @@
  * Reads forensic evidence artifacts from monitoring directories
  */
 
+import logger from '../config/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import type {
@@ -182,7 +183,7 @@ export class EvidenceArtifactsService {
           }
         }
       } catch (error) {
-        console.error(`Error scanning directory ${dir}:`, error);
+        logger.error(`Error scanning directory ${dir}:`, error);
       }
     }
 
@@ -235,7 +236,7 @@ export class EvidenceArtifactsService {
         timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       }
     } catch (error) {
-      console.error(`Error loading artifact detail ${artifact.filePath}:`, error);
+      logger.error(`Error loading artifact detail ${artifact.filePath}:`, error);
     }
 
     return {

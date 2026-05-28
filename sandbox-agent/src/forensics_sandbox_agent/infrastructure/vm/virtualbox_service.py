@@ -7,6 +7,8 @@ integrating controller, snapshot management, and execution management.
 from __future__ import annotations
 
 import logging
+import time
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -38,8 +40,21 @@ from forensics_sandbox_agent.infrastructure.execution.sandbox_execution_manager 
 )
 
 
+class VmLifecycleState:
+    """State machine for VM lifecycle."""
+    UNINITIALIZED = "uninitialized"
+    STOPPED = "stopped"
+    STARTING = "starting"
+    RUNNING = "running"
+    RESTORING_SNAPSHOT = "restoring_snapshot"
+    ERROR = "error"
+
+
 class VirtualBoxVmService:
     """Comprehensive VM service for the forensics sandbox."""
+
+    MAX_VM_START_RETRIES = 3
+    VM_START_RETRY_DELAY_SECONDS = 5
 
     def __init__(self, settings: AppSettings, logger: logging.Logger) -> None:
         self._settings = settings
@@ -75,6 +90,7 @@ class VirtualBoxVmService:
         )
 
         self._current_forensic_session: Optional[ForensicSession] = None
+        self._lifecycle_state: str = VmLifecycleState.UNINITIALIZED
 
     @property
     def vm_name(self) -> str:
@@ -150,26 +166,50 @@ class VirtualBoxVmService:
         }
 
     def start_vm(self, headless: Optional[bool] = None) -> None:
-        """Start the VM."""
+        """Start the VM with retry logic."""
         headless_mode = self._execution_config.start_headless if headless is None else headless
+        self._lifecycle_state = VmLifecycleState.STARTING
         self._logger.info(f"Starting VM (headless={headless_mode})")
-        self._vm_controller.start_vm(headless=headless_mode)
+
+        last_error = None
+        for attempt in range(self.MAX_VM_START_RETRIES):
+            try:
+                self._vm_controller.start_vm(headless=headless_mode)
+                self._lifecycle_state = VmLifecycleState.RUNNING
+                self._logger.info(f"VM started successfully on attempt {attempt + 1}")
+                return
+            except Exception as e:
+                last_error = e
+                self._logger.warning(f"VM start attempt {attempt + 1}/{self.MAX_VM_START_RETRIES} failed: {e}")
+                if attempt < self.MAX_VM_START_RETRIES - 1:
+                    time.sleep(self.VM_START_RETRY_DELAY_SECONDS)
+
+        self._lifecycle_state = VmLifecycleState.ERROR
+        raise RuntimeError(f"Failed to start VM after {self.MAX_VM_START_RETRIES} attempts: {last_error}")
 
     def stop_vm(self, force: bool = False) -> None:
         """Stop the VM."""
         self._logger.info("Stopping VM")
         self._vm_controller.stop_vm(force=force)
+        self._lifecycle_state = VmLifecycleState.STOPPED
+
+    def cleanup_orphaned_vbox_processes(self, kill_all: bool = False) -> None:
+        """Clean up orphaned VirtualBox processes via the VM controller."""
+        self._vm_controller.cleanup_orphaned_vbox_processes(kill_all=kill_all)
 
     def restore_clean_snapshot(self) -> None:
         """Restore VM to clean baseline snapshot."""
         self._logger.info("Restoring clean snapshot")
+        self._lifecycle_state = VmLifecycleState.RESTORING_SNAPSHOT
         self._vm_controller.ensure_powered_off()
         self._snapshot_manager.restore_clean_snapshot()
+        self._lifecycle_state = VmLifecycleState.STOPPED
 
     def execute_simulator(
         self,
         simulator: SimulatorDescriptor,
         auto_rollback: bool = True,
+        session_id: Optional[str] = None,
     ) -> ForensicSession:
         """Execute a simulator in the sandbox.
 
@@ -182,10 +222,9 @@ class VirtualBoxVmService:
         """
         self._logger.info(f"Executing simulator: {simulator.id}")
         self._logger.info(f"Simulator executable path: {simulator.executable_path}")
-        self._execution_manager.validate_simulator(simulator)
 
         session = ForensicSession(
-            session_id=self._generate_session_id(),
+            session_id=session_id or self._generate_session_id(),
             simulator_id=simulator.id,
             status=SessionStatus.PREPARING,
             vm_name=self._vm_controller.vm_name,
@@ -194,41 +233,27 @@ class VirtualBoxVmService:
         self._current_forensic_session = session
 
         try:
-            self._logger.info("Step 1: Ensuring VM is powered off")
+            self._execution_manager.validate_simulator(simulator)
+            self._logger.info("Phase 1/6: Powering off VM")
             session.execution_phase = ExecutionPhase.VM_READY
             self._vm_controller.ensure_powered_off()
-            self._logger.info("Step 1 complete: VM powered off")
 
-            self._logger.info("Step 2: Restoring clean snapshot")
+            self._logger.info("Phase 2/6: Restoring clean snapshot")
             session.execution_phase = ExecutionPhase.SNAPSHOT_RESTORED
             self._snapshot_manager.restore_clean_snapshot()
-            self._logger.info("Step 2 complete: Snapshot restored")
 
-            self._logger.info("Step 3: Waiting for snapshot restoration to complete...")
-            import time
-            time.sleep(3)
-            self._logger.info("Step 3 complete")
-
-            self._logger.info("Step 4: Starting VM for execution")
+            self._logger.info("Phase 3/6: Starting VM for execution")
             self._vm_controller.ensure_running(headless=self._execution_config.start_headless)
-            self._logger.info("Step 4 complete: VM started")
 
-            self._logger.info("Step 5: Waiting for VM hardware initialization...")
-            time.sleep(10)
-            self._logger.info("Step 5 complete")
-
-            self._logger.info("Step 6: Waiting for Guest Additions to be ready...")
+            self._logger.info("Phase 4/6: Waiting for Guest Additions...")
             if not self._vbox.wait_for_guest_additions(self._vm_controller.vm_name, timeout=300):
                 raise ExecutionError("Guest Additions not ready - cannot transfer simulator to VM")
-            self._logger.info("Step 6 complete: Guest Additions ready")
 
-            self._logger.info("Step 7: Transferring simulator to VM")
-            self._logger.info(f"  - Source: {simulator.executable_path}")
+            self._logger.info("Phase 5/6: Transferring simulator to VM")
             session.execution_phase = ExecutionPhase.TRANSFERRING_SIMULATOR
             self._execution_manager.transfer_simulator(simulator)
-            self._logger.info("Step 7 complete: Simulator transferred")
 
-            self._logger.info("Step 8: Executing simulator")
+            self._logger.info("Phase 6/6: Executing simulator")
             session.execution_phase = ExecutionPhase.EXECUTING
             session.start_execution()
 
@@ -239,15 +264,13 @@ class VirtualBoxVmService:
             session.metadata["telemetry_log"] = exec_session.telemetry_log
 
             self._logger.info(f"Simulator execution completed with exit code: {session.exit_code}")
-            self._logger.info(f"STDOUT length: {len(exec_session.stdout) if exec_session.stdout else 0}")
-            self._logger.info(f"STDERR: {exec_session.stderr[:500] if exec_session.stderr else 'None'}")
 
             if session.exit_code == 0:
                 session.complete(session.exit_code)
             else:
                 session.fail(f"Exit code: {session.exit_code}")
 
-            self._execution_manager.cleanup_simulator(simulator.id)
+            self._execution_manager.cleanup_simulator(simulator.id, simulator.executable_path)
 
             if auto_rollback and self._rollback_config.enabled:
                 session.mark_rollback()
@@ -264,12 +287,17 @@ class VirtualBoxVmService:
                     self._snapshot_manager.perform_rollback()
                 except Exception as rollback_exc:
                     self._logger.error("Rollback after execution failure also failed: %s", rollback_exc)
+            # Clean up orphaned VBox processes on failure (something went wrong)
+            self.cleanup_orphaned_vbox_processes(kill_all=True)
             raise
+        finally:
+            # Always clean up tracked PIDs when the session completes or fails
+            self.cleanup_orphaned_vbox_processes(kill_all=False)
 
-    def _generate_session_id(self) -> str:
+    @staticmethod
+    def _generate_session_id() -> str:
         """Generate unique session identifier."""
-        import uuid
-        return f"fs_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        return f"fs_{uuid.uuid4().hex[:12]}"
 
     def get_execution_history(self) -> list[dict]:
         """Get execution history (placeholder for future persistence)."""

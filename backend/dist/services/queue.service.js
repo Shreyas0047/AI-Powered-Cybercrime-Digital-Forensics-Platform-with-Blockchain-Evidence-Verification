@@ -45,8 +45,10 @@ class QueueWorker {
     handlers = new Map();
     processing = new Map();
     config;
-    isProcessing = false;
+    inFlightJobs = 0;
+    isStopped = false;
     processingInterval;
+    timers = [];
     constructor(config = {}) {
         this.config = {
             name: config.name || 'default',
@@ -97,22 +99,17 @@ class QueueWorker {
      * Process queued jobs
      */
     async processQueue() {
-        if (this.isProcessing)
+        if (this.inFlightJobs >= this.config.maxConcurrent)
             return;
-        this.isProcessing = true;
-        try {
-            while (this.queue.length > 0 && this.processing.size < this.config.maxConcurrent) {
-                const job = this.queue.shift();
-                if (job) {
-                    this.processing.set(job.id, job);
-                    this.processJob(job).catch(err => {
-                        logger_1.default.error(`Job processing error: ${job.id}`, { error: err.message });
-                    });
-                }
-            }
-        }
-        finally {
-            this.isProcessing = false;
+        const available = this.config.maxConcurrent - this.inFlightJobs;
+        const jobs = this.queue.splice(0, available);
+        if (jobs.length === 0)
+            return;
+        this.inFlightJobs += jobs.length;
+        await Promise.allSettled(jobs.map(job => this.processJob(job)));
+        this.inFlightJobs -= jobs.length;
+        if (this.queue.length > 0 && !this.isStopped) {
+            this.processQueue();
         }
     }
     /**
@@ -137,7 +134,8 @@ class QueueWorker {
         try {
             // Set timeout for processing
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Job processing timeout')), this.config.processTimeout);
+                const processTimer = setTimeout(() => reject(new Error('Job processing timeout')), this.config.processTimeout);
+                this.timers.push(processTimer);
             });
             job.result = await Promise.race([handler(job), timeoutPromise]);
             job.status = JobStatus.COMPLETED;
@@ -161,7 +159,7 @@ class QueueWorker {
                 job.nextRetryAt = new Date(Date.now() + this.config.retryDelay).toISOString();
                 job.error = error.message;
                 // Re-queue for retry
-                setTimeout(() => {
+                const retryTimer = setTimeout(() => {
                     const insertIndex = this.queue.findIndex(j => j.priority > job.priority);
                     if (insertIndex === -1) {
                         this.queue.push(job);
@@ -171,6 +169,7 @@ class QueueWorker {
                     }
                     this.processQueue();
                 }, this.config.retryDelay);
+                this.timers.push(retryTimer);
             }
             else {
                 job.status = JobStatus.FAILED;
@@ -179,7 +178,21 @@ class QueueWorker {
             }
         }
         this.processing.delete(job.id);
+        if (this.processing.size > 1000) {
+            this.cleanupOldJobs();
+        }
         this.processQueue(); // Process next job
+    }
+    /**
+     * Clean up completed/failed jobs older than 30 minutes
+     */
+    cleanupOldJobs() {
+        const cutoff = Date.now() - 30 * 60 * 1000;
+        this.queue = this.queue.filter(j => {
+            const createdAt = new Date(j.createdAt).getTime();
+            const isOld = cutoff - createdAt > 0;
+            return !(isOld && (j.status === JobStatus.COMPLETED || j.status === JobStatus.FAILED));
+        });
     }
     /**
      * Get job duration in ms
@@ -250,10 +263,13 @@ class QueueWorker {
      * Stop automatic processing
      */
     stop() {
+        this.isStopped = true;
         if (this.processingInterval) {
             clearInterval(this.processingInterval);
             this.processingInterval = undefined;
         }
+        this.timers.forEach(t => clearTimeout(t));
+        this.timers = [];
         logger_1.default.info(`Queue worker stopped: ${this.config.name}`);
     }
 }

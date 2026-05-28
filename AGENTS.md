@@ -135,6 +135,28 @@ simulators/             # 5 SAFE educational malware simulators
 | **realtimeStore** | Live connection state |
 | **themeStore** | Dark/light theme management |
 
+## Recent Fixes (2026-05-22)
+
+### Root Cause: PyInstaller silently failing to bundle forensics_simulator_common
+- `simulators/common/src/forensics_simulator_common/runtime/base.py` line 75 had `emit_network_activity` defined at module level (unindented) instead of as a class method, causing IndentationError
+- PyInstaller silently skips modules with syntax errors during `hiddenimports` collection, so `forensics_simulator_common` was never bundled
+- At runtime inside VM: `ModuleNotFoundError: No module named 'forensics_simulator_common.runtime.base'`
+- Session returned `exit_code=None` with only ~2 events because the simulator crashed immediately
+
+### Fixes Applied
+1. **Fixed IndentationError** in `base.py` — `emit_network_activity` now properly indented as class method
+2. **Added missing `emit_encryption_sim`** method to `BaseSimulatorRuntime` (ransomware was calling `self.emit_encryption_sim()` but it only existed on `SimulatorLogger`)
+3. **Fixed trojan runtime** — changed `self._logger.emit_process_spawn()` → `self.emit_process_spawn()` (method exists on base class, not logger)
+4. **Added `technique` parameter** to `emit_file_operation` signature — simulators pass `technique=` but parameter was missing
+5. **Fixed log triplication** in `runtime_api.py:stream_session_update` — removed redundant `self._system_log_queue.put_nowait()` since `_add_log()` already enqueues
+6. **Fixed doubled path** in `session_orchestrator.py:_fetch_simulator_log` — `C:\\sandbox\\tmp\\tmp\\` → `C:\\sandbox\\tmp\\`
+7. **Rebuilt all 5 simulators** with `--clean` — all executables work locally (no ModuleNotFoundError, no AttributeError)
+
+### Current Status
+- All 5 simulators compile and run locally (verified on host)
+- Session flow should now return proper exit_code=0 with full event collection
+- Log duplication in frontend resolved
+
 ## Safety Features
 
 All components enforce:
@@ -268,4 +290,4 @@ BLOCKCHAIN_ENABLED=false
 ```
 
 ## Current Date
-2026-05-15
+2026-05-22

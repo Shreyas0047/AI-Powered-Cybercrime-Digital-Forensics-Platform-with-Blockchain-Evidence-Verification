@@ -190,9 +190,17 @@ class WebSocketService {
                 connection.rooms.add(`sandbox:${sessionId}`);
             }
         });
+        // Unsubscribe from sandbox updates
+        socket.on('unsubscribe:sandbox', (sessionId) => {
+            const connection = this.connections.get(socket.id);
+            if (connection) {
+                socket.leave(`sandbox:${sessionId}`);
+                connection.rooms.delete(`sandbox:${sessionId}`);
+            }
+        });
         // Handle disconnect
         socket.on(SocketEvent.DISCONNECT, (reason) => {
-            this.handleDisconnect(socket.id, reason);
+            this.handleDisconnect(socket, reason);
         });
         // Handle errors
         socket.on('error', (error) => {
@@ -200,12 +208,18 @@ class WebSocketService {
         });
     }
     // Handle disconnection
-    handleDisconnect(socketId, reason) {
-        const connection = this.connections.get(socketId);
+    handleDisconnect(socket, reason) {
+        const connection = this.connections.get(socket.id);
         if (connection) {
-            logger_1.default.info(`Socket disconnected: ${socketId} - Reason: ${reason} - User: ${connection.userId}`);
-            this.connections.delete(socketId);
-            this.logEvent(SocketEvent.DISCONNECT, socketId, { reason, userId: connection.userId });
+            // Leave all rooms except the default room
+            for (const room of socket.rooms) {
+                if (room !== socket.id) {
+                    socket.leave(room);
+                }
+            }
+            this.connections.delete(socket.id);
+            logger_1.default.info(`Socket disconnected: ${socket.id} - Reason: ${reason} - User: ${connection.userId}`);
+            this.logEvent(SocketEvent.DISCONNECT, socket.id, { reason, userId: connection.userId });
         }
     }
     // Check if user can access investigation based on role

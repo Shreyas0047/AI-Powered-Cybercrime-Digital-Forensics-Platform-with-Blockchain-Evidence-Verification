@@ -15,7 +15,7 @@ class SandboxExecutionConfig:
     guest_username: str = "guestuser"
     guest_password: str = "guest"
     guest_additions_timeout_seconds: int = 300
-    start_headless: bool = True
+    start_headless: bool = False
     transfer_runtime_dlls: bool = False
     enable_auto_rollback: bool = True
     max_concurrent_sessions: int = 1

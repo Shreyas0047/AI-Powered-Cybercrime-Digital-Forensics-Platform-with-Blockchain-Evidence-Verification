@@ -9,15 +9,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.evidenceController = exports.EvidenceController = void 0;
 const multer_1 = __importDefault(require("multer"));
+const fs_1 = __importDefault(require("fs"));
 const services_1 = require("../services");
+const models_1 = require("../models");
 const config_1 = require("../config");
 // Configure multer for file uploads
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         const tempDir = './uploads/temp';
-        const fs = require('fs');
-        if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir, { recursive: true });
+        if (!fs_1.default.existsSync(tempDir)) {
+            fs_1.default.mkdirSync(tempDir, { recursive: true });
         }
         cb(null, tempDir);
     },
@@ -90,6 +91,42 @@ class EvidenceController {
                 limit: Number(limit),
                 total: result.total,
                 totalPages: result.totalPages,
+            },
+        };
+        res.json(response);
+    }
+    /**
+     * GET /api/v1/evidence
+     * List all evidence with pagination, search, and type filters
+     */
+    async findAll(req, res) {
+        const { page = 1, limit = 20, search, type } = req.query;
+        const query = {};
+        if (type) {
+            query.type = type;
+        }
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+            ];
+        }
+        const total = await models_1.Evidence.countDocuments(query);
+        const totalPages = Math.ceil(total / Math.min(Number(limit), 100));
+        const evidence = await models_1.Evidence.find(query)
+            .sort({ createdAt: -1 })
+            .skip((Number(page) - 1) * Number(limit))
+            .limit(Math.min(Number(limit), 100))
+            .lean();
+        const response = {
+            success: true,
+            message: 'Evidence retrieved',
+            data: evidence,
+            meta: {
+                page: Number(page),
+                limit: Number(limit),
+                total,
+                totalPages,
             },
         };
         res.json(response);

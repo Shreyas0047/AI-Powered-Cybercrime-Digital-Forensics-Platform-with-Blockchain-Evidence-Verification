@@ -1,8 +1,13 @@
-import axios, { type AxiosInstance, type AxiosError } from 'axios';
+import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type {
   User, LoginCredentials, Investigation, Evidence, Alert,
   SandboxSession, TelemetryAnalysisResult, InvestigationSummary,
-  ApiResponse, PaginationParams, DashboardStats
+  ApiResponse, PaginationParams, DashboardStats,
+  BehavioralPattern, ProcessBehavior, Anomaly,
+  InvestigationCluster, InvestigationRelationship, CorrelationInsight,
+  AnalyticsDashboardData, ComprehensiveForensicReport,
+  SessionForensicAnalysis, SessionComparison,
+  ThreatIntelAnalysis
 } from '../types';
 import type {
   BlockchainStatus, VerificationStats, VerificationResult,
@@ -17,37 +22,103 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
+function normalizeEntity<T extends Record<string, any>>(entity: T): T {
+  if (!entity) return entity;
+  return {
+    ...entity,
+    id: entity.id || entity._id,
+  };
+}
+
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value: unknown) => void; reject: (reason?: unknown) => void }> = [];
+
+function processQueue(error: unknown, token: string | null = null) {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+}
+
 class ApiService {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
+      timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
     // Request interceptor for auth token
-    this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
-      if (token) {
+    this.client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+      const token = localStorage.getItem('accessToken');
+      if (token && token !== 'null' && token !== 'undefined') {
         config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
     });
 
-    // Response interceptor for error handling
+    // Response interceptor with refresh token logic
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token');
+      async (error: AxiosError) => {
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+        if (error.response?.status !== 401 || originalRequest._retry) {
+          return Promise.reject(error);
+        }
+
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           window.location.href = '/login';
+          return Promise.reject(error);
         }
-        return Promise.reject(error);
+
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          }).then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return this.client(originalRequest);
+          });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+          const newAccessToken = response.data?.data?.tokens?.accessToken;
+          const newRefreshToken = response.data?.data?.tokens?.refreshToken;
+
+          if (newAccessToken) {
+            localStorage.setItem('accessToken', newAccessToken);
+          }
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken);
+          }
+
+          processQueue(null, newAccessToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return this.client(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
       }
     );
   }
@@ -58,7 +129,6 @@ class ApiService {
     const accessToken = response.data?.data?.tokens?.accessToken;
     const refreshToken = response.data?.data?.tokens?.refreshToken;
     if (accessToken) {
-      localStorage.setItem('token', accessToken);
       localStorage.setItem('accessToken', accessToken);
     }
     if (refreshToken) {
@@ -69,10 +139,8 @@ class ApiService {
 
   async logout(): Promise<void> {
     await this.client.post('/auth/logout');
-    localStorage.removeItem('token');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
   }
 
   async getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
@@ -80,31 +148,63 @@ class ApiService {
     return response.data;
   }
 
-  // Dashboard
+  async forgotPassword(email: string): Promise<ApiResponse<{ devOtp?: string }>> {
+    const response = await this.client.post('/auth/forgot-password', { email });
+    return response.data;
+  }
+
+  async verifyResetOtp(email: string, otp: string): Promise<ApiResponse<{ verified: boolean; passwordResetToken: string }>> {
+    const response = await this.client.post('/auth/verify-reset-otp', { email, otp });
+    return response.data;
+  }
+
+  async resetPassword(email: string, password: string, confirmPassword: string, token: string): Promise<ApiResponse<void>> {
+    const response = await this.client.post('/auth/reset-password', { email, password, confirmPassword, token });
+    return response.data;
+  }
+
+  // Dashboard - Use analytics dashboard endpoint
   async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
-    const response = await this.client.get('/dashboard/stats');
+    const response = await this.client.get('/analytics/dashboard');
     return response.data;
   }
 
   // Investigations
   async getInvestigations(params: PaginationParams): Promise<ApiResponse<Investigation[]>> {
     const response = await this.client.get('/investigations', { params });
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw?.data)) raw.data = raw.data.map(normalizeEntity);
+    return raw;
   }
 
   async getInvestigation(id: string): Promise<ApiResponse<Investigation>> {
     const response = await this.client.get(`/investigations/${id}`);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.investigation) {
+      raw.data = raw.data.investigation;
+    }
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   async createInvestigation(data: Partial<Investigation>): Promise<ApiResponse<Investigation>> {
     const response = await this.client.post('/investigations', data);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.investigation) {
+      raw.data = raw.data.investigation;
+    }
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   async updateInvestigation(id: string, data: Partial<Investigation>): Promise<ApiResponse<Investigation>> {
     const response = await this.client.put(`/investigations/${id}`, data);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.investigation) {
+      raw.data = raw.data.investigation;
+    }
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   async deleteInvestigation(id: string): Promise<ApiResponse<void>> {
@@ -115,24 +215,34 @@ class ApiService {
   // Evidence
   async getEvidence(params: PaginationParams): Promise<ApiResponse<Evidence[]>> {
     const response = await this.client.get('/evidence', { params });
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw?.data)) raw.data = raw.data.map(normalizeEntity);
+    return raw;
   }
 
   async getEvidenceByInvestigation(investigationId: string, params: PaginationParams): Promise<ApiResponse<Evidence[]>> {
     const response = await this.client.get(`/evidence/investigation/${investigationId}`, { params });
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw?.data)) raw.data = raw.data.map(normalizeEntity);
+    return raw;
   }
 
   async getEvidenceById(id: string): Promise<ApiResponse<Evidence>> {
     const response = await this.client.get(`/evidence/${id}`);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.evidence) raw.data = raw.data.evidence;
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   async uploadEvidence(formData: FormData): Promise<ApiResponse<Evidence>> {
     const response = await this.client.post('/evidence/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.evidence) raw.data = raw.data.evidence;
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   async verifyEvidence(id: string): Promise<ApiResponse<{ verified: boolean }>> {
@@ -148,22 +258,35 @@ class ApiService {
   // Alerts
   async getAlerts(params: PaginationParams): Promise<ApiResponse<Alert[]>> {
     const response = await this.client.get('/alerts', { params });
-    return response.data;
+    const raw = response.data;
+    if (Array.isArray(raw?.data)) {
+      raw.data = raw.data.map(normalizeEntity);
+    }
+    return raw;
   }
 
   async getAlert(id: string): Promise<ApiResponse<Alert>> {
     const response = await this.client.get(`/alerts/${id}`);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.alert) raw.data = raw.data.alert;
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   async acknowledgeAlert(id: string): Promise<ApiResponse<Alert>> {
     const response = await this.client.post(`/alerts/${id}/acknowledge`);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.alert) raw.data = raw.data.alert;
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   async resolveAlert(id: string, resolution: Record<string, unknown>): Promise<ApiResponse<Alert>> {
     const response = await this.client.post(`/alerts/${id}/resolve`, resolution);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.alert) raw.data = raw.data.alert;
+    if (raw?.data) raw.data = normalizeEntity(raw.data);
+    return raw;
   }
 
   // Sandbox Runtime
@@ -182,7 +305,9 @@ class ApiService {
     auto_rollback?: boolean;
     timeout_seconds?: number;
   }): Promise<ApiResponse<{ session: { session_id: string; state: string; simulator_id: string; created_at: string; updated_at: string; error?: string } }>> {
-    const response = await this.client.post('/sandbox/sessions', request);
+    const response = await this.client.post('/sandbox/sessions', request, {
+      timeout: 20000,
+    });
     return response.data;
   }
 
@@ -198,6 +323,11 @@ class ApiService {
 
   async getSandboxTelemetryUrl(): Promise<ApiResponse<{ url: string }>> {
     const response = await this.client.get('/sandbox/telemetry-url');
+    return response.data;
+  }
+
+  async getSandboxLogsUrl(): Promise<ApiResponse<{ url: string }>> {
+    const response = await this.client.get('/sandbox/logs-url');
     return response.data;
   }
 
@@ -241,7 +371,11 @@ class ApiService {
 
   async getSandboxSession(id: string): Promise<ApiResponse<SandboxSession>> {
     const response = await this.client.get(`/sandbox/sessions/${id}`);
-    return response.data;
+    const raw = response.data;
+    if (raw?.data?.session) {
+      raw.data = raw.data.session;
+    }
+    return raw;
   }
 
   async getSandboxStats(): Promise<ApiResponse<{ total: number; byStatus: Record<string, number>; avgDuration: number }>> {
@@ -470,7 +604,7 @@ async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<Ha
     name: string; email: string; password: string;
     role: string; department: string;
   }>): Promise<ApiResponse<{ user: User }>> {
-    const response = await this.client.patch(`/users/${id}`, data);
+    const response = await this.client.put(`/users/${id}`, data);
     return response.data;
   }
 
@@ -482,6 +616,112 @@ async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<Ha
   async getUserActivity(userId: string): Promise<ApiResponse<{ activity: unknown[] }>> {
     const response = await this.client.get(`/users/${userId}/activity`);
     return response.data;
+  }
+
+  // Analytics & Forensic Analysis
+  async getBehavioralPatterns(): Promise<ApiResponse<{ patterns: BehavioralPattern[] }>> {
+    const response = await this.client.get('/analytics/patterns');
+    return response.data;
+  }
+
+  async analyzeProcessBehavior(evidenceId: string): Promise<ApiResponse<{ behavior: ProcessBehavior }>> {
+    const response = await this.client.post('/analytics/analyze-behavior', { evidenceId });
+    return response.data;
+  }
+
+  async detectAnomalies(evidenceId: string): Promise<ApiResponse<{ anomalies: Anomaly[] }>> {
+    const response = await this.client.post('/analytics/detect-anomalies', { evidenceId });
+    return response.data;
+  }
+
+  async analyzeBaseline(investigationId: string): Promise<ApiResponse<unknown>> {
+    const response = await this.client.post('/analytics/baseline', { investigationId });
+    return response.data;
+  }
+
+  async getInvestigationClusters(): Promise<ApiResponse<{ clusters: InvestigationCluster[] }>> {
+    const response = await this.client.get('/analytics/clusters');
+    return response.data;
+  }
+
+  async getInvestigationRelationships(investigationId: string): Promise<ApiResponse<{ relationships: InvestigationRelationship[] }>> {
+    const response = await this.client.get(`/analytics/clusters/${investigationId}/relationships`);
+    return response.data;
+  }
+
+  async scoreRelationship(investigationId: string, targetInvestigationId: string): Promise<ApiResponse<{ score: number }>> {
+    const response = await this.client.post(`/analytics/clusters/${investigationId}/score`, { targetInvestigationId });
+    return response.data;
+  }
+
+  async getCorrelationInsights(investigationId?: string): Promise<ApiResponse<{ insights: CorrelationInsight[] }>> {
+    const response = await this.client.get('/analytics/insights', { params: { investigationId } });
+    return response.data;
+  }
+
+  async getClusterVisualization(): Promise<ApiResponse<unknown>> {
+    const response = await this.client.get('/analytics/cluster-visualization');
+    return response.data;
+  }
+
+  async getAnalyticsDashboard(): Promise<ApiResponse<AnalyticsDashboardData>> {
+    const response = await this.client.get('/analytics/dashboard');
+    return response.data;
+  }
+
+  // Comprehensive Forensic Report
+  async getComprehensiveForensicReport(investigationId: string): Promise<ApiResponse<ComprehensiveForensicReport>> {
+    try {
+      const response = await this.client.get(`/investigations/${investigationId}/forensic-report`);
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return {
+          success: false,
+          message: 'Forensic report not yet generated for this investigation. Run a sandbox analysis first.',
+          data: null as any,
+        };
+      }
+      throw error;
+    }
+  }
+
+  async analyzeSessionForensic(sessionId: string): Promise<ApiResponse<SessionForensicAnalysis>> {
+    const response = await this.client.post('/analytics/session/analyze', { sessionId });
+    return response.data;
+  }
+
+  async compareSessions(sessionIds: string[]): Promise<ApiResponse<SessionComparison>> {
+    const response = await this.client.post('/analytics/sessions/compare', { sessionIds });
+    return response.data;
+  }
+
+  // Threat Intelligence Analysis
+  async analyzeDocument(file: File): Promise<ApiResponse<ThreatIntelAnalysis>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.client.post('/analysis/document', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+    return response.data;
+  }
+
+  async analyzeUrl(url: string): Promise<ApiResponse<ThreatIntelAnalysis>> {
+    const response = await this.client.post('/analysis/url', { url }, { timeout: 60000 });
+    return response.data;
+  }
+
+  async getThreatIntelAnalysis(id: string): Promise<ApiResponse<ThreatIntelAnalysis>> {
+    const response = await this.client.get(`/analysis/${id}`);
+    return response.data;
+  }
+
+  async getThreatIntelHistory(params?: {
+    page?: number; limit?: number; type?: string; status?: string;
+  }): Promise<ApiResponse<ThreatIntelAnalysis[]>> {
+    const response = await this.client.get('/analysis', { params });
+    return response.data as ApiResponse<ThreatIntelAnalysis[]>;
   }
 
   // Generic HTTP methods for flexibility

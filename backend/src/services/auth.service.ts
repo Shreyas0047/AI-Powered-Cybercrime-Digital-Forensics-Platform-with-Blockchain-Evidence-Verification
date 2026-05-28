@@ -11,9 +11,7 @@ import { securityLogger } from '../config/logger';
 import { User, AuditLog } from '../models';
 import { JwtPayload, AuthTokens, UserRole, AuditAction, Permission, RolePermissions } from '../types';
 import { UnauthorizedError, ForbiddenError, ValidationError } from '../middleware';
-
-// Password validation
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+import { PASSWORD_REGEX, PASSWORD_ERROR } from '../constants';
 
 export class AuthService {
   /**
@@ -37,8 +35,8 @@ export class AuthService {
 
     // Validate password strength
     if (!PASSWORD_REGEX.test(data.password)) {
-      throw new ValidationError('Password does not meet security requirements', [
-        { field: 'password', message: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character' },
+      throw new ValidationError(PASSWORD_ERROR, [
+        { field: 'password', message: PASSWORD_ERROR },
       ]);
     }
 
@@ -81,15 +79,21 @@ export class AuthService {
   /**
    * Login with email and password
    */
-  async login(email: string, password: string, ipAddress?: string, userAgent?: string): Promise<{ user: any; tokens: AuthTokens }> {
+  async login(email?: string, password?: string, ipAddress?: string, userAgent?: string): Promise<{ user: any; tokens: AuthTokens }> {
+    // Validate inputs
+    if (!email || !password) {
+      throw new UnauthorizedError('Email and password are required');
+    }
+
     // Find user with password
-    const user: any = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const normalizedEmail = email.toLowerCase();
+    const user: any = await User.findOne({ email: normalizedEmail }).select('+password');
 
     if (!user) {
       // Log failed attempt
       securityLogger.warn({
         message: 'Failed login attempt - user not found',
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         ipAddress,
       });
       await (AuditLog as any).log({
@@ -99,7 +103,7 @@ export class AuthService {
         userAgent,
         status: 'failed',
         errorMessage: 'User not found',
-        details: { email: email.toLowerCase() },
+        details: { email: normalizedEmail },
       });
       throw new UnauthorizedError('Invalid email or password');
     }
@@ -285,8 +289,8 @@ export class AuthService {
 
     // Validate new password
     if (!PASSWORD_REGEX.test(newPassword)) {
-      throw new ValidationError('New password does not meet security requirements', [
-        { field: 'newPassword', message: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character' },
+      throw new ValidationError(PASSWORD_ERROR, [
+        { field: 'newPassword', message: PASSWORD_ERROR },
       ]);
     }
 
@@ -297,7 +301,7 @@ export class AuthService {
     await user.save();
 
     await (AuditLog as any).log({
-      userId,
+      userId: user._id.toString(),
       action: AuditAction.PASSWORD_CHANGE,
       entityType: 'User',
       ipAddress,
@@ -305,6 +309,43 @@ export class AuthService {
     });
 
     logger.info(`Password changed for user: ${userId}`);
+  }
+
+  /**
+   * Reset password (forgot password flow)
+   */
+  async resetPassword(email: string, newPassword: string, ipAddress?: string): Promise<void> {
+    const normalizedEmail = email.toLowerCase();
+    const user: any = await User.findOne({ email: normalizedEmail }).select('+password');
+
+    if (!user) {
+      throw new UnauthorizedError('Invalid reset request');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedError('Account is inactive');
+    }
+
+    if (!PASSWORD_REGEX.test(newPassword)) {
+      throw new ValidationError(PASSWORD_ERROR, [
+        { field: 'newPassword', message: PASSWORD_ERROR },
+      ]);
+    }
+
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    user.failedLoginAttempts = 0;
+    await user.save();
+
+    await (AuditLog as any).log({
+      userId: user._id.toString(),
+      action: AuditAction.PASSWORD_RESET_COMPLETE,
+      entityType: 'User',
+      ipAddress,
+      status: 'success',
+    });
+
+    logger.info(`Password reset completed for user: ${normalizedEmail}`);
   }
 
   /**

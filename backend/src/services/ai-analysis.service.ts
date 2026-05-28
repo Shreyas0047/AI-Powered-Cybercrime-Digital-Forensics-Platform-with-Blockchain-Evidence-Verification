@@ -6,6 +6,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { config } from '../config';
 import { AppError } from '../middleware';
+import { websocketService } from './websocket.service';
 
 export interface TelemetryEvent {
   timestamp: string;
@@ -76,14 +77,31 @@ export class AIAnalysisService {
   }
 
   /**
+   * Normalize granular simulator event types to coarse AI-service types
+   */
+  private normalizeEventType(eventType: string): string {
+    const t = eventType.toLowerCase();
+    if (/file|encrypt|write|delete/.test(t)) return 'file';
+    if (/process|start|terminate/.test(t)) return 'process';
+    if (/registry/.test(t)) return 'registry';
+    if (/network|connect|dns|beacon/.test(t)) return 'network';
+    return 'behavior';
+  }
+
+  /**
    * Analyze telemetry events from sandbox execution
    */
   async analyzeTelemetry(request: TelemetryAnalysisRequest): Promise<TelemetryAnalysisResult> {
     try {
+      const normalizedEvents = request.events.map((event) => ({
+        ...event,
+        type: this.normalizeEventType(event.type),
+      }));
+
       const response = await this.client.post('/api/v1/analyze/telemetry', {
         session_id: request.sessionId,
         investigation_id: request.investigationId,
-        events: request.events,
+        events: normalizedEvents,
         metadata: request.metadata,
       });
 
@@ -91,11 +109,26 @@ export class AIAnalysisService {
         throw new AppError('AI analysis failed', 500, 'AI_ANALYSIS_FAILED');
       }
 
-      return response.data.data;
+      const result = response.data.data;
+      websocketService.emitAIAnalysisComplete(request.investigationId || request.sessionId, result);
+      return result;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNREFUSED') {
-          throw new AppError('AI service unavailable', 503, 'AI_SERVICE_UNAVAILABLE');
+        if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+          // Degraded mode — return a minimal result instead of crashing
+          return {
+            session_id: request.sessionId,
+            analysis_timestamp: new Date().toISOString(),
+            total_events: request.events.length,
+            suspicious_events: 0,
+            threat_classification: {},
+            severity_score: 0,
+            severity_level: 'informational',
+            anomalies: [],
+            behavioral_summary: 'AI service unavailable — analysis deferred. Events stored for later processing.',
+            recommendations: ['AI service is currently unreachable. Retry analysis when service recovers.'],
+            confidence: 0,
+          };
         }
         if (error.response) {
           throw new AppError(`AI service error: ${error.response.status}`, error.response.status, 'AI_SERVICE_ERROR');
@@ -118,8 +151,8 @@ export class AIAnalysisService {
 
       return response.data.data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-        throw new AppError('AI service unavailable', 503, 'AI_SERVICE_UNAVAILABLE');
+      if (axios.isAxiosError(error) && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT')) {
+        return { alert_id: alertData.alertId, ai_severity_assessment: alertData.severity, confidence: 0, analysis_summary: 'AI service unavailable — enrichment deferred.', recommendations: [] };
       }
       throw new AppError('Failed to enrich alert', 500, 'ENRICHMENT_FAILED');
     }
@@ -138,8 +171,8 @@ export class AIAnalysisService {
 
       return response.data.data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
-        throw new AppError('AI service unavailable', 503, 'AI_SERVICE_UNAVAILABLE');
+      if (axios.isAxiosError(error) && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT')) {
+        return { executive_summary: 'AI service unavailable — summary deferred.', key_findings: [], recommendations: ['Retry when AI service recovers.'], confidence: 0 };
       }
       throw new AppError('Failed to generate summary', 500, 'SUMMARIZATION_FAILED');
     }

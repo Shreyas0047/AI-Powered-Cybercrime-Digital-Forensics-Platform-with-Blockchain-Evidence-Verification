@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { cn } from '../../utils/helpers';
+import { cn } from '../../design-system';
 
 interface ModalProps {
   isOpen: boolean;

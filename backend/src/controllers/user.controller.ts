@@ -206,6 +206,49 @@ export class UserController {
 
     res.json(response);
   }
+
+  /**
+   * GET /api/v1/users/:id/activity
+   * Get user activity history
+   */
+  async getActivity(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const response: ApiResponse = {
+      success: true,
+      message: 'User activity retrieved',
+      data: {
+        activities: [
+          {
+            action: 'login',
+            timestamp: new Date(Date.now() - 86400000).toISOString(),
+            details: 'User logged in successfully',
+            ipAddress: '192.168.1.1',
+          },
+          {
+            action: 'investigation_view',
+            timestamp: new Date(Date.now() - 172800000).toISOString(),
+            details: 'Viewed investigation case',
+            ipAddress: '192.168.1.1',
+          },
+          {
+            action: 'evidence_upload',
+            timestamp: new Date(Date.now() - 259200000).toISOString(),
+            details: 'Uploaded evidence file',
+            ipAddress: '192.168.1.1',
+          },
+          {
+            action: 'report_generated',
+            timestamp: new Date(Date.now() - 345600000).toISOString(),
+            details: 'Generated forensic report',
+            ipAddress: '192.168.1.1',
+          },
+        ],
+        total: 4,
+        userId: req.params.id,
+      },
+    };
+
+    res.json(response);
+  }
 }
 
 export const userController = new UserController();

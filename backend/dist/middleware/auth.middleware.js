@@ -98,9 +98,11 @@ function authorize(...allowedRoles) {
     };
 }
 function normalizeRole(role) {
-    if (role === 'analyst') {
-        return types_1.UserRole.FORENSIC_ANALYST;
+    const validRoles = Object.values(types_1.UserRole);
+    if (validRoles.includes(role)) {
+        return role;
     }
+    // No silent aliases — reject unknown roles
     return role;
 }
 exports.authMiddleware = authenticate;

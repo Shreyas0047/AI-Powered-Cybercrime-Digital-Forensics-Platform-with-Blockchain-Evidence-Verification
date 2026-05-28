@@ -117,10 +117,12 @@ class SimulatorLogger:
         simulator_id: str,
         log_file: Optional[str] = None,
         simulator_family: str = "",
-        campaign_id: Optional[str] = None
+        campaign_id: Optional[str] = None,
+        session_id: str = ""
     ):
         self._simulator_id = simulator_id
         self._simulator_family = simulator_family
+        self._session_id = session_id
         self._campaign_id = campaign_id or f"campaign_{int(time.time())}"
         self._execution_chain_id = str(uuid.uuid4())
         self._current_stage = "initialization"
@@ -160,6 +162,7 @@ class SimulatorLogger:
         event = SimulatorTelemetryEvent(
             event_type=event_type.value,
             simulator_id=self._simulator_id,
+            session_id=self._session_id,
             campaign_id=self._campaign_id,
             execution_chain_id=self._execution_chain_id,
             simulator_family=self._simulator_family,

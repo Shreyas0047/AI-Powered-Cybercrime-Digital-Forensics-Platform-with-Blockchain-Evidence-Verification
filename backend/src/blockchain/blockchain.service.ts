@@ -3,6 +3,7 @@
  * Web3 provider management and blockchain communication
  */
 
+import logger from '../config/logger';
 import { blockchainConfig } from './config';
 import { Web3Transaction, SmartContractCall } from './types';
 
@@ -16,7 +17,7 @@ export class BlockchainService {
   async initialize(): Promise<void> {
     if (this.initialized) return;
     if (!blockchainConfig.enabled) {
-      console.log('[Blockchain] Blockchain disabled - running in offline mode');
+      logger.info('[Blockchain] Blockchain disabled - running in offline mode');
       return;
     }
 
@@ -29,12 +30,12 @@ export class BlockchainService {
 
       // Verify connection
       const network = await this.provider.getNetwork();
-      console.log(`[Blockchain] Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
+      logger.info(`[Blockchain] Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
 
       this.initialized = true;
     } catch (error) {
-      console.warn('[Blockchain] Failed to initialize Web3 provider:', error);
-      console.warn('[Blockchain] Running in offline mode - local verification only');
+      logger.warn('[Blockchain] Failed to initialize Web3 provider:', error);
+      logger.warn('[Blockchain] Running in offline mode - local verification only');
     }
   }
 

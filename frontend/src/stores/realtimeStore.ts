@@ -33,6 +33,8 @@ interface RealtimeState {
 const MAX_TELEMETRY_BUFFER = 50;
 const MAX_LIVE_ALERTS = 20;
 
+let unsubscribers: (() => void)[] | null = null;
+
 export const useRealtimeStore = create<RealtimeState>((set, get) => ({
   isConnected: false,
   socketId: null,
@@ -43,44 +45,66 @@ export const useRealtimeStore = create<RealtimeState>((set, get) => ({
   telemetryBuffer: [],
 
   connect: () => {
-    // Set up socket event listeners
-    socketService.on(SocketEvent.CONNECT, () => {
-      set({
-        isConnected: true,
-        socketId: socketService.getSocketId() || null,
-      });
-      console.log('[RealtimeStore] Socket connected');
-    });
+    if (unsubscribers) {
+      unsubscribers.forEach(fn => fn());
+      unsubscribers = null;
+    }
 
-    socketService.on(SocketEvent.DISCONNECT, () => {
-      set({
-        isConnected: false,
-        socketId: null,
-      });
-      console.log('[RealtimeStore] Socket disconnected');
-    });
+    // Clean up any existing listeners before re-registering
+    socketService.disconnect();
 
-    socketService.on<AlertNotification>(SocketEvent.ALERT_NEW, (alert) => {
-      get().addLiveAlert(alert);
-    });
+    const subs: (() => void)[] = [];
 
-    socketService.on<DashboardStatsUpdate>(SocketEvent.DASHBOARD_STATS_UPDATE, (stats) => {
-      get().updateDashboardStats(stats);
-    });
+    subs.push(
+      socketService.on(SocketEvent.CONNECT, () => {
+        set({
+          isConnected: true,
+          socketId: socketService.getSocketId() || null,
+        });
+      })
+    );
 
-    socketService.on<SandboxSessionUpdate>(SocketEvent.SANDBOX_SESSION_UPDATE, (session) => {
-      get().updateSandboxSession(session);
-    });
+    subs.push(
+      socketService.on(SocketEvent.DISCONNECT, () => {
+        set({
+          isConnected: false,
+          socketId: null,
+        });
+      })
+    );
 
-    socketService.on<TelemetryEvent>(SocketEvent.TELEMETRY_EVENT, (event) => {
-      get().addTelemetryEvent(event);
-    });
+    subs.push(
+      socketService.on<AlertNotification>(SocketEvent.ALERT_NEW, (alert) => {
+        get().addLiveAlert(alert);
+      })
+    );
+
+    subs.push(
+      socketService.on<DashboardStatsUpdate>(SocketEvent.DASHBOARD_STATS_UPDATE, (stats) => {
+        get().updateDashboardStats(stats);
+      })
+    );
+
+    subs.push(
+      socketService.on<SandboxSessionUpdate>(SocketEvent.SANDBOX_SESSION_UPDATE, (session) => {
+        get().updateSandboxSession(session);
+      })
+    );
+
+    // Store cleanup function
+    unsubscribers = subs;
 
     // Connect to socket
     socketService.connect();
   },
 
   disconnect: () => {
+    // Clean up registered listeners first
+    if (unsubscribers) {
+      unsubscribers.forEach(fn => fn());
+      unsubscribers = null;
+    }
+
     socketService.disconnect();
     set({
       isConnected: false,

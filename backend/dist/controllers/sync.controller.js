@@ -389,6 +389,10 @@ class SyncController {
             }
             // Update session with heartbeat data
             session.lastHeartbeat = new Date();
+            // Allow agent to push status updates (e.g., mark as failed on shutdown)
+            if (status) {
+                session.status = status;
+            }
             session.vmState = vmState;
             session.memoryUsage = memoryUsage;
             session.cpuUsage = cpuUsage;

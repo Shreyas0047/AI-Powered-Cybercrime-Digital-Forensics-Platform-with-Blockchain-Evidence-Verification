@@ -187,9 +187,22 @@ class SnapshotManager:
                 else:
                     raise
 
-            # Allow VirtualBox to release the lock after stopping
+            # Poll for VirtualBox session lock release (SessionState="none") after stopping
             import time
-            time.sleep(3)
+            self._logger.debug("Polling for SessionState=none after VM stop")
+            for _poll_attempt in range(30):
+                try:
+                    _info = self._vbox.get_machine_readable_info(self._config.vm_name)
+                    if _info.get("SessionState", "").lower() == "none":
+                        self._logger.debug("Session lock released after VM stop")
+                        break
+                except Exception:
+                    pass
+                time.sleep(1)
+            else:
+                self._logger.warning(
+                    "SessionState did not reach 'none' within 30s after VM stop, proceeding anyway"
+                )
 
             last_error = None
             for attempt in range(3):

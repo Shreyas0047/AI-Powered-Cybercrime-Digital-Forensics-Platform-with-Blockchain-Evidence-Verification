@@ -1,49 +1,74 @@
-import { useEffect } from 'react';
-import { Radio, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Radio, RefreshCw } from 'lucide-react';
 import { useRealtimeStore } from '../../stores/realtimeStore';
-import { cn } from '../../utils/helpers';
+import { cn } from '../../design-system';
+import api from '../../services/api';
 
 export function ConnectionStatus() {
   const { isConnected, connect, disconnect } = useRealtimeStore();
+  const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Poll backend health every 15s as a fallback
+  useEffect(() => {
+    let cancelled = false;
+    const checkHealth = async () => {
+      try {
+        const res = await api.get('/operations/health');
+        if (!cancelled) setApiHealthy(res.success);
+      } catch {
+        if (!cancelled) setApiHealthy(false);
+      }
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
-    // Auto-connect on mount
     connect();
-
     return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       disconnect();
     };
   }, [connect, disconnect]);
 
   const handleReconnect = () => {
     disconnect();
-    setTimeout(() => connect(), 500);
+    if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    reconnectTimer.current = setTimeout(() => connect(), 500);
   };
+
+  // Three states:
+  // - Live: WS connected (best)
+  // - Connected: REST API up, WS reconnecting (acceptable)
+  // - Offline: REST API also down (degraded)
+  const status = isConnected ? 'live' : apiHealthy ? 'connected' : apiHealthy === false ? 'offline' : 'connecting';
+
+  const config = {
+    live: { dot: 'text-emerald-400', label: 'Live', labelColor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+    connected: { dot: 'text-emerald-400', label: 'Connected', labelColor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+    connecting: { dot: 'text-[#6c6862]', label: 'Connecting', labelColor: 'text-[#a09b93]', bg: 'bg-white/5', border: 'border-white/10' },
+    offline: { dot: 'text-rose-400', label: 'Offline', labelColor: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+  }[status];
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200">
-        <Radio className={cn('w-3.5 h-3.5', isConnected ? 'text-green-500' : 'text-slate-400')} />
-        {isConnected ? (
-          <>
-            <Wifi className="w-3.5 h-3.5 text-green-500" />
-            <span className="text-xs font-medium text-green-600">Live</span>
-          </>
-        ) : (
-          <>
-            <WifiOff className="w-3.5 h-3.5 text-red-500" />
-            <span className="text-xs font-medium text-red-500">Offline</span>
-          </>
-        )}
+      <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-md border', config.bg, config.border)}>
+        <Radio strokeWidth={1.75} className={cn('w-3 h-3', config.dot, status === 'live' && 'animate-pulse')} />
+        <span className={cn('text-[11px] font-mono font-medium', config.labelColor)}>{config.label}</span>
       </div>
 
-      {!isConnected && (
+      {status === 'offline' && (
         <button
           onClick={handleReconnect}
-          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+          className="p-1 rounded-md hover:bg-white/5 transition-colors"
           title="Reconnect"
         >
-          <RefreshCw className="w-4 h-4 text-slate-500" />
+          <RefreshCw strokeWidth={1.5} className="w-3.5 h-3.5 text-[#a09b93]" />
         </button>
       )}
     </div>

@@ -19,6 +19,7 @@ const logger_1 = __importDefault(require("./config/logger"));
 const database_1 = require("./config/database");
 const routes_1 = __importDefault(require("./routes"));
 const middleware_1 = require("./middleware");
+const fs_1 = __importDefault(require("fs"));
 const services_1 = require("./services");
 const websocket_service_1 = require("./services/websocket.service");
 // Initialize Express app
@@ -46,7 +47,7 @@ app.use((0, cors_1.default)({
 // Body parsing
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
-// Rate limiting
+// Rate limiting — consistent across all environments
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: config_1.config.security.rateLimitWindowMs,
     max: config_1.config.security.rateLimitMaxRequests,
@@ -68,6 +69,24 @@ app.use((0, morgan_1.default)('combined', {
 }));
 // Initialize storage
 services_1.evidenceService.initializeStorage();
+if (!fs_1.default.existsSync('./uploads/analysis')) {
+    fs_1.default.mkdirSync('./uploads/analysis', { recursive: true });
+}
+// Request sanitization and integrity check
+app.use(middleware_1.sanitizeRequest);
+app.use((req, res, next) => {
+    const { valid, threats } = (0, middleware_1.validateRequestIntegrity)(req);
+    if (!valid) {
+        (0, middleware_1.logSecurityEvent)(req, 'REQUEST_INTEGRITY_VIOLATION', {
+            threat: threats.join(', '),
+            severity: 'high',
+            ip: req.ip,
+        });
+        res.status(400).json({ success: false, message: 'Request rejected' });
+        return;
+    }
+    next();
+});
 // API routes
 app.use(routes_1.default);
 // Root endpoint

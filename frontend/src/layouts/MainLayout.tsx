@@ -3,16 +3,16 @@
  * Professional SOC-style layout with refined navigation and workspace
  */
 
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
-import { useTheme } from '../providers/ThemeProvider';
+import { StatusBanner } from '../components/ui/StatusBanner';
+import { useStatusStore } from '../stores/statusStore';
 import { cn } from '../design-system';
 import {
   Home,
-  ChevronRight,
   LayoutDashboard,
   Search,
   Folder,
@@ -28,7 +28,6 @@ import {
   Settings,
   Users,
   History,
-  Shield,
 } from 'lucide-react';
 
 interface BreadcrumbItem {
@@ -74,7 +73,6 @@ const pageNames: Record<string, string> = {
 };
 
 export function MainLayout() {
-  const { isDark } = useTheme();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -88,12 +86,7 @@ export function MainLayout() {
   const currentPage = pageNames[location.pathname] || 'Page';
 
   return (
-    <div
-      className={cn(
-        'min-h-screen transition-colors duration-300',
-        isDark ? 'bg-[#0a0e17]' : 'bg-slate-50'
-      )}
-    >
+    <div className="min-h-screen" style={{ background: 'var(--surface-base)' }}>
       {/* Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -112,6 +105,14 @@ export function MainLayout() {
           breadcrumbs={breadcrumbs}
           currentPage={currentPage}
         />
+
+        {/* Global Status Bar */}
+        <div className="px-6 pt-4">
+          <StatusBanner
+            status={useStatusStore((s) => s.status)}
+            onDismiss={useStatusStore((s) => s.dismiss)}
+          />
+        </div>
 
         {/* Page Content with Smooth Transitions */}
         <main className="flex-1 p-6">

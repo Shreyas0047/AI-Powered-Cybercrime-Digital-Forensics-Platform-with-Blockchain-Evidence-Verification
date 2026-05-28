@@ -18,20 +18,19 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { theme, actualTheme, setTheme, toggleTheme } = useThemeStore();
-  const isDark = actualTheme === 'dark';
+  const { theme, setTheme, toggleTheme } = useThemeStore();
+  // Editorial dark mode — warm grays, not cyber blue
+  const actualTheme: 'light' | 'dark' = 'dark';
+  const isDark = true;
 
   useEffect(() => {
-    // Apply theme class to document
     document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(actualTheme);
-
-    // Update meta theme-color for mobile browsers
+    document.documentElement.classList.add('dark');
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) {
-      metaTheme.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
+      metaTheme.setAttribute('content', '#0d0c0e');
     }
-  }, [actualTheme, isDark]);
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, actualTheme, setTheme, toggleTheme, isDark }}>

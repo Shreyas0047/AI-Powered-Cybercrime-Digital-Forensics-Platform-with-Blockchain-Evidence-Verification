@@ -193,6 +193,7 @@ const reportSchema = new mongoose_1.Schema({
     generatedAt: {
         type: Date,
         default: Date.now,
+        // NOTE: duplicates createdAt from timestamps:true - use createdAt instead
     },
     generatedBy: {
         type: mongoose_1.Schema.Types.ObjectId,
@@ -275,7 +276,6 @@ const reportSchema = new mongoose_1.Schema({
 // ============================================
 reportSchema.index({ investigationId: 1, type: 1 });
 reportSchema.index({ investigationId: 1, status: 1 });
-reportSchema.index({ status: 1 });
 reportSchema.index({ generatedAt: -1 });
 reportSchema.index({ generatedBy: 1 });
 reportSchema.index({ tags: 1 });

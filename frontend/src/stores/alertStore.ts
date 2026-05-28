@@ -45,32 +45,36 @@ export const useAlertStore = create<AlertState>((set, get) => ({
             total: response.meta?.total || 0,
             totalPages: response.meta?.totalPages || 0,
           },
-          isLoading: false,
         });
+      } else if (response.message) {
+        set({ error: response.message });
       }
     } catch (error) {
       set({
-        isLoading: false,
         error: 'Failed to fetch alerts',
       });
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   fetchAlert: async (id: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, currentAlert: null });
     try {
       const response = await api.getAlert(id);
       if (response.success && response.data) {
         set({
           currentAlert: response.data,
-          isLoading: false,
         });
+      } else if (response.message) {
+        set({ error: response.message });
       }
     } catch (error) {
       set({
-        isLoading: false,
         error: 'Failed to fetch alert',
       });
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -85,14 +89,16 @@ export const useAlertStore = create<AlertState>((set, get) => ({
         set({
           alerts,
           currentAlert: response.data,
-          isLoading: false,
         });
+      } else if (response.message) {
+        set({ error: response.message });
       }
     } catch (error) {
       set({
-        isLoading: false,
         error: 'Failed to acknowledge alert',
       });
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -107,14 +113,16 @@ export const useAlertStore = create<AlertState>((set, get) => ({
         set({
           alerts,
           currentAlert: response.data,
-          isLoading: false,
         });
+      } else if (response.message) {
+        set({ error: response.message });
       }
     } catch (error) {
       set({
-        isLoading: false,
         error: 'Failed to resolve alert',
       });
+    } finally {
+      set({ isLoading: false });
     }
   },
 

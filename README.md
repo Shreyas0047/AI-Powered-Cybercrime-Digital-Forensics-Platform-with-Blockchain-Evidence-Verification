@@ -35,8 +35,10 @@ PORT=3000
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/forensics_platform
 JWT_SECRET=<32-character-minimum-secret>
 JWT_REFRESH_SECRET=<32-character-minimum-secret>
+SANDBOX_AGENT_SECRET=<shared-secret-for-agent-auth>
 AI_SERVICE_ENABLED=false
 AI_SERVICE_URL=http://localhost:8000
+AI_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 BLOCKCHAIN_ENABLED=false
 ```
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import shutil
 import time
 import random
 import logging
@@ -180,8 +181,8 @@ class BotnetSimulatorRuntime(BaseSimulatorRuntime):
             with open(config_path, "w") as f:
                 f.write(config_data)
             self.emit_file_operation("create", config_path, technique="T1105")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Failed to create worm config: {e}")
 
     def _generate_replication_payload(self) -> None:
         """Generate replication payload."""
@@ -193,8 +194,8 @@ class BotnetSimulatorRuntime(BaseSimulatorRuntime):
                 with open(payload_path, "w") as f:
                     f.write(payload_data)
                 self.emit_file_operation("create", payload_path, technique="T1105")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to create replication payload: {e}")
 
     def _simulate_network_discovery(self) -> None:
         """Simulate network discovery."""
@@ -298,8 +299,8 @@ class BotnetSimulatorRuntime(BaseSimulatorRuntime):
                 with open(autorun_path, "w") as f:
                     f.write("[autorun]\nopen=setup.exe")
                 self.emit_file_operation("create", autorun_path, technique="T1091")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to create autorun: {e}")
             
             time.sleep(0.2)
 
@@ -335,8 +336,8 @@ class BotnetSimulatorRuntime(BaseSimulatorRuntime):
                         tactic="LateralMovement",
                         risk_score=70
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to self-replicate: {e}")
             time.sleep(0.1)
 
     def _simulate_psexec_style_movement(self) -> None:
@@ -455,10 +456,24 @@ class BotnetSimulatorRuntime(BaseSimulatorRuntime):
 
     def _remove_propagation_artifacts(self) -> None:
         """Remove propagation artifacts."""
+        removed_count = 0
+        if os.path.isdir(self._staging_dir):
+            try:
+                for file in os.listdir(self._staging_dir):
+                    file_path = os.path.join(self._staging_dir, file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    self.emit_file_operation("delete", file_path, technique="T1070")
+                    removed_count += 1
+            except Exception as e:
+                logging.error(f"Propagation artifact removal error: {e}")
+        
         if self._logger:
             self._logger.emit_suspicious_behavior(
                 "propagation_cleanup",
-                {"files_removed": len(os.listdir(self._staging_dir)) if os.path.exists(self._staging_dir) else 0},
+                {"files_removed": removed_count},
                 technique="T1070",
                 tactic="DefenseEvasion",
                 risk_score=30
@@ -480,9 +495,9 @@ def main():
     """Entry point for botnet simulator."""
     manifest = SimulatorManifest(
         simulator_id="botnet-simulator",
-        display_name="Botnet Simulator",
+        display_name="Sample Delta",
         version="1.0.0",
-        description="Simulates botnet/worm-like behavior for forensic training",
+        description="Unknown threat sample - awaiting behavioral analysis",
         category=SimulatorCategory.BOTNET,
         entry_point="botnet_simulator.runtime",
         allowed_directories=["C:/Windows/Temp", "C:/sandbox", "C:/temp"],

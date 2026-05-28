@@ -197,7 +197,6 @@ userSchema.methods.resetFailedLogin = async function () {
     await this.save();
 };
 // Indexes
-userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ isLocked: 1 });

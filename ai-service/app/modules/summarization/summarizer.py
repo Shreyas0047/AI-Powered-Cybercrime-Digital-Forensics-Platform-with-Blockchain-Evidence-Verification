@@ -100,9 +100,9 @@ class ForensicSummarizer:
         # Add severity context
         summary += f"Overall severity score: {severity_score:.0f}/100 ({severity_level.value.upper()})."
 
-        # Truncate to executive length
+        # Truncate to executive length (at word boundary)
         if len(summary) > config.EXECUTIVE_SUMMARY_LENGTH:
-            summary = summary[:config.EXECUTIVE_SUMMARY_LENGTH - 3] + "..."
+            summary = summary[:config.EXECUTIVE_SUMMARY_LENGTH].rsplit(' ', 1)[0] + "..."
 
         return summary
 

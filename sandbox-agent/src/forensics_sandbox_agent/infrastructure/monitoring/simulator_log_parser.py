@@ -117,7 +117,7 @@ class SimulatorLogParser:
             payload = ast.literal_eval(payload_str.strip())
             if not isinstance(payload, dict):
                 payload = {"raw": str(payload)}
-        except (json.JSONDecodeError, (ValueError, SyntaxError)):
+        except (json.JSONDecodeError, ValueError, SyntaxError):
             clean = payload_str.strip()
             try:
                 payload = json.loads(clean)
@@ -134,7 +134,11 @@ class SimulatorLogParser:
             return
 
         category, operation = self.EVENT_TYPE_MAP[event_type]
-        severity = self.SEVERITY_MAP.get(level.lower(), EventSeverity.INFO)
+        payload_severity = payload.get("severity", payload.get("level", level))
+        if isinstance(payload_severity, str):
+            severity = self.SEVERITY_MAP.get(payload_severity.lower(), EventSeverity.INFO)
+        else:
+            severity = EventSeverity.INFO
 
         if category == EventCategory.FILE_SYSTEM:
             self._emit_file_event(

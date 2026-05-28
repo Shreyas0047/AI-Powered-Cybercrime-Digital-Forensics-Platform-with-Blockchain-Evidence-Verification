@@ -88,8 +88,8 @@ const evidenceSchema = new mongoose_1.Schema({
     // Core identification
     evidenceId: {
         type: String,
+        required: true,
         unique: true,
-        index: true,
     },
     // Investigation reference
     investigationId: {
@@ -260,9 +260,11 @@ const evidenceSchema = new mongoose_1.Schema({
         }],
     customMetadata: {
         type: mongoose_1.Schema.Types.Mixed,
+        // User-provided metadata (manual input)
     },
     metadata: {
         type: mongoose_1.Schema.Types.Mixed,
+        // System-generated metadata (auto-populated)
     },
     // External references
     externalIds: [String],
@@ -338,7 +340,7 @@ evidenceSchema.methods.verify = function (userId) {
 evidenceSchema.methods.markAnalyzed = function (analysisSummary) {
     this.analysisCompleted = true;
     this.analysisSummary = analysisSummary;
-    this.status = EvidenceStatus.ANALYZING;
+    this.status = EvidenceStatus.VERIFIED;
     return this.save();
 };
 // ============================================

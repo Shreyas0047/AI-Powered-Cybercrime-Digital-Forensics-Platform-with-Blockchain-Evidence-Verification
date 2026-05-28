@@ -127,7 +127,6 @@ const investigationSchema = new mongoose_1.Schema({
         type: String,
         enum: Object.values(InvestigationStatus),
         default: InvestigationStatus.PENDING,
-        index: true,
     },
     priority: {
         type: String,
@@ -290,7 +289,6 @@ investigationSchema.index({ createdAt: -1 });
 investigationSchema.index({ leadAnalyst: 1, status: 1 });
 investigationSchema.index({ assignedAnalysts: 1 });
 investigationSchema.index({ category: 1, status: 1 });
-investigationSchema.index({ caseNumber: 1 });
 investigationSchema.index({ tags: 1 });
 investigationSchema.index({ priority: 1, createdAt: -1 });
 investigationSchema.index({ 'timeline.timestamp': -1 });

@@ -6,6 +6,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.investigationController = exports.InvestigationController = void 0;
 const services_1 = require("../services");
+const models_1 = require("../models");
 class InvestigationController {
     /**
      * POST /api/v1/investigations
@@ -75,6 +76,32 @@ class InvestigationController {
             success: true,
             message: 'Investigation updated',
             data: { investigation },
+        };
+        res.json(response);
+    }
+    /**
+     * GET /api/v1/investigations/:id/forensic-report
+     * Get forensic report for investigation
+     */
+    async getForensicReport(req, res) {
+        const investigation = await services_1.investigationService.findById(req.params.id);
+        // Get related evidence with analysis
+        const evidence = await models_1.Evidence.find({ investigationId: req.params.id })
+            .sort({ createdAt: -1 })
+            .lean();
+        const response = {
+            success: true,
+            message: 'Forensic report retrieved',
+            data: {
+                investigation,
+                evidence,
+                analysis: {
+                    summary: `Forensic analysis report for investigation: ${investigation.title}`,
+                    evidenceCount: evidence.length,
+                    generatedAt: new Date().toISOString(),
+                    generatedBy: req.user?.id,
+                },
+            },
         };
         res.json(response);
     }

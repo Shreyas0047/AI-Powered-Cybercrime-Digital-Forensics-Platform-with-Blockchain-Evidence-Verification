@@ -4,7 +4,7 @@ Core Data Models for AI Analysis
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -52,7 +52,7 @@ class TelemetryAnalysisRequest(BaseModel):
 class TelemetryAnalysisResult(BaseModel):
     """Result of telemetry analysis"""
     session_id: str
-    analysis_timestamp: datetime = Field(default_factory=datetime.now)
+    analysis_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     total_events: int
     suspicious_events: int
     threat_classification: Dict[str, float]

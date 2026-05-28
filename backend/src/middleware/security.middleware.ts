@@ -20,29 +20,31 @@ export const correlationIdMiddleware = (
   next();
 };
 
-// SQL/NoSQL injection detection patterns
+// SQL/NoSQL injection detection patterns — contextual to reduce false positives
 const SQL_INJECTION_PATTERNS = [
-  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION)\b)/i,
-  /(--|;|\/\*|\*\/|@@|@)/,
-  /(\bOR\b\s+\d+=\d+|\bAND\b\s+\d+=\d+)/i,
-  /('|").*(\bOR\b|\bAND\b).*=.*/i,
+  // Actual attack vectors: tautologies, UNION-based, stacked queries
+  /('\s*(OR|AND)\s+['"]?\d+['"]?\s*=\s*['"]?\d+)/i,
+  /(\bUNION\b\s+(ALL\s+)?SELECT\b)/i,
+  /(;\s*(DROP|ALTER|CREATE|TRUNCATE|INSERT|UPDATE|DELETE)\b)/i,
+  /(\bEXEC(UTE)?\s+(xp_|sp_))/i,
+  /(--\s*$|\/\*[\s\S]*?\*\/)/,
 ];
 
 const NOSQL_INJECTION_PATTERNS = [
-  /\$where/i,
-  /\$eval/i,
-  /\$func/i,
-  /\btrue\b.*\btrue\b/,
-  /\/\$.*\$/,
+  /\$where\s*:/i,
+  /\$gt\s*:|\ \$lt\s*:|\ \$ne\s*:|\ \$regex\s*:/i,
+  /\$expr\s*:/i,
+  /\{\s*"\$[a-z]+"/i,
 ];
 
-// XSS detection patterns
+// XSS detection patterns — focused on executable contexts
 const XSS_PATTERNS = [
-  /<script[^>]*>.*?<\/script>/gi,
-  /<iframe[^>]*>.*?<\/iframe>/gi,
-  /on\w+\s*=/gi,
-  /javascript:/gi,
-  /<[^>]*onerror\s*=/gi,
+  /<script[\s>]/gi,
+  /<iframe[\s>]/gi,
+  /\bon\w+\s*=\s*["'`]/gi,
+  /javascript\s*:/gi,
+  /<svg[\s>].*\bon\w+\s*=/gi,
+  /<img[^>]+\bonerror\b/gi,
 ];
 
 // Path traversal patterns
@@ -155,8 +157,8 @@ export function sanitizeInput(input: string): string {
 
 // Strict rate limiter for authentication endpoints
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per window
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later',

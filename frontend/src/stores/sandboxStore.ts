@@ -41,20 +41,6 @@ interface ExecutionStatus {
   }>;
 }
 
-interface TelemetryEvent {
-  session_id: string;
-  timestamp: string;
-  event_type: string;
-  category: string;
-  data: Record<string, any>;
-}
-
-interface LogEntry {
-  timestamp: string;
-  message: string;
-  level: string;
-}
-
 interface ActiveSession {
   session_id: string;
   state: string;
@@ -77,8 +63,6 @@ interface SandboxState {
   monitoringStatus: MonitoringStatus | null;
   executionStatus: ExecutionStatus | null;
   activeSession: ActiveSession | null;
-  telemetryEvents: TelemetryEvent[];
-  logs: LogEntry[];
   isLoading: boolean;
   isExecuting: boolean;
   error: string | null;
@@ -92,20 +76,36 @@ interface SandboxState {
   fetchSession: (id: string) => Promise<void>;
   fetchStats: () => Promise<void>;
   fetchSimulators: () => Promise<void>;
-  fetchHealth: () => Promise<void>;
+  fetchHealth: () => Promise<boolean>;
+  fetchMonitoringStatus: () => Promise<void>;
+  fetchExecutionStatus: () => Promise<void>;
   startSession: (simulatorId: string, options?: { auto_rollback?: boolean; timeout_seconds?: number }) => Promise<{ success: boolean; sessionId?: string; message: string }>;
   stopSession: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   terminateSession: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   resetVm: () => Promise<{ success: boolean; message: string }>;
   startRuntime: () => Promise<{ success: boolean; message: string }>;
-  connectTelemetry: () => void;
-  disconnectTelemetry: () => void;
   launchAgent: () => Promise<{ success: boolean; message: string }>;
   clearCurrentSession: () => void;
-  clearTelemetry: () => void;
 }
 
-let ws: WebSocket | null = null;
+function normalizeSession(session: any): SandboxSession & { simulator: string; error?: string } {
+  return {
+    ...session,
+    id: session.id || session._id || session.sessionId || session.session_id,
+    sessionId: session.sessionId || session.session_id,
+    simulatorId: session.simulatorId || session.simulator_id || session.simulator,
+    simulatorName: session.simulatorName || session.simulator_name || session.simulator_id || session.simulator,
+    simulator: session.simulator || session.simulatorId || session.simulator_id || session.simulatorName,
+    startTime: session.startTime || session.created_at || session.createdAt,
+    endTime: session.endTime || session.updated_at,
+    status: session.status || session.state || 'pending',
+    duration: Math.floor(session.duration || 0),
+    eventsCollected: session.eventsCollected || session.events_collected || 0,
+    evidenceFiles: session.evidenceFiles || [],
+    errorMessages: session.errorMessages || (session.error ? [session.error] : []),
+    error: session.error || session.errorMessages?.[0],
+  };
+}
 
 export const useSandboxStore = create<SandboxState>((set, get) => ({
   sessions: [],
@@ -116,8 +116,6 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
   monitoringStatus: null,
   executionStatus: null,
   activeSession: null,
-  telemetryEvents: [],
-  logs: [],
   isLoading: false,
   isExecuting: false,
   error: null,
@@ -133,14 +131,16 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
     try {
       const response = await api.getSandboxSessions(params);
       if (response.success && response.data) {
+        const sessions = response.data.map(normalizeSession);
         set({
-          sessions: response.data,
+          sessions,
           pagination: {
             page: response.meta?.page || 1,
             limit: response.meta?.limit || 20,
             total: response.meta?.total || 0,
             totalPages: response.meta?.totalPages || 0,
           },
+          activeSession: get().activeSession || null,
           isLoading: false,
         });
       }
@@ -150,11 +150,11 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
   },
 
   fetchSession: async (id: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, currentSession: null });
     try {
       const response = await api.getSandboxSession(id);
       if (response.success && response.data) {
-        set({ currentSession: response.data, isLoading: false });
+        set({ currentSession: normalizeSession(response.data), isLoading: false });
       }
     } catch (error) {
       set({ isLoading: false, error: 'Failed to fetch sandbox session' });
@@ -176,22 +176,25 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
   fetchSimulators: async () => {
     try {
       const response = await api.getSandboxSimulators();
-      if (response.success && response.data?.simulators) {
-        set({ simulators: response.data.simulators });
-      }
+      // Always update simulators (even to empty array on error)
+      set({ simulators: response.data?.simulators || [] });
     } catch (error) {
       console.error('Failed to fetch simulators:', error);
+      set({ simulators: [] });
     }
   },
 
-  fetchHealth: async () => {
+  fetchHealth: async (): Promise<boolean> => {
     try {
       const response = await api.getSandboxHealth();
       if (response.success && response.data?.health) {
         set({ health: response.data.health });
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Failed to fetch sandbox health:', error);
+      return false;
     }
   },
 
@@ -199,7 +202,7 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
     try {
       const response = await api.getSandboxMonitoringStatus();
       if (response.success && response.data?.status) {
-        set({ monitoringStatus: response.data.status });
+        set({ monitoringStatus: response.data.status as MonitoringStatus });
       }
     } catch (error) {
       console.error('Failed to fetch monitoring status:', error);
@@ -210,25 +213,23 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
     try {
       const response = await api.getSandboxExecutionStatus();
       if (response.success && response.data?.status) {
-        set({ executionStatus: response.data.status });
+        const current = (response.data.status as any).current_session;
+        set({
+          executionStatus: response.data.status as ExecutionStatus,
+          activeSession: current ? {
+            session_id: current.session_id || current.sessionId,
+            state: current.state || current.status || 'running',
+            simulator_id: current.simulator_id || current.simulatorId,
+            created_at: current.created_at || current.startTime || new Date().toISOString(),
+            updated_at: current.updated_at || current.updatedAt || new Date().toISOString(),
+            error: current.error,
+          } : get().activeSession,
+        });
       }
     } catch (error) {
       console.error('Failed to fetch execution status:', error);
     }
   },
-
-  fetchLogs: async (limit: number = 200, level?: string) => {
-    try {
-      const response = await api.getSandboxLogs(limit, level);
-      if (response.success && response.data?.logs) {
-        set({ logs: response.data.logs });
-      }
-    } catch (error) {
-      console.error('Failed to fetch logs:', error);
-    }
-  },
-
-  clearLogs: () => set({ logs: [] }),
 
   startSession: async (simulatorId: string, options = {}) => {
     set({ isExecuting: true, error: null });
@@ -243,6 +244,7 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
         const session = response.data.session;
         set({
           activeSession: session,
+          sessions: [normalizeSession(session), ...get().sessions.filter((s) => s.sessionId !== session.session_id)],
           isExecuting: false,
         });
         return { success: true, sessionId: session.session_id, message: 'Session started' };
@@ -262,14 +264,14 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
     try {
       const response = await api.stopSandboxSession(sessionId);
       if (response.success) {
-        set({ isLoading: false });
+        set({ isLoading: false, activeSession: null, monitoringStatus: null, executionStatus: null });
         return { success: true, message: 'Session stopped' };
       }
       set({ isLoading: false, error: response.message || 'Failed to stop session' });
       return { success: false, message: response.message || 'Failed to stop session' };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to stop session';
-      set({ isLoading: false, error: message });
+      set({ isLoading: false, error: message, activeSession: null });
       return { success: false, message };
     }
   },
@@ -279,14 +281,14 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
     try {
       const response = await api.terminateSandboxSession(sessionId);
       if (response.success) {
-        set({ isLoading: false, activeSession: null });
+        set({ isLoading: false, activeSession: null, monitoringStatus: null, executionStatus: null });
         return { success: true, message: 'Session terminated and rolled back' };
       }
       set({ isLoading: false, error: response.message || 'Failed to terminate session' });
       return { success: false, message: response.message || 'Failed to terminate session' };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to terminate session';
-      set({ isLoading: false, error: message });
+      set({ isLoading: false, error: message, activeSession: null });
       return { success: false, message };
     }
   },
@@ -296,7 +298,7 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
     try {
       const response = await api.resetSandboxVm();
       if (response.success) {
-        set({ isLoading: false });
+        set({ isLoading: false, activeSession: null });
         return { success: true, message: 'VM reset successfully' };
       }
       set({ isLoading: false, error: response.message || 'Failed to reset VM' });
@@ -313,10 +315,22 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
     try {
       const response = await api.startSandboxRuntime();
       if (response.success) {
-        set({ isLoading: false });
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        await get().fetchHealth();
-        return { success: true, message: 'Runtime started successfully' };
+        if (response.message?.includes('already running')) {
+          set({ isLoading: false });
+          await get().fetchHealth();
+          return { success: true, message: 'Runtime is already running' };
+        }
+        const maxAttempts = 15;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const healthy = await get().fetchHealth();
+          if (healthy) {
+            set({ isLoading: false });
+            return { success: true, message: 'Runtime started successfully' };
+          }
+        }
+        set({ isLoading: false, error: 'Runtime did not respond after 30s. Check sandbox-agent/runtime.log for errors.' });
+        return { success: false, message: 'Runtime may have failed to start. Check logs.' };
       }
       set({ isLoading: false, error: response.message || 'Failed to start runtime' });
       return { success: false, message: response.message || 'Failed to start runtime' };
@@ -324,48 +338,6 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
       const message = error instanceof Error ? error.message : 'Failed to start runtime';
       set({ isLoading: false, error: message });
       return { success: false, message };
-    }
-  },
-
-  connectTelemetry: () => {
-    const { disconnectTelemetry } = get();
-    disconnectTelemetry();
-
-    api.getSandboxTelemetryUrl().then((response) => {
-      if (response.success && response.data?.url) {
-        const wsUrl = response.data.url;
-        ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          console.log('Telemetry WebSocket connected');
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data) as TelemetryEvent;
-            set((state) => ({
-              telemetryEvents: [...state.telemetryEvents.slice(-99), data],
-            }));
-          } catch (e) {
-            console.error('Failed to parse telemetry event:', e);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('Telemetry WebSocket error:', error);
-        };
-
-        ws.onclose = () => {
-          console.log('Telemetry WebSocket disconnected');
-        };
-      }
-    }).catch(console.error);
-  },
-
-  disconnectTelemetry: () => {
-    if (ws) {
-      ws.close();
-      ws = null;
     }
   },
 
@@ -387,5 +359,4 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
   },
 
   clearCurrentSession: () => set({ currentSession: null, activeSession: null }),
-  clearTelemetry: () => set({ telemetryEvents: [] }),
 }));

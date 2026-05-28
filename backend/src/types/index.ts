@@ -549,6 +549,7 @@ export enum AuditAction {
   TOKEN_REFRESH = 'auth:token_refresh',
   PASSWORD_CHANGE = 'auth:password_change',
   PASSWORD_RESET_REQUEST = 'auth:password_reset_request',
+  PASSWORD_RESET_COMPLETE = 'auth:password_reset_complete',
 
   // User events
   USER_CREATE = 'user:create',

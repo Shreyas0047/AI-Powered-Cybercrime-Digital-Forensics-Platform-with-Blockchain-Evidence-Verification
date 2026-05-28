@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Terminal,
@@ -7,7 +7,6 @@ import {
   RefreshCw,
   Download,
   Trash2,
-  Clock,
   AlertTriangle,
   Info,
   Bug,
@@ -20,7 +19,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardCard, DashboardStat } from '../components/enterprise/DashboardGrid';
-import { cn } from '../utils/helpers';
+import { cn } from '../design-system';
 import { useLogsStore } from '../stores/logsStore';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
@@ -62,7 +61,7 @@ const categoryColors: Record<string, string> = {
 
 export function LogsPage() {
   const {
-    logs, isLoading, error, pagination, filters, autoRefresh, stats,
+    logs, isLoading, error, filters, autoRefresh, stats,
     fetchLogs, fetchStats, setFilters, toggleAutoRefresh, clearLogs, downloadLogs,
   } = useLogsStore();
 
@@ -229,7 +228,7 @@ export function LogsPage() {
       </Card>
 
       <Card className="!p-0 overflow-hidden">
-        <div className="bg-slate-900 dark:bg-slate-950 text-slate-100 font-mono text-xs overflow-hidden">
+        <div className="bg-slate-900 dark:bg-slate-900 text-slate-100 font-mono text-xs overflow-hidden">
           <div className="px-4 py-2 bg-slate-800 dark:bg-slate-900 flex items-center justify-between border-b border-slate-700">
             <div className="flex items-center gap-2">
               <Terminal className="w-4 h-4 text-cyan-400" />
@@ -273,7 +272,7 @@ export function LogsPage() {
                         <span className="flex-1 text-slate-300 break-all">{log.message}</span>
                       </div>
                       {isExpanded && log.details && (
-                        <div className="mt-2 ml-6 p-2 bg-slate-950 rounded border border-slate-700 text-slate-400 text-xs">
+                        <div className="mt-2 ml-6 p-2 bg-slate-900 rounded border border-slate-700 text-slate-400 text-xs">
                           <pre className="whitespace-pre-wrap">{JSON.stringify(log.details, null, 2)}</pre>
                         </div>
                       )}
@@ -315,3 +314,4 @@ export function LogsPage() {
 }
 
 export default LogsPage;
+

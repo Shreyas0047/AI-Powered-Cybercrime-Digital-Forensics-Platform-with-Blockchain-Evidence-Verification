@@ -4,12 +4,12 @@
 
 export enum Role {
   ADMIN = 'admin',
-  ANALYST = 'analyst',
+  FORENSIC_ANALYST = 'forensic_analyst',
 }
 
 export const RoleLabels: Record<Role, string> = {
   [Role.ADMIN]: 'Administrator',
-  [Role.ANALYST]: 'Analyst',
+  [Role.FORENSIC_ANALYST]: 'Analyst',
 };
 
 export enum Permission {
@@ -90,7 +90,7 @@ export enum Permission {
 export const RolePermissions: Record<Role, Permission[]> = {
   [Role.ADMIN]: Object.values(Permission),
 
-  [Role.ANALYST]: [
+  [Role.FORENSIC_ANALYST]: [
     Permission.INVESTIGATIONS_VIEW,
     Permission.INVESTIGATIONS_CREATE,
     Permission.INVESTIGATIONS_UPDATE,
@@ -128,5 +128,5 @@ export function isAdmin(role: Role): boolean {
 }
 
 export function isAnalyst(role: Role): boolean {
-  return role === Role.ANALYST;
+  return role === Role.FORENSIC_ANALYST;
 }

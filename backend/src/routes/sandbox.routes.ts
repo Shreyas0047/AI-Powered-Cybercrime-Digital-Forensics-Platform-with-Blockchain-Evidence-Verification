@@ -66,6 +66,12 @@ router.get(
   asyncHandler(sandboxController.getTelemetryUrl)
 );
 
+router.get(
+  '/logs-url',
+  authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.getLogsUrl)
+);
+
 router.post(
   '/vm/reset',
   authorize(UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),

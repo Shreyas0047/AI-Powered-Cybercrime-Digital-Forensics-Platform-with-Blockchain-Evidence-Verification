@@ -118,9 +118,10 @@ interface DashboardStatProps {
   };
   icon?: React.ReactNode;
   className?: string;
+  delta?: string;
 }
 
-export function DashboardStat({ label, value, change, icon, className }: DashboardStatProps) {
+export function DashboardStat({ label, value, change, icon, delta, className }: DashboardStatProps) {
   const getChangeColor = () => {
     if (!change) return '';
     switch (change.type) {
@@ -150,6 +151,9 @@ export function DashboardStat({ label, value, change, icon, className }: Dashboa
             <span>{Math.abs(change.value)}%</span>
             <span className="text-slate-400 dark:text-slate-500">vs last period</span>
           </p>
+        )}
+        {delta && !change && (
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{delta}</p>
         )}
       </div>
       {icon && (

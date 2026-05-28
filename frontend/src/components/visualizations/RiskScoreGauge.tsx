@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { useTheme } from '../../providers/ThemeProvider';
 import { cn } from '../../design-system';
-import { Shield, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface RiskScoreGaugeProps {
   score: number;
@@ -32,7 +32,6 @@ export function RiskScoreGauge({
   label = 'Risk Score',
 }: RiskScoreGaugeProps) {
   const { isDark } = useTheme();
-  const [displayScore, setDisplayScore] = useState(animated ? 0 : score);
   const config = getSeverityConfig(score);
 
   const springScore = useSpring(animated ? score : 100, {
@@ -55,8 +54,6 @@ export function RiskScoreGauge({
   useEffect(() => {
     if (animated) {
       springScore.set(score);
-    } else {
-      setDisplayScore(score);
     }
   }, [score, animated]);
 

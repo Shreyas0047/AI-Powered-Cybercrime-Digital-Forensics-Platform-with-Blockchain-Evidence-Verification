@@ -113,10 +113,12 @@ def _default_config_path() -> Path:
         # Running as PyInstaller executable - config is in same directory
         bundle_dir = Path(sys.executable).parent
         return bundle_dir / "config" / "default.yaml"
-    # Development mode - go from app/config/loader.py up to sandbox-agent
-    # Path: sandbox-agent/src/forensics_sandbox_agent/app/config/loader.py
-    # parents[4] = sandbox-agent
-    return Path(__file__).resolve().parents[4] / "config" / "default.yaml"
+    # Development mode - traverse upward from this file looking for config/default.yaml
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "config" / "default.yaml"
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError("Could not find config/default.yaml — ensure the config directory exists in the project root")
 
 
 def _read_config(path: Path) -> dict[str, Any]:

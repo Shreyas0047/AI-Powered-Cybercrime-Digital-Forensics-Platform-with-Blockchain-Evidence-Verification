@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from threading import Lock
 from typing import Optional
 
 
@@ -30,6 +31,9 @@ class ExecutionPhase(Enum):
     ROLLING_BACK = "rolling_back"
 
 
+_TERMINAL_STATUSES = {SessionStatus.COMPLETED, SessionStatus.FAILED, SessionStatus.TIMEOUT}
+
+
 @dataclass(slots=True)
 class ForensicSession:
     """Captures identity and lifecycle metadata for a forensic run."""
@@ -48,36 +52,71 @@ class ForensicSession:
     error_message: Optional[str] = None
     execution_duration_seconds: Optional[float] = None
     rollback_count: int = 0
+    events: list[dict] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
+    _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
+
+    def _transition(self, new_status: SessionStatus) -> bool:
+        """Transition state; returns False if already terminal."""
+        with self._lock:
+            if self.status in _TERMINAL_STATUSES:
+                return False
+            self.status = new_status
+            return True
 
     def start_execution(self) -> None:
         """Mark session as started."""
-        self.started_at = datetime.now()
-        self.status = SessionStatus.EXECUTING
-        self.execution_phase = ExecutionPhase.EXECUTING
+        with self._lock:
+            self.started_at = datetime.now()
+            self.status = SessionStatus.EXECUTING
+            self.execution_phase = ExecutionPhase.EXECUTING
 
     def complete(self, exit_code: int) -> None:
         """Mark session as completed."""
-        self.finished_at = datetime.now()
-        self.exit_code = exit_code
-        self.status = SessionStatus.COMPLETED
-        self.execution_phase = ExecutionPhase.COMPLETED
-        if self.started_at:
-            self.execution_duration_seconds = (self.finished_at - self.started_at).total_seconds()
+        with self._lock:
+            self.finished_at = datetime.now()
+            self.exit_code = exit_code
+            self.status = SessionStatus.COMPLETED
+            self.execution_phase = ExecutionPhase.COMPLETED
+            if self.started_at:
+                self.execution_duration_seconds = (self.finished_at - self.started_at).total_seconds()
 
     def fail(self, error: str) -> None:
         """Mark session as failed."""
-        self.finished_at = datetime.now()
-        self.error_message = error
-        self.status = SessionStatus.FAILED
+        with self._lock:
+            self.finished_at = datetime.now()
+            self.error_message = error
+            self.status = SessionStatus.FAILED
 
-    def timeout(self) -> None:
+    def mark_timeout(self) -> None:
         """Mark session as timed out."""
-        self.finished_at = datetime.now()
-        self.status = SessionStatus.TIMEOUT
+        with self._lock:
+            self.finished_at = datetime.now()
+            self.status = SessionStatus.TIMEOUT
 
     def mark_rollback(self) -> None:
         """Mark session as rolled back."""
-        self.rollback_count += 1
-        self.status = SessionStatus.ROLLED_BACK
-        self.execution_phase = ExecutionPhase.ROLLING_BACK
+        with self._lock:
+            self.rollback_count += 1
+            self.status = SessionStatus.ROLLED_BACK
+            self.execution_phase = ExecutionPhase.ROLLING_BACK
+
+    def to_dict(self) -> dict:
+        """Serialize session to dictionary for API responses."""
+        return {
+            "session_id": self.session_id,
+            "simulator_id": self.simulator_id,
+            "status": self.status.value,
+            "phase": self.execution_phase.value,
+            "exit_code": self.exit_code,
+            "error_message": self.error_message,
+            "execution_duration_seconds": self.execution_duration_seconds,
+            "vm_name": self.vm_name,
+            "snapshot_name": self.snapshot_name,
+            "checkpoint_name": self.checkpoint_name,
+            "rollback_count": self.rollback_count,
+            "events": self.events,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+            "created_at": self.created_at.isoformat(),
+        }

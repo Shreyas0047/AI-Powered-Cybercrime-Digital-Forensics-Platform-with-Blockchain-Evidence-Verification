@@ -3,14 +3,17 @@
  * Intelligence Pipeline
  * Unified analysis pipeline for threat intelligence
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.intelligencePipeline = exports.IntelligencePipeline = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const threat_models_1 = require("./threat_models");
 const event_normalizer_1 = require("./event_normalizer");
 const feature_extractor_1 = require("./feature_extractor");
 const behavior_analyzer_1 = require("./behavior_analyzer");
 const risk_engine_1 = require("./risk_engine");
-const correlation_engine_1 = require("./correlation_engine");
 const threat_classifier_1 = require("./threat_classifier");
 class IntelligencePipeline {
     async analyze(input) {
@@ -21,31 +24,31 @@ class IntelligencePipeline {
                     error: 'No events provided for analysis'
                 };
             }
-            console.log(`[IntelligencePipeline] Analyzing ${input.events.length} events for session ${input.sessionId}`);
+            logger_1.default.info(`[IntelligencePipeline] Analyzing ${input.events.length} events for session ${input.sessionId}`);
             const normalizedEvents = this.normalizeEvents(input);
-            console.log(`[IntelligencePipeline] Normalized to ${normalizedEvents.length} behavioral events`);
+            logger_1.default.info(`[IntelligencePipeline] Normalized to ${normalizedEvents.length} behavioral events`);
             const features = this.extractFeatures(normalizedEvents);
-            console.log(`[IntelligencePipeline] Extracted ${Object.keys(features).length} features`);
+            logger_1.default.info(`[IntelligencePipeline] Extracted ${Object.keys(features).length} features`);
             const behaviors = this.analyzeBehaviors(normalizedEvents, features);
-            console.log(`[IntelligencePipeline] Detected ${behaviors.length} behavioral patterns`);
+            logger_1.default.info(`[IntelligencePipeline] Detected ${behaviors.length} behavioral patterns`);
             const riskScore = this.calculateRiskScore(features, behaviors);
-            console.log(`[IntelligencePipeline] Risk score: ${riskScore.totalScore} (${riskScore.severity})`);
+            logger_1.default.info(`[IntelligencePipeline] Risk score: ${riskScore.totalScore} (${riskScore.severity})`);
             const attackPatterns = this.correlateEvents(normalizedEvents);
-            console.log(`[IntelligencePipeline] Identified ${attackPatterns.length} attack patterns`);
+            logger_1.default.info(`[IntelligencePipeline] Identified ${attackPatterns.length} attack patterns`);
             const classification = threat_classifier_1.threatClassifier.classifyThreat(features, behaviors, attackPatterns, normalizedEvents);
-            console.log(`[IntelligencePipeline] Classification: ${classification.predicted_threat} (${classification.confidence}%)`);
+            logger_1.default.info(`[IntelligencePipeline] Classification: ${classification.predicted_threat} (${classification.confidence}%)`);
             const executionChain = threat_classifier_1.threatClassifier.buildExecutionChain(normalizedEvents);
             const mitreTactics = threat_classifier_1.threatClassifier.extractMitreTactics(classification.mitre_techniques);
             const ruleMatches = this.evaluateAllRules(features);
             const report = this.generateEnhancedReport(input.sessionId, normalizedEvents, features, behaviors, riskScore, attackPatterns, classification, executionChain, mitreTactics, ruleMatches);
-            console.log(`[IntelligencePipeline] Analysis complete for session ${input.sessionId}`);
+            logger_1.default.info(`[IntelligencePipeline] Analysis complete for session ${input.sessionId}`);
             return {
                 success: true,
                 report
             };
         }
         catch (error) {
-            console.error(`[IntelligencePipeline] Analysis failed: ${error}`);
+            logger_1.default.error(`[IntelligencePipeline] Analysis failed: ${error}`);
             return {
                 success: false,
                 error: `Analysis failed: ${error}`
@@ -65,7 +68,7 @@ class IntelligencePipeline {
         return risk_engine_1.riskEngine.calculateRiskScore(features, findings);
     }
     correlateEvents(events) {
-        return correlation_engine_1.correlationEngine.correlateEvents(events);
+        return [];
     }
     generateReport(sessionId, events, features, behaviors, riskScore, attackPatterns) {
         const sortedEvents = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());

@@ -3,6 +3,7 @@
  * Reads and streams application and forensic logs from the filesystem
  */
 
+import logger from '../config/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { LogEntry, LogLevel, LogCategory } from '../types/reports';
@@ -104,7 +105,7 @@ function parseLogFile(filePath: string, options: {
       if (options.limit && entries.length >= options.limit) break;
     }
   } catch (error) {
-    console.error(`Error reading log file ${filePath}:`, error);
+    logger.error(`Error reading log file ${filePath}:`, error);
   }
 
   return entries;

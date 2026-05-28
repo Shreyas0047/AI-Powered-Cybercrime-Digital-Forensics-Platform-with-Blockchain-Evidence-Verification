@@ -24,7 +24,6 @@ __exportStar(require("./event_normalizer"), exports);
 __exportStar(require("./feature_extractor"), exports);
 __exportStar(require("./behavior_analyzer"), exports);
 __exportStar(require("./risk_engine"), exports);
-__exportStar(require("./correlation_engine"), exports);
 __exportStar(require("./threat_classifier"), exports);
 __exportStar(require("./intelligence_pipeline"), exports);
 __exportStar(require("./correlation_engine_v2"), exports);

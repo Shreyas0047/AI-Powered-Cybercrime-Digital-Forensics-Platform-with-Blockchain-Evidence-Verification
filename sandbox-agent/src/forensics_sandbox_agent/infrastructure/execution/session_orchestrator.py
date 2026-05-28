@@ -7,6 +7,8 @@ simulator execution, forensic monitoring, and session management.
 from __future__ import annotations
 
 import logging
+import threading
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -97,8 +99,14 @@ class SessionOrchestrator:
         self._report_service = report_service
         self._monitoring_coordinator = monitoring_coordinator
         self._execution_history: list[ForensicSession] = []
+        self._session_registry: dict[str, ForensicSession] = {}
+        self._lock = threading.Lock()
         self._demo_mode: bool = False
         self._active_demo: Optional[DemoScenario] = None
+
+    @staticmethod
+    def _generate_session_id() -> str:
+        return f"so_{uuid.uuid4().hex[:12]}"
 
     def initialize_session_context(self) -> None:
         """Run non-destructive startup preparation for sessions."""
@@ -125,21 +133,20 @@ class SessionOrchestrator:
         self,
         simulator: SimulatorDescriptor,
         auto_rollback: bool = True,
+        session_id: Optional[str] = None,
     ) -> ForensicSession:
         """Execute a simulator in the sandbox environment."""
         self._logger.info(f"Orchestrating simulator execution: {simulator.id}")
 
+        session_id = session_id or self._generate_session_id()
         monitoring_started = False
+        monitoring_summary: dict = {}
         session: Optional[ForensicSession] = None
         poller: Optional[VmTelemetryPoller] = None
 
         try:
             if self._monitoring_coordinator:
-                session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-                polling_config = None
-                if hasattr(self._settings, "monitoring") and hasattr(self._settings.monitoring, "vm_polling"):
-                    polling_config = self._settings.monitoring.vm_polling
+                polling_config = getattr(getattr(self._settings, "monitoring", None), "vm_polling", None)
 
                 if polling_config and polling_config.enabled:
                     vbox = getattr(self._vm_service, "_vbox", None)
@@ -161,7 +168,15 @@ class SessionOrchestrator:
                 self._monitoring_coordinator.start_monitoring(session_id, simulator.id)
                 monitoring_started = True
 
-            session = self._vm_service.execute_simulator(simulator, auto_rollback=auto_rollback)
+            session = self._vm_service.execute_simulator(
+                simulator,
+                auto_rollback=auto_rollback,
+                session_id=session_id,
+            )
+
+            if session is not None:
+                with self._lock:
+                    self._session_registry[session.session_id] = session
 
         finally:
             if poller:
@@ -180,23 +195,40 @@ class SessionOrchestrator:
 
             if self._monitoring_coordinator and monitoring_started:
                 monitoring_summary = self._monitoring_coordinator.stop_monitoring()
+                self._logger.info(f"Monitoring summary: {monitoring_summary.get('total_events', 0)} events")
                 if session is not None:
                     session.metadata["monitoring_summary"] = monitoring_summary
-                self._logger.info(f"Monitoring summary: {monitoring_summary.get('total_events', 0)} events")
+                    session.events = [e.to_dict() for e in self._monitoring_coordinator.get_events()]
 
             if session is not None:
-                self._execution_history.append(session)
-
+                with self._lock:
+                    self._execution_history.append(session)
                 self._logger.info(
                     f"Simulator execution completed: {simulator.id} | status={session.status.value} | "
                     f"exit_code={session.exit_code}"
                 )
+            else:
+                session = ForensicSession(
+                    session_id=session_id,
+                    simulator_id=simulator.id,
+                    status=SessionStatus.FAILED,
+                )
+                if self._monitoring_coordinator and monitoring_started:
+                    session.metadata["monitoring_summary"] = monitoring_summary
+                with self._lock:
+                    self._session_registry[session_id] = session
 
-            return session if session is not None else ForensicSession(
-                session_id="unknown",
-                simulator_id=simulator.id,
-                status=SessionStatus.FAILED,
-            )
+            return session
+
+    def get_session(self, session_id: str) -> Optional[ForensicSession]:
+        """Get a session by ID from the registry."""
+        with self._lock:
+            return self._session_registry.get(session_id)
+
+    def get_all_registered_sessions(self) -> list[ForensicSession]:
+        """Get all registered sessions."""
+        with self._lock:
+            return list(self._session_registry.values())
 
     def get_current_session(self) -> Optional[ForensicSession]:
         """Get the current active session."""
@@ -204,7 +236,22 @@ class SessionOrchestrator:
 
     def get_execution_history(self) -> list[ForensicSession]:
         """Get all execution history."""
-        return self._execution_history.copy()
+        with self._lock:
+            return self._execution_history.copy()
+
+    def cleanup_orphaned_sessions(self) -> int:
+        """Remove stale/orphaned sessions from registry. Returns count removed."""
+        terminal_statuses = {SessionStatus.COMPLETED, SessionStatus.FAILED, SessionStatus.TIMEOUT}
+        with self._lock:
+            orphaned = [
+                sid for sid, s in self._session_registry.items()
+                if s.status in terminal_statuses
+            ]
+            for sid in orphaned:
+                del self._session_registry[sid]
+        if orphaned:
+            self._logger.info(f"Cleaned up {len(orphaned)} orphaned sessions from registry")
+        return len(orphaned)
 
     def _fetch_simulator_log(self, simulator_id: str) -> Optional[str]:
         """Fetch simulator telemetry log from VM guest."""
@@ -213,7 +260,12 @@ class SessionOrchestrator:
         if not vbox or not vm_name:
             return None
 
-        guest_log_path = f"C:\\sandbox\\tmp\\tmp\\simulator_safe\\{simulator_id}.log"
+        # Resolve generic name for log file path
+        from forensics_sandbox_agent.domain.simulator_mapping import get_generic_name
+        generic_name = get_generic_name(simulator_id) or simulator_id
+
+        transfer_path = self._settings.execution_policy.sandbox_execution.simulator_transfer_path.replace("/", "\\")
+        guest_log_path = f"{transfer_path}\\tmp\\simulator_safe\\{generic_name}.log"
         try:
             exit_code, stdout, stderr = vbox.guest_control_exec(
                 vm_name,

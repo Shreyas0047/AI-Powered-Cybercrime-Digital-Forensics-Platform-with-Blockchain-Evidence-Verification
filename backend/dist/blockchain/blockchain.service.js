@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.blockchainService = exports.BlockchainService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const config_1 = require("./config");
 class BlockchainService {
     provider = null;
@@ -49,7 +53,7 @@ class BlockchainService {
         if (this.initialized)
             return;
         if (!config_1.blockchainConfig.enabled) {
-            console.log('[Blockchain] Blockchain disabled - running in offline mode');
+            logger_1.default.info('[Blockchain] Blockchain disabled - running in offline mode');
             return;
         }
         try {
@@ -59,12 +63,12 @@ class BlockchainService {
             this.provider = new ethers.JsonRpcProvider(config_1.blockchainConfig.rpcUrl);
             // Verify connection
             const network = await this.provider.getNetwork();
-            console.log(`[Blockchain] Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
+            logger_1.default.info(`[Blockchain] Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
             this.initialized = true;
         }
         catch (error) {
-            console.warn('[Blockchain] Failed to initialize Web3 provider:', error);
-            console.warn('[Blockchain] Running in offline mode - local verification only');
+            logger_1.default.warn('[Blockchain] Failed to initialize Web3 provider:', error);
+            logger_1.default.warn('[Blockchain] Running in offline mode - local verification only');
         }
     }
     /**

@@ -1,7 +1,7 @@
 simulator_id: "botnet-simulator"
-display_name: "Botnet Simulator"
-version: "0.1.0"
-description: "Placeholder safe simulator package."
+display_name: "Sample Delta"
+version: "1.0.0"
+description: "Unknown threat sample - awaiting behavioral analysis"
 entry_point: "botnet_simulator.runtime"
 allowed_directories:
   - "C:/sandbox/artifacts/botnet"

@@ -3,6 +3,7 @@
  * Loads and validates environment variables for the forensics platform
  */
 
+import logger from './logger';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -86,6 +87,8 @@ export interface AppConfig {
   aiService: AIServiceConfig;
   blockchain: BlockchainConfig;
   verification: VerificationConfig;
+  otpDevMode: boolean;
+  otpTokenSecret: string;
 }
 
 function getEnv(key: string, defaultValue?: string): string {
@@ -173,6 +176,9 @@ export const config: AppConfig = {
     autoVerifyOnUpload: getEnvBool('AUTO_VERIFY_ON_UPLOAD', false),
     storeHashesOnChain: getEnvBool('STORE_HASHES_ON_CHAIN', false),
   },
+
+  otpDevMode: getEnvBool('OTP_DEV_MODE', false),
+  otpTokenSecret: getEnv('OTP_TOKEN_SECRET', ''),
 };
 
 // Validation
@@ -181,7 +187,7 @@ export function validateConfig(): void {
   const missing = requiredVars.filter(v => !process.env[v]);
 
   if (missing.length > 0) {
-    console.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
+    logger.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
   }
 }
 

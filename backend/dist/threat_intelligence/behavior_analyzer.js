@@ -3,8 +3,12 @@
  * Behavior Analysis Engine
  * Detects suspicious behavioral patterns and attack signatures
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.behaviorAnalyzer = exports.BehaviorAnalyzer = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const uuid_1 = require("uuid");
 const threat_models_1 = require("./threat_models");
 const behaviorRules = [
@@ -203,7 +207,7 @@ class BehaviorAnalyzer {
                 }
             }
             catch (error) {
-                console.error(`Error applying behavior rule ${rule.type}: ${error}`);
+                logger_1.default.error(`Error applying behavior rule ${rule.type}: ${error}`);
             }
         }
         return this.deduplicateFindings(findings);

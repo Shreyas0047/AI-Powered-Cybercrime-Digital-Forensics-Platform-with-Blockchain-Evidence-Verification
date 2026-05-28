@@ -144,6 +144,79 @@ export class AuthController {
 
     res.json(response);
   }
+
+  /**
+   * POST /api/v1/auth/forgot-password
+   * Request password reset OTP
+   */
+  async forgotPassword(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ success: false, message: 'Email is required' });
+      return;
+    }
+
+    const { sendPasswordResetOTP } = await import('../services/otp.service');
+    const result = await sendPasswordResetOTP(email);
+    res.json(result);
+  }
+
+  /**
+   * POST /api/v1/auth/verify-reset-otp
+   * Verify OTP for password reset
+   */
+  async verifyResetOtp(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      res.status(400).json({ success: false, message: 'Email and OTP are required' });
+      return;
+    }
+
+    const { verifyPasswordResetOTP } = await import('../services/otp.service');
+    const result = verifyPasswordResetOTP(email, otp);
+    res.json(result);
+  }
+
+  /**
+   * POST /api/v1/auth/reset-password
+   * Reset password after OTP verification
+   */
+  async resetPassword(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const { email, password, confirmPassword, token } = req.body;
+
+    if (!email || !password || !confirmPassword || !token) {
+      res.status(400).json({ success: false, message: 'Email, password, confirm password, and token are required' });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      res.status(400).json({ success: false, message: 'Passwords do not match' });
+      return;
+    }
+
+    const { verifyPasswordResetToken } = await import('../services/otp.service');
+    const decoded = verifyPasswordResetToken(token);
+    if (!decoded) {
+      res.status(403).json({ success: false, message: 'Invalid or expired reset token. Please verify OTP again.' });
+      return;
+    }
+
+    if (decoded.email !== email.toLowerCase().trim()) {
+      res.status(403).json({ success: false, message: 'Reset token does not match the provided email' });
+      return;
+    }
+
+    await authService.resetPassword(email, password, req.ip);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.',
+    };
+
+    res.json(response);
+  }
 }
 
 export const authController = new AuthController();

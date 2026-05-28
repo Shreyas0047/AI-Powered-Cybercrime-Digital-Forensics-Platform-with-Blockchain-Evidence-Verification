@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import shutil
 import time
 import random
 import logging
@@ -185,8 +186,8 @@ class TrojanSimulatorRuntime(BaseSimulatorRuntime):
             with open(config_path, "w") as f:
                 f.write(config_data)
             self.emit_file_operation("create", config_path, technique="T1105")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Failed to create config: {e}")
 
     def _simulate_system_discovery(self) -> None:
         """Simulate system discovery."""
@@ -234,7 +235,7 @@ class TrojanSimulatorRuntime(BaseSimulatorRuntime):
         deceptive_name = random.choice(self.DECEPTIVE_NAMES)
         
         if self._logger:
-            self._logger.emit_process_spawn(deceptive_name)
+            self.emit_process_spawn(deceptive_name)
             self._logger.emit_suspicious_behavior(
                 "deceptive_process",
                 {"deceptive_name": deceptive_name},
@@ -315,8 +316,8 @@ class TrojanSimulatorRuntime(BaseSimulatorRuntime):
                         tactic="Persistence",
                         risk_score=65
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Failed to drop payload: {e}")
             time.sleep(0.1)
 
     def _spawn_suspicious_child_processes(self) -> None:
@@ -325,7 +326,7 @@ class TrojanSimulatorRuntime(BaseSimulatorRuntime):
             child_process = random.choice(self.SUSPICIOUS_CHILD_PROCESSES)
             
             if self._logger:
-                self._logger.emit_process_spawn(child_process)
+                self.emit_process_spawn(child_process)
                 self._logger.emit_suspicious_behavior(
                     "suspicious_child_process",
                     {"child_process": child_process},
@@ -405,12 +406,14 @@ class TrojanSimulatorRuntime(BaseSimulatorRuntime):
                 risk_score=40
             )
         
-        for file in os.listdir(self._staging_dir)[:3]:
-            file_path = os.path.join(self._staging_dir, file)
-            try:
-                self.emit_file_operation("delete", file_path, technique="T1070")
-            except Exception:
-                pass
+        if os.path.isdir(self._staging_dir):
+            for file in os.listdir(self._staging_dir)[:3]:
+                file_path = os.path.join(self._staging_dir, file)
+                try:
+                    os.remove(file_path)
+                    self.emit_file_operation("delete", file_path, technique="T1070")
+                except Exception as e:
+                    logging.error(f"Trace removal error: {e}")
 
     def _finalize(self) -> None:
         """Finalize."""
@@ -428,9 +431,9 @@ def main():
     """Entry point for trojan simulator."""
     manifest = SimulatorManifest(
         simulator_id="trojan-simulator",
-        display_name="Trojan Simulator",
+        display_name="Sample Gamma",
         version="1.0.0",
-        description="Simulates trojan-like behavior for forensic training",
+        description="Unknown threat sample - awaiting behavioral analysis",
         category=SimulatorCategory.TROJAN,
         entry_point="trojan_simulator.runtime",
         allowed_directories=["C:/Windows/Temp", "C:/sandbox", "C:/temp", "C:/Windows/System32"],

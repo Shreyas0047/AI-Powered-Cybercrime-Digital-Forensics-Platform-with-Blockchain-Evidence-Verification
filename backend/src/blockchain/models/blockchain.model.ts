@@ -151,7 +151,6 @@ const evidenceIntegritySchema = new Schema({
     ref: 'Evidence',
     required: true,
     unique: true,
-    index: true,
   },
 
   // Hash information
@@ -264,7 +263,6 @@ const evidencePackageHashSchema = new Schema({
     type: String,
     required: true,
     unique: true,
-    index: true,
   },
 
   // Investigation reference
@@ -366,10 +364,8 @@ blockchainAuditSchema.index({ timestamp: -1 });
 blockchainAuditSchema.index({ transactionHash: 1 });
 
 evidenceIntegritySchema.index({ integrityState: 1 });
-evidenceIntegritySchema.index({ currentHash: 1 });
 evidenceIntegritySchema.index({ lastVerifiedAt: -1 });
 
-evidencePackageHashSchema.index({ investigationId: 1 });
 evidencePackageHashSchema.index({ rootHash: 1 });
 
 blockchainVerificationSchema.index({ fingerprint: 1, status: 1 });

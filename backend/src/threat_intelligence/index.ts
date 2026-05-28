@@ -8,7 +8,6 @@ export * from './event_normalizer';
 export * from './feature_extractor';
 export * from './behavior_analyzer';
 export * from './risk_engine';
-export * from './correlation_engine';
 export * from './threat_classifier';
 export * from './intelligence_pipeline';
 export * from './correlation_engine_v2';

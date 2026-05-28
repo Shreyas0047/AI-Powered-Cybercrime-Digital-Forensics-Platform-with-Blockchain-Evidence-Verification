@@ -6,6 +6,7 @@ Main orchestrator for forensic telemetry analysis.
 
 from typing import List, Dict, Any
 from datetime import datetime
+import asyncio
 
 from app.core.models import (
     TelemetryEvent,
@@ -29,6 +30,11 @@ class TelemetryAnalyzer:
 
     async def analyze_telemetry(self, request: TelemetryAnalysisRequest) -> TelemetryAnalysisResult:
         """Execute complete telemetry analysis pipeline"""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._run_sync_analysis, request)
+
+    def _run_sync_analysis(self, request: TelemetryAnalysisRequest) -> TelemetryAnalysisResult:
+        """Synchronous analysis pipeline (runs in thread pool)"""
 
         # Step 1: Feature extraction
         features = feature_extractor.extract_features(request.events)
@@ -93,7 +99,14 @@ class TelemetryAnalyzer:
             session_id=request.session_id,
             analysis_timestamp=datetime.now(),
             total_events=len(request.events),
-            suspicious_events=features.suspicious_processes,
+            suspicious_events=min(
+                features.suspicious_processes +
+                features.file_modifications +
+                len(features.suspicious_extensions) +
+                features.credential_access_indicators +
+                len(features.persistence_keys),
+                len(request.events)
+            ),
             threat_classification=threat_classification,
             severity_score=severity_result.score,
             severity_level=severity_result.level,

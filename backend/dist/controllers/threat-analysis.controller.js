@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.threatAnalysisController = exports.ThreatAnalysisController = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const threat_intelligence_1 = require("../threat_intelligence");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -79,7 +83,7 @@ class ThreatAnalysisController {
             });
         }
         catch (error) {
-            console.error('Threat analysis error:', error);
+            logger_1.default.error('Threat analysis error:', error);
             res.status(500).json({
                 success: false,
                 error: `Analysis failed: ${error}`
@@ -131,7 +135,7 @@ class ThreatAnalysisController {
             });
         }
         catch (error) {
-            console.error('Get intelligence report error:', error);
+            logger_1.default.error('Get intelligence report error:', error);
             res.status(500).json({
                 success: false,
                 error: `Failed to get report: ${error}`
@@ -196,7 +200,7 @@ class ThreatAnalysisController {
             });
         }
         catch (error) {
-            console.error('Get intelligence summary error:', error);
+            logger_1.default.error('Get intelligence summary error:', error);
             res.status(500).json({
                 success: false,
                 error: `Failed to get summary: ${error}`
@@ -210,7 +214,7 @@ class ThreatAnalysisController {
             return this.extractEventsFromReport(report);
         }
         catch (error) {
-            console.error('Error loading report file:', error);
+            logger_1.default.error('Error loading report file:', error);
             return [];
         }
     }
@@ -237,7 +241,7 @@ class ThreatAnalysisController {
             return events;
         }
         catch (error) {
-            console.error('Error loading monitoring log:', error);
+            logger_1.default.error('Error loading monitoring log:', error);
             return [];
         }
     }

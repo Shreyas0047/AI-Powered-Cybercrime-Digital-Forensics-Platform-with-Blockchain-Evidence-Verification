@@ -47,21 +47,6 @@ export const ReconciliationPanel: React.FC = () => {
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return 'bg-red-500/10 text-red-400 border-red-500/30';
-      case 'high':
-        return 'bg-orange-500/10 text-orange-400 border-orange-500/30';
-      case 'medium':
-        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
-      case 'low':
-        return 'bg-slate-700/30 text-slate-300 border-slate-600';
-      default:
-        return 'bg-slate-700/30 text-slate-300 border-slate-600';
-    }
-  };
-
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'hash_mismatch':

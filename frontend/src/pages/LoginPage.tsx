@@ -1,153 +1,150 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { useAuthStore } from '../stores/authStore';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, logout, isLoading, error, clearError } = useAuthStore();
+  const { login, isLoading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<'analyst' | 'admin'>('analyst');
-
-  const matchesSelectedRole = (userRole?: string) => {
-    if (role === 'analyst') {
-      return userRole === 'analyst' || userRole === 'forensic_analyst';
-    }
-
-    return userRole === role;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     try {
-      const result = await login({ email, password });
-      if (!matchesSelectedRole(result?.user?.role)) {
-        await logout();
-        clearError();
-        alert('Please select the correct role for this account');
+      const result = await login({ email: email.trim().toLowerCase(), password });
+      if (!result) {
         return;
       }
       navigate('/dashboard');
-    } catch {
-      // Error is handled in store
+    } catch (err) {
+      console.error('[LoginPage] Login failed:', err);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      {/* Background decoration */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-violet-500/10 to-cyan-500/10 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-[var(--surface-base)] flex items-center justify-center p-4 relative overflow-hidden grain-overlay">
+      {/* Dynamic Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="mesh-orb mesh-orb-amber w-[600px] h-[600px] -top-[300px] -right-[200px]" />
+        <div className="mesh-orb mesh-orb-violet w-[500px] h-[500px] -bottom-[250px] -left-[150px]" />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md relative z-10"
       >
-        {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-10">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring' }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-violet-500 shadow-xl shadow-cyan-500/30 mb-4"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="inline-flex items-center justify-center w-20 h-20 rounded-[24px] bg-gradient-to-br from-[var(--accent-amber)] to-[var(--accent-rose)] shadow-2xl shadow-amber-500/20 mb-6 group"
           >
-            <Shield className="w-8 h-8 text-white" />
+            <Shield className="w-10 h-10 text-[var(--surface-base)] transition-transform duration-500 group-hover:scale-110" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-white">
+          <h1 className="text-4xl font-bold tracking-tight font-display text-[var(--text-primary)]">
             ForensicsAI
           </h1>
-          <p className="text-slate-400 mt-2">Enterprise Cyber Investigation Platform</p>
+          <p className="overline mt-3">Enterprise Cyber Investigation Platform</p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-white mb-6">Welcome Back</h2>
+        <div className="surface-elevated p-10 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--accent-amber)] to-transparent opacity-50" />
+          
+          <h2 className="text-2xl font-semibold font-display text-[var(--text-primary)] mb-8">Welcome Back</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Select
-              label="Login as"
-              value={role}
-              onChange={(value) => setRole(value as 'analyst' | 'admin')}
-              options={[
-                { value: 'analyst', label: 'Analyst' },
-                { value: 'admin', label: 'Administrator' },
-              ]}
-            />
-
-            <Input
-              type="email"
-              label="Email Address"
-              placeholder="analyst@forensics.ai"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              leftIcon={<Mail className="w-5 h-5" />}
-              required
-            />
-
-            <div className="relative">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-1">
+              <label className="text-xs font-mono uppercase tracking-widest text-[var(--text-tertiary)] ml-1">Email Identity</label>
               <Input
-                type={showPassword ? 'text' : 'password'}
-                label="Password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                leftIcon={<Lock className="w-5 h-5" />}
+                type="email"
+                placeholder="operator@forensics.ai"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                leftIcon={<Mail className="w-5 h-5 text-[var(--text-tertiary)]" />}
+                className="bg-[var(--surface-sunken)] border-[var(--border-default)] text-[var(--text-primary)] h-12 rounded-xl focus:border-[var(--accent-amber)] transition-all"
                 required
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-9 text-slate-400 hover:text-slate-600"
+            </div>
+
+            <div className="space-y-1 relative">
+              <label className="text-xs font-mono uppercase tracking-widest text-[var(--text-tertiary)] ml-1">Access Key</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  leftIcon={<Lock className="w-5 h-5 text-[var(--text-tertiary)]" />}
+                  className="bg-[var(--surface-sunken)] border-[var(--border-default)] text-[var(--text-primary)] h-12 rounded-xl focus:border-[var(--accent-amber)] transition-all"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-xs font-mono text-[var(--text-tertiary)] hover:text-[var(--accent-amber)] transition-colors uppercase tracking-wider"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+                Reset Access
+              </Link>
             </div>
 
             {error && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-900/30 border border-red-800/50 rounded-lg text-sm text-red-400"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl text-sm text-red-400 flex items-center gap-3"
               >
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                 {error}
               </motion.div>
             )}
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12 bg-[var(--text-primary)] text-[var(--surface-base)] hover:bg-[var(--accent-amber)] hover:text-[var(--surface-base)] font-bold rounded-xl transition-all duration-300 shadow-lg shadow-black/20"
               loading={isLoading}
             >
-              Sign In
+              Authorize Session
             </Button>
           </form>
+        </div>
 
+        <div className="mt-10 flex flex-col items-center gap-4">
+          <p className="text-sm text-[var(--text-secondary)]">
+            New operative?{' '}
+            <Link to="/register" className="text-[var(--accent-amber)] hover:underline underline-offset-4 transition-all">
+              Request Credentials
+            </Link>
+          </p>
+          
+          <div className="flex items-center gap-3 text-[var(--text-disabled)]">
+            <div className="h-px w-8 bg-[var(--border-subtle)]" />
+            <span className="text-[10px] font-mono tracking-[0.2em] uppercase">Security Level: EAL7+</span>
+            <div className="h-px w-8 bg-[var(--border-subtle)]" />
           </div>
-
-        <p className="text-center text-sm text-slate-500 mt-6">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-cyan-400 hover:text-cyan-300">
-            Register here
-          </Link>
-        </p>
-
-        <p className="text-center text-sm text-slate-500 mt-6">
-          © 2024 ForensicsAI Platform. Enterprise Edition.
-        </p>
+        </div>
       </motion.div>
     </div>
   );
 }
 
 export default LoginPage;
+

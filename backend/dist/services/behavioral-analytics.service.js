@@ -4,8 +4,9 @@
  * Analyze suspicious behavior and detect anomalies in forensic data
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.behavioralAnalyticsService = exports.BehavioralAnalyticsService = exports.AnomalyStatus = exports.AnomalySeverity = exports.BehavioralCategory = void 0;
+exports.campaignCorrelationEngine = exports.CampaignCorrelationEngine = exports.behavioralAnalyticsService = exports.BehavioralAnalyticsService = exports.AnomalyStatus = exports.AnomalySeverity = exports.BehavioralCategory = void 0;
 const models_1 = require("../models");
+const threat_model_1 = require("../models/threat.model");
 const uuid_1 = require("uuid");
 var BehavioralCategory;
 (function (BehavioralCategory) {
@@ -369,5 +370,119 @@ class BehavioralAnalyticsService {
 }
 exports.BehavioralAnalyticsService = BehavioralAnalyticsService;
 exports.behavioralAnalyticsService = new BehavioralAnalyticsService();
+class CampaignCorrelationEngine {
+    /**
+     * Correlate investigations by fuzzy IOC matching and shared MITRE techniques.
+     */
+    async correlateInvestigations(investigationIds) {
+        const investigations = await models_1.Investigation.find({ _id: { $in: investigationIds } }).lean();
+        const iocs = await threat_model_1.IOC.find({ linkedInvestigations: { $in: investigationIds } }).lean();
+        // Group IOCs by investigation
+        const invIocs = {};
+        for (const ioc of iocs) {
+            for (const invId of ioc.linkedInvestigations || []) {
+                if (!invIocs[invId])
+                    invIocs[invId] = [];
+                invIocs[invId].push(ioc);
+            }
+        }
+        const campaigns = [];
+        const visited = new Set();
+        for (let i = 0; i < investigationIds.length; i++) {
+            if (visited.has(investigationIds[i]))
+                continue;
+            const cluster = [investigationIds[i]];
+            const fuzzyMatches = [];
+            const sharedTechniques = new Set();
+            for (let j = i + 1; j < investigationIds.length; j++) {
+                if (visited.has(investigationIds[j]))
+                    continue;
+                const matches = this.fuzzyMatchIocs(invIocs[investigationIds[i]] || [], invIocs[investigationIds[j]] || []);
+                if (matches.length > 0) {
+                    cluster.push(investigationIds[j]);
+                    fuzzyMatches.push(...matches);
+                    visited.add(investigationIds[j]);
+                }
+            }
+            if (cluster.length >= 2) {
+                visited.add(investigationIds[i]);
+                // Check shared MITRE techniques from telemetry
+                const telemetry = await models_1.TelemetryEvent.find({
+                    investigationId: { $in: cluster },
+                }).limit(500).lean();
+                const techMap = {};
+                for (const ev of telemetry) {
+                    const invId = ev.investigationId;
+                    const tech = ev.mitreTechnique;
+                    if (tech && invId) {
+                        if (!techMap[tech])
+                            techMap[tech] = new Set();
+                        techMap[tech].add(invId);
+                    }
+                }
+                for (const [tech, invs] of Object.entries(techMap)) {
+                    if (invs.size >= 2)
+                        sharedTechniques.add(tech);
+                }
+                campaigns.push({
+                    campaignId: `CAMPAIGN-${(0, uuid_1.v4)().slice(0, 8).toUpperCase()}`,
+                    investigations: cluster,
+                    sharedTechniques: [...sharedTechniques],
+                    fuzzyMatches,
+                    confidence: Math.min(0.95, 0.4 + fuzzyMatches.length * 0.1 + sharedTechniques.size * 0.15),
+                });
+            }
+        }
+        return campaigns;
+    }
+    /**
+     * Fuzzy IOC matching: subnet overlap, shared compilation timestamps, similar filenames
+     */
+    fuzzyMatchIocs(aIocs, bIocs) {
+        const matches = [];
+        for (const a of aIocs) {
+            for (const b of bIocs) {
+                if (a._id?.toString() === b._id?.toString())
+                    continue;
+                // Same /24 subnet for IPs
+                if (a.type === 'ip_address' && b.type === 'ip_address') {
+                    const subnetA = (a.value || '').split('.').slice(0, 3).join('.');
+                    const subnetB = (b.value || '').split('.').slice(0, 3).join('.');
+                    if (subnetA === subnetB && subnetA.length > 3) {
+                        matches.push({ type: 'subnet_overlap', a: a.value, b: b.value, similarity: 0.8 });
+                    }
+                }
+                // Similar file hashes (first 8 chars match = rare coincidence)
+                if (a.type === 'file_hash' && b.type === 'file_hash') {
+                    const prefixLen = 8;
+                    if ((a.value || '').slice(0, prefixLen) === (b.value || '').slice(0, prefixLen)) {
+                        matches.push({ type: 'hash_prefix', a: a.value, b: b.value, similarity: 0.7 });
+                    }
+                }
+                // Similar domains (same registered domain, different subdomains)
+                if (a.type === 'domain' && b.type === 'domain') {
+                    const aDomain = (a.value || '').split('.').slice(-2).join('.');
+                    const bDomain = (b.value || '').split('.').slice(-2).join('.');
+                    if (aDomain === bDomain && a.value !== b.value) {
+                        matches.push({ type: 'same_registrar', a: a.value, b: b.value, similarity: 0.75 });
+                    }
+                }
+            }
+        }
+        return matches;
+    }
+    /**
+     * Campaign discovery: group investigations with 3+ shared MITRE techniques in sequence
+     */
+    async discoverCampaigns() {
+        const recentInvestigations = await models_1.Investigation.find({
+            createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        }).select('_id').lean();
+        const ids = recentInvestigations.map(i => i._id.toString());
+        return this.correlateInvestigations(ids);
+    }
+}
+exports.CampaignCorrelationEngine = CampaignCorrelationEngine;
+exports.campaignCorrelationEngine = new CampaignCorrelationEngine();
 exports.default = exports.behavioralAnalyticsService;
 //# sourceMappingURL=behavioral-analytics.service.js.map

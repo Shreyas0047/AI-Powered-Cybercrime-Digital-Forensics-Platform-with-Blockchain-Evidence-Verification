@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+﻿import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   Play,
   Square,
@@ -10,27 +10,28 @@ import {
   XCircle,
   Timer,
   Server,
-  Eye,
   Terminal,
   Loader2,
   FileText,
   Network,
-  HardDrive,
   Cpu,
   Zap,
-  Settings,
   Shield,
   Bug,
   Hash,
-  Clock,
   Layers,
   Pause,
   PlayCircle,
   Search,
-  Download,
   Copy,
   Trash2,
   RefreshCw,
+  ArrowDown,
+  ArrowUp,
+  Database,
+  Lock,
+  Globe,
+  Target,
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -39,19 +40,47 @@ import { Select } from '../components/ui/Select';
 import { PageHeader, PageGrid } from '../layouts/PageContainer';
 import { DashboardCard, DashboardStat } from '../components/enterprise/DashboardGrid';
 import { useSandboxStore } from '../stores/sandboxStore';
+import { useTelemetryStore } from '../stores/telemetryStore';
+import { useLogsStore } from '../stores/logsStore';
+import { useStatusStore } from '../stores/statusStore';
+import { useRealtimeStore } from '../stores/realtimeStore';
 import { cn } from '../design-system';
-
-const simulatorInfo: Record<string, { name: string; color: string; description: string; icon: React.ReactNode }> = {
-  'ransomware-simulator': { name: 'Ransomware Simulator', color: 'bg-red-100 text-red-700', description: 'Simulates file encryption and ransom behavior', icon: <HardDrive className="w-5 h-5" /> },
-  'spyware-simulator': { name: 'Spyware Simulator', color: 'bg-orange-100 text-orange-700', description: 'Simulates surveillance and data exfiltration', icon: <Eye className="w-5 h-5" /> },
-  'trojan-simulator': { name: 'Trojan Simulator', color: 'bg-purple-100 text-purple-700', description: 'Simulates trojan backdoor and persistence', icon: <Terminal className="w-5 h-5" /> },
-  'botnet-simulator': { name: 'Botnet Simulator', color: 'bg-blue-100 text-blue-700', description: 'Simulates C2 communication and bot behavior', icon: <Network className="w-5 h-5" /> },
-  'credential-stealer': { name: 'Credential Stealer', color: 'bg-amber-100 text-amber-700', description: 'Simulates credential harvesting behavior', icon: <Cpu className="w-5 h-5" /> },
-};
 
 type TabType = 'sessions' | 'monitoring' | 'telemetry' | 'logs';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
+
+const levelColors: Record<string, string> = {
+  ERROR: 'bg-red-500/20 text-red-400 border-red-500/30',
+  WARNING: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  INFO: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+  DEBUG: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+};
+
+const levelBorderColors: Record<string, string> = {
+  ERROR: 'border-l-red-500',
+  WARNING: 'border-l-amber-500',
+  INFO: 'border-l-cyan-500',
+  DEBUG: 'border-l-slate-500',
+};
+
+const categoryIcons: Record<string, React.ReactNode> = {
+  process: <Cpu className="w-3.5 h-3.5" />,
+  file: <FileText className="w-3.5 h-3.5" />,
+  registry: <Lock className="w-3.5 h-3.5" />,
+  network: <Globe className="w-3.5 h-3.5" />,
+  threat: <Target className="w-3.5 h-3.5" />,
+  anomaly: <AlertTriangle className="w-3.5 h-3.5" />,
+};
+
+const categoryColors: Record<string, string> = {
+  process: 'bg-cyan-500/20 text-cyan-400',
+  file: 'bg-violet-500/20 text-violet-400',
+  registry: 'bg-amber-500/20 text-amber-400',
+  network: 'bg-blue-500/20 text-blue-400',
+  threat: 'bg-red-500/20 text-red-400',
+  anomaly: 'bg-orange-500/20 text-orange-400',
+};
 
 export function SandboxDashboardPage() {
   const {
@@ -59,29 +88,27 @@ export function SandboxDashboardPage() {
     stats,
     health,
     monitoringStatus,
-    executionStatus,
+    executionStatus: _executionStatus,
     simulators,
     activeSession,
-    telemetryEvents,
-    logs,
     fetchSessions,
     fetchStats,
     fetchSimulators,
     fetchHealth,
     fetchMonitoringStatus,
     fetchExecutionStatus,
-    fetchLogs,
     startSession,
     stopSession,
     resetVm,
     startRuntime,
-    connectTelemetry,
-    disconnectTelemetry,
     isLoading,
     isExecuting,
-    clearTelemetry,
-    clearLogs,
   } = useSandboxStore();
+
+  const telemetry = useTelemetryStore();
+  const logs = useLogsStore();
+  const showStatus = useStatusStore((s) => s.show);
+  const isSocketConnected = useRealtimeStore((s) => s.isConnected);
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [simulatorFilter, setSimulatorFilter] = useState('all');
@@ -89,8 +116,11 @@ export function SandboxDashboardPage() {
   const [selectedSimulator, setSelectedSimulator] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('sessions');
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
-  const [logFilter, setLogFilter] = useState('');
-  const [logsPaused, setLogsPaused] = useState(false);
+
+  const logsEndRef = useRef<HTMLDivElement>(null);
+  const telemetryEndRef = useRef<HTMLDivElement>(null);
+  const logsContainerRef = useRef<HTMLDivElement>(null);
+  const telemetryContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchSessions({ page: 1, limit: 50 });
@@ -99,22 +129,28 @@ export function SandboxDashboardPage() {
     fetchHealth();
     fetchMonitoringStatus();
     fetchExecutionStatus();
-    connectTelemetry();
-
-    const interval = setInterval(() => {
-      fetchHealth();
-      fetchMonitoringStatus();
-      fetchExecutionStatus();
-      if (!logsPaused && activeTab === 'logs') {
-        fetchLogs(200);
-      }
-    }, 5000);
+    logs.fetchHistorical(200);
+    telemetry.connect();
+    logs.connect();
 
     return () => {
-      disconnectTelemetry();
-      clearInterval(interval);
+      telemetry.disconnect();
+      logs.disconnect();
     };
-  }, [fetchSessions, fetchStats, fetchSimulators, fetchHealth, fetchMonitoringStatus, fetchExecutionStatus, connectTelemetry, disconnectTelemetry]);
+  }, [fetchSessions, fetchStats, fetchSimulators, fetchHealth, fetchMonitoringStatus, fetchExecutionStatus]);
+
+  // Poll at 5s when active session, 10s otherwise; always poll even with Socket.IO
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isSocketConnected || activeSession) {
+        fetchHealth();
+        fetchMonitoringStatus();
+        fetchExecutionStatus();
+      }
+    }, activeSession ? 5000 : 10000);
+
+    return () => clearInterval(interval);
+  }, [isSocketConnected, activeSession?.session_id, activeSession?.state, fetchHealth, fetchMonitoringStatus, fetchExecutionStatus]);
 
   useEffect(() => {
     if (activeSession && activeSession.state !== 'completed' && activeSession.state !== 'failed') {
@@ -122,36 +158,87 @@ export function SandboxDashboardPage() {
     }
   }, [activeSession]);
 
+  // When runtime comes online, fetch simulators if list is empty
+  useEffect(() => {
+    if (health && simulators.length === 0) {
+      fetchSimulators();
+    }
+  }, [health, simulators.length, fetchSimulators]);
+
+  useEffect(() => {
+    if (logs.autoScroll && logsEndRef.current && logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+    }
+  }, [logs.entries, logs.autoScroll]);
+
+  useEffect(() => {
+    if (telemetry.autoScroll && telemetryEndRef.current && telemetryContainerRef.current) {
+      telemetryContainerRef.current.scrollTop = telemetryContainerRef.current.scrollHeight;
+    }
+  }, [telemetry.events, telemetry.autoScroll]);
+
   const handleStartSession = async () => {
     if (!selectedSimulator) return;
-    clearTelemetry();
+    showStatus('loading', 'Initializing sandbox session...', 'Restoring VM to clean baseline');
+    telemetry.clear();
     const result = await startSession(selectedSimulator);
     if (result.success) {
+      showStatus('success', 'Session started successfully', `Session ID: ${result.sessionId || 'N/A'}`);
       fetchSessions({ page: 1, limit: 50 });
       fetchStats();
       fetchExecutionStatus();
+    } else {
+      showStatus('error', 'Failed to start session', result.message || 'Unknown error');
     }
   };
 
   const handleStopSession = async () => {
     if (!activeSession) return;
+    showStatus('loading', 'Stopping session...', 'Rolling back VM to clean state');
     const result = await stopSession(activeSession.session_id);
     if (result.success) {
+      showStatus('success', 'Session stopped', 'VM restored to baseline snapshot');
       setSessionStartTime(null);
+      telemetry.clear();
       fetchSessions({ page: 1, limit: 50 });
       fetchStats();
+      fetchExecutionStatus();
+    } else {
+      showStatus('error', 'Failed to stop session', result.message || 'Unknown error');
     }
   };
 
   const handleResetVm = async () => {
-    await resetVm();
+    showStatus('loading', 'Resetting VM...', 'Restoring to CleanBaseline snapshot');
+    const result = await resetVm();
+    if (result.success) {
+      showStatus('success', 'VM reset successfully', 'Ready for new session');
+    } else {
+      showStatus('error', 'Failed to reset VM', result.message || 'Unknown error');
+    }
     fetchHealth();
     fetchMonitoringStatus();
   };
 
+  const handleStartRuntime = async () => {
+    showStatus('loading', 'Starting sandbox runtime...', 'Locating Python and launching forensic engine');
+    const result = await startRuntime();
+    if (result.success) {
+      if (result.message?.includes('already running')) {
+        showStatus('success', 'Runtime already online', 'Ready for sandbox sessions');
+      } else {
+        showStatus('success', 'Runtime online', 'Ready for sandbox sessions');
+      }
+      // Re-fetch simulators and health now that runtime is up
+      await Promise.all([fetchSimulators(), fetchHealth()]);
+    } else {
+      showStatus('error', 'Failed to start runtime', result.message || 'Install Python 3.11+ and add to system PATH');
+    }
+  };
+
   const filteredSessions = sessions.filter((session) => {
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
-    const matchesSimulator = simulatorFilter === 'all' || session.simulator === simulatorFilter;
+    const matchesSimulator = simulatorFilter === 'all' || (session as any).simulator === simulatorFilter || session.simulatorId === simulatorFilter;
     return matchesStatus && matchesSimulator;
   });
 
@@ -173,14 +260,46 @@ export function SandboxDashboardPage() {
   const completedCount = stats?.byStatus?.completed || 0;
   const failedCount = (stats?.byStatus?.failed || 0) + (stats?.byStatus?.timeout || 0);
 
-  const isSessionRunning = activeSession && !['completed', 'failed'].includes(activeSession.state);
+  const isSessionRunning = activeSession && !['completed', 'failed', 'timeout', 'rolled_back'].includes(activeSession.state);
 
   const processCount = monitoringStatus?.process_count || 0;
   const fileCount = monitoringStatus?.file_operations_count || 0;
   const registryCount = monitoringStatus?.registry_operations_count || 0;
   const networkCount = monitoringStatus?.network_operations_count || 0;
   const totalEvents = monitoringStatus?.total_events || 0;
-  const behaviorAlerts = monitoringStatus?.behavior_alerts?.length || 0;
+  const behaviorAlerts = Array.isArray(monitoringStatus?.behavior_alerts)
+    ? monitoringStatus.behavior_alerts.length
+    : Number(monitoringStatus?.behavior_alerts || 0);
+
+  const filteredLogs = logs.entries.filter((entry) => {
+    const matchesLevel = logs.filterLevel === 'all' || entry.level === logs.filterLevel;
+    const matchesText = !logs.filterText || entry.message.toLowerCase().includes(logs.filterText.toLowerCase());
+    return matchesLevel && matchesText;
+  });
+
+  const telemetryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    telemetry.events.forEach((e) => {
+      counts[e.category] = (counts[e.category] || 0) + 1;
+    });
+    return counts;
+  }, [telemetry.events]);
+
+  const exportLogs = useCallback(() => {
+    const text = filteredLogs.map((l) => `[${l.level}] ${l.timestamp}: ${l.message}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sandbox-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filteredLogs]);
+
+  const copyLogs = useCallback(() => {
+    const text = filteredLogs.map((l) => `[${l.level}] ${l.timestamp}: ${l.message}`).join('\n');
+    navigator.clipboard.writeText(text);
+  }, [filteredLogs]);
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -190,7 +309,7 @@ export function SandboxDashboardPage() {
         actions={
           <div className="flex items-center gap-2">
             {!health ? (
-              <Button variant="outline" size="sm" onClick={() => startRuntime()} disabled={isLoading}>
+              <Button variant="outline" size="sm" onClick={handleStartRuntime} disabled={isLoading}>
                 <Zap className="w-4 h-4" />
                 Start Runtime
               </Button>
@@ -200,9 +319,51 @@ export function SandboxDashboardPage() {
                 <span className="text-xs text-emerald-700 dark:text-emerald-400">Runtime Online</span>
               </div>
             )}
+
+            {isSessionRunning && activeSession && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Running Session</span>
+                <span className="text-xs text-blue-500 dark:text-blue-500 font-mono">{activeSession.session_id.slice(0, 8)}</span>
+              </div>
+            )}
+
+            {activeSession && activeSession.state === 'completed' && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800/50">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Session Completed</span>
+              </div>
+            )}
+
+            {activeSession && ['timeout', 'rolled_back'].includes(activeSession.state) && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  {activeSession.state === 'timeout' ? 'Session Timed Out' : 'Session Interrupted'}
+                </span>
+              </div>
+            )}
+
+            {activeSession && activeSession.state === 'failed' && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/50">
+                <XCircle className="w-3.5 h-3.5 text-red-500" />
+                <span className="text-xs font-medium text-red-700 dark:text-red-400">Session Failed</span>
+              </div>
+            )}
+
             <Button variant="outline" size="sm" onClick={handleResetVm} disabled={isLoading || isExecuting || !health}>
               <RotateCcw className="w-4 h-4" />
               Reset VM
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStopSession}
+              disabled={!isSessionRunning || isLoading}
+              className="text-red-600 dark:text-red-400 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <Square className="w-4 h-4" />
+              Stop Session
             </Button>
             <Button
               size="sm"
@@ -225,20 +386,41 @@ export function SandboxDashboardPage() {
           value={selectedSimulator}
           onChange={(val) => setSelectedSimulator(val)}
           options={[
-            { value: '', label: 'Select Threat Simulator...' },
-            ...(simulators.length > 0
-              ? simulators.map((s) => ({ value: s.id, label: s.display_name }))
-              : Object.entries(simulatorInfo).map(([id, info]) => ({ value: id, label: info.name }))),
+            {
+              value: '',
+              label: !health
+                ? 'Runtime not connected — click Start Runtime'
+                : simulators.length === 0
+                  ? 'No simulators available'
+                  : 'Select Threat Simulator...',
+            },
+            ...simulators.map((s) => ({ value: s.id, label: s.display_name })),
           ]}
           className="w-64"
         />
         <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              health?.vm_status?.state === 'running' ? 'bg-emerald-500 animate-pulse' :
+              health?.vm_status?.state === 'stopped' ? 'bg-slate-400' :
+              health?.vm_status?.error ? 'bg-red-500' :
+              'bg-slate-400'
+            )} />
             <Bug className="w-4 h-4 text-cyan-600" />
             <span className="text-sm text-slate-600 dark:text-slate-400">VM:</span>
-            <span className="text-sm font-medium text-slate-900 dark:text-white">
-              {health?.vm_status?.state || 'Unknown'}
+            <span className={cn(
+              "text-sm font-medium",
+              health?.vm_status?.state === 'running' ? 'text-emerald-600 dark:text-emerald-400' :
+              health?.vm_status?.state === 'stopped' ? 'text-slate-500' :
+              health?.vm_status?.error ? 'text-red-600 dark:text-red-400' :
+              'text-slate-500'
+            )}>
+              {health?.vm_status?.state === 'running' ? 'Running' :
+               health?.vm_status?.state === 'stopped' ? 'Stopped' :
+               health?.vm_status?.error ? 'Error' :
+               'Unknown'}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -295,7 +477,8 @@ export function SandboxDashboardPage() {
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
             {tab === 'sessions' && ` (${sessions.length})`}
             {tab === 'monitoring' && totalEvents > 0 && ` (${totalEvents})`}
-            {tab === 'telemetry' && telemetryEvents.length > 0 && ` (${telemetryEvents.length})`}
+            {tab === 'telemetry' && telemetry.events.length > 0 && ` (${telemetry.events.length})`}
+            {tab === 'logs' && logs.entries.length > 0 && ` (${logs.entries.length})`}
           </button>
         ))}
       </div>
@@ -321,7 +504,7 @@ export function SandboxDashboardPage() {
                 onChange={(val) => setSimulatorFilter(val)}
                 options={[
                   { value: 'all', label: 'All Simulators' },
-                  ...Object.entries(simulatorInfo).map(([id, info]) => ({ value: id, label: info.name })),
+                  ...simulators.map((s) => ({ value: s.id, label: s.display_name })),
                 ]}
                 className="w-48"
               />
@@ -362,7 +545,7 @@ export function SandboxDashboardPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-slate-900 dark:text-white">
-                              {simulatorInfo[session.simulator]?.name || session.simulator}
+                              {session.simulatorName || session.simulatorId}
                             </p>
                             <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
                               {session.sessionId?.slice(0, 8)}
@@ -370,9 +553,9 @@ export function SandboxDashboardPage() {
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 dark:text-slate-500">
                             <span>{session.vmName}</span>
-                            <span>•</span>
+                            <span>·</span>
                             <span>{formatSessionDuration(session.duration)}</span>
-                            <span>•</span>
+                            <span>·</span>
                             <span>{session.eventsCollected || 0} events</span>
                           </div>
                         </div>
@@ -404,15 +587,14 @@ export function SandboxDashboardPage() {
                     <div className="flex items-center gap-3 mb-2">
                       <div
                         className={cn(
-                          'w-10 h-10 rounded-xl flex items-center justify-center',
-                          simulatorInfo[selectedSession.simulator]?.color || 'bg-slate-100 dark:bg-slate-700'
+                          'w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-700'
                         )}
                       >
                         <Terminal className="w-5 h-5" />
                       </div>
                       <div>
                         <p className="font-medium text-slate-900 dark:text-white">
-                          {simulatorInfo[selectedSession.simulator]?.name || selectedSession.simulator}
+                          {selectedSession.simulatorName || selectedSession.simulatorId}
                         </p>
                         <p className="text-xs text-slate-400 dark:text-slate-500">
                           {selectedSession.sessionId?.slice(0, 8)}
@@ -420,7 +602,7 @@ export function SandboxDashboardPage() {
                       </div>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {simulatorInfo[selectedSession.simulator]?.description}
+                      Execution session
                     </p>
                   </div>
 
@@ -443,7 +625,7 @@ export function SandboxDashboardPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500 dark:text-slate-400">Evidence</span>
-                      <span className="text-slate-700 dark:text-slate-300">{selectedSession.evidenceFiles || 0}</span>
+                      <span className="text-slate-700 dark:text-slate-300">{selectedSession.evidenceFiles?.length || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500 dark:text-slate-400">Started</span>
@@ -453,10 +635,10 @@ export function SandboxDashboardPage() {
                     </div>
                   </div>
 
-                  {selectedSession.error && (
+                  {(selectedSession as any).error && (
                     <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg mt-4">
                       <p className="text-sm text-red-700 dark:text-red-400 font-medium mb-1">Error</p>
-                      <p className="text-xs text-red-600 dark:text-red-500">{selectedSession.error}</p>
+                      <p className="text-xs text-red-600 dark:text-red-500">{(selectedSession as any).error}</p>
                     </div>
                   )}
                 </div>
@@ -597,102 +779,182 @@ export function SandboxDashboardPage() {
       )}
 
       {activeTab === 'telemetry' && (
-        <Card className="h-[500px] flex flex-col">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <Terminal className="w-4 h-4" />
-                Live Telemetry Stream
-              </h3>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                {telemetryEvents.length} events captured
-              </p>
+        <Card className="h-[550px] flex flex-col">
+          <div className="p-3 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between bg-slate-50 dark:bg-slate-800/30">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className={cn('w-2 h-2 rounded-full', telemetry.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500')} />
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  {telemetry.isConnected ? 'Live' : 'Disconnected'}
+                </span>
+              </div>
+              <div className="h-4 w-px bg-slate-300 dark:bg-slate-600" />
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1">
+                  <Cpu className="w-3 h-3 text-cyan-500" />
+                  <span className="text-slate-500">Process:</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{telemetryCounts.process || 0}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-violet-500" />
+                  <span className="text-slate-500">File:</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{telemetryCounts.file || 0}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-amber-500" />
+                  <span className="text-slate-500">Registry:</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{telemetryCounts.registry || 0}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Globe className="w-3 h-3 text-blue-500" />
+                  <span className="text-slate-500">Network:</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{telemetryCounts.network || 0}</span>
+                </span>
+              </div>
             </div>
-            <Button variant="outline" size="sm" onClick={clearTelemetry}>
-              Clear
-            </Button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => telemetry.toggleAutoScroll()}
+                className={cn(
+                  'p-1.5 rounded transition-colors',
+                  telemetry.autoScroll ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600' : 'text-slate-400 hover:text-slate-600'
+                )}
+                title={telemetry.autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
+              >
+                {telemetry.autoScroll ? <ArrowDown className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => telemetry.togglePause()}
+                className={cn(
+                  'p-1.5 rounded transition-colors',
+                  telemetry.isPaused ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'text-slate-400 hover:text-slate-600'
+                )}
+                title={telemetry.isPaused ? 'Resume' : 'Pause'}
+              >
+                {telemetry.isPaused ? <PlayCircle className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => telemetry.clear()}
+                className="p-1.5 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                title="Clear"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-2">
-            <AnimatePresence>
-              {telemetryEvents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                  <Terminal className="w-12 h-12 mb-2 opacity-50" />
-                  <p>Waiting for telemetry events...</p>
-                  <p className="text-xs mt-1">Start a session to capture live telemetry</p>
-                </div>
-              ) : (
-                telemetryEvents.map((event, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className={cn(
-                      'p-3 rounded-lg border',
-                      event.event_type === 'session_update' && 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
-                      event.event_type === 'forensic_event' && 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                    )}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      <span className="text-xs text-slate-500">{new Date(event.timestamp).toLocaleTimeString()}</span>
-                      <span className={cn(
-                        'px-1.5 py-0.5 rounded text-xs',
-                        event.category === 'session' && 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300',
-                        event.category !== 'session' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300'
-                      )}>
-                        {event.category}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{event.event_type}</p>
-                    <pre className="mt-1 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap break-all max-h-20 overflow-y-auto">
-                      {JSON.stringify(event.data, null, 2)}
-                    </pre>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
+          <div
+            ref={telemetryContainerRef}
+            className="flex-1 overflow-y-auto p-3 font-mono text-xs space-y-1.5 bg-slate-900"
+          >
+            {telemetry.events.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                <Database className="w-12 h-12 mb-3 opacity-30" />
+                <p className="text-sm">Waiting for forensic events...</p>
+                <p className="text-xs mt-1 text-slate-600">Start a session to capture live telemetry</p>
+              </div>
+            ) : (
+              telemetry.events.map((event, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className={cn(
+                    'flex items-start gap-2 p-2 rounded border-l-2 bg-slate-800/50',
+                    categoryColors[event.category] ? `border-l-${event.category === 'process' ? 'cyan' : event.category === 'file' ? 'violet' : event.category === 'registry' ? 'amber' : event.category === 'network' ? 'blue' : event.category === 'threat' ? 'red' : 'orange'}-500` : 'border-l-slate-500'
+                  )}
+                >
+                  <span className="text-slate-600 shrink-0 w-20">
+                    {new Date(event.timestamp).toLocaleTimeString()}
+                  </span>
+                  <span className={cn(
+                    'px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 flex items-center gap-1',
+                    categoryColors[event.category] || 'bg-slate-700 text-slate-400'
+                  )}>
+                    {categoryIcons[event.category]}
+                    {event.category}
+                  </span>
+                  <span className="text-slate-300 truncate flex-1">
+                    {event.event_type}
+                  </span>
+                  {event.data && Object.keys(event.data).length > 0 && (
+                    <span className="text-slate-500 shrink-0 max-w-[200px] truncate" title={JSON.stringify(event.data)}>
+                      {JSON.stringify(event.data).slice(0, 80)}
+                    </span>
+                  )}
+                </motion.div>
+              ))
+            )}
+            <div ref={telemetryEndRef} />
           </div>
         </Card>
       )}
 
       {activeTab === 'logs' && (
-        <Card className="h-[500px] flex flex-col">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-700/50">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Terminal className="w-4 h-4" />
-                  Live Runtime Logs
-                </h3>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                  {logs.length} log entries
-                </p>
+        <Card className="h-[550px] flex flex-col">
+          <div className="p-3 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className={cn('w-2 h-2 rounded-full', logs.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500')} />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                    {logs.isConnected ? 'Live Stream' : 'Disconnected'}
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-slate-300 dark:bg-slate-600" />
+                <span className="text-xs text-slate-500">{logs.entries.length} entries</span>
+                <span className="text-xs text-slate-500">·</span>
+                <span className="text-xs text-slate-500">{filteredLogs.length} shown</span>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLogsPaused(!logsPaused)}
+                <button
+                  onClick={exportLogs}
+                  className="p-1.5 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                  title="Export Logs"
                 >
-                  {logsPaused ? <PlayCircle className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  {logsPaused ? 'Resume' : 'Pause'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => fetchLogs(200)}>
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={clearLogs}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const logText = logs.map(l => `[${l.level}] ${l.timestamp}: ${l.message}`).join('\n');
-                    navigator.clipboard.writeText(logText);
-                  }}
+                  <ArrowDown className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={copyLogs}
+                  className="p-1.5 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                  title="Copy Logs"
                 >
                   <Copy className="w-4 h-4" />
-                </Button>
+                </button>
+                <button
+                  onClick={() => logs.togglePause()}
+                  className={cn(
+                    'p-1.5 rounded transition-colors',
+                    logs.isPaused ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'text-slate-400 hover:text-slate-600'
+                  )}
+                  title={logs.isPaused ? 'Resume' : 'Pause'}
+                >
+                  {logs.isPaused ? <PlayCircle className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => logs.toggleAutoScroll()}
+                  className={cn(
+                    'p-1.5 rounded transition-colors',
+                    logs.autoScroll ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600' : 'text-slate-400 hover:text-slate-600'
+                  )}
+                  title={logs.autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
+                >
+                  {logs.autoScroll ? <ArrowDown className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => logs.clear()}
+                  className="p-1.5 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                  title="Clear Logs"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => logs.fetchHistorical(200)}
+                  className="p-1.5 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                  title="Refresh"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -701,62 +963,63 @@ export function SandboxDashboardPage() {
                 <input
                   type="text"
                   placeholder="Search logs..."
-                  value={logFilter}
-                  onChange={(e) => setLogFilter(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  value={logs.filterText}
+                  onChange={(e) => logs.setFilterText(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
               <Select
-                value="all"
-                onChange={() => {}}
+                value={logs.filterLevel}
+                onChange={(val) => logs.setFilterLevel(val)}
                 options={[
                   { value: 'all', label: 'All Levels' },
                   { value: 'INFO', label: 'Info' },
                   { value: 'WARNING', label: 'Warning' },
                   { value: 'ERROR', label: 'Error' },
+                  { value: 'DEBUG', label: 'Debug' },
                 ]}
-                className="w-36"
+                className="w-32"
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 font-mono text-xs bg-slate-900 dark:bg-slate-950">
-            {logs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                <Terminal className="w-12 h-12 mb-2 opacity-50" />
-                <p>No logs available</p>
-                <p className="text-xs mt-1">Logs will appear here when runtime is active</p>
+          <div
+            ref={logsContainerRef}
+            className="flex-1 overflow-y-auto font-mono text-xs bg-slate-900"
+          >
+            {filteredLogs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                <Terminal className="w-12 h-12 mb-3 opacity-30" />
+                <p className="text-sm">No logs available</p>
+                <p className="text-xs mt-1 text-slate-600">Logs will appear when runtime is active</p>
               </div>
             ) : (
-              logs
-                .filter(log => !logFilter || log.message.toLowerCase().includes(logFilter.toLowerCase()))
-                .map((log, idx) => (
-                  <div
-                    key={idx}
-                    className={cn(
-                      'py-1 px-2 border-l-2',
-                      log.level === 'ERROR' && 'border-red-500 text-red-400 bg-red-900/10',
-                      log.level === 'WARNING' && 'border-amber-500 text-amber-400 bg-amber-900/10',
-                      log.level === 'INFO' && 'border-cyan-500 text-cyan-400 bg-cyan-900/10',
-                      log.level === 'DEBUG' && 'border-slate-500 text-slate-400 bg-slate-800/50',
-                      !['ERROR', 'WARNING', 'INFO', 'DEBUG'].includes(log.level) && 'border-slate-500 text-slate-300'
-                    )}
-                  >
-                    <span className="text-slate-500 mr-2">
-                      {new Date(log.timestamp).toLocaleTimeString()}
+              filteredLogs.map((log, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    'py-1 px-3 border-l-2 hover:bg-slate-900/80 transition-colors',
+                    levelBorderColors[log.level] || 'border-l-slate-500'
+                  )}
+                >
+                  <span className="text-slate-600 mr-2">
+                    {new Date(log.timestamp).toLocaleTimeString()}
+                  </span>
+                  <span className={cn(
+                    'mr-2 px-1.5 py-0.5 rounded text-[10px] font-medium border',
+                    levelColors[log.level] || 'bg-slate-700 text-slate-400 border-slate-600'
+                  )}>
+                    {log.level}
+                  </span>
+                  {log.session_id && (
+                    <span className="mr-2 text-slate-600 text-[10px]">
+                      [{log.session_id.slice(0, 8)}]
                     </span>
-                    <span className={cn(
-                      'mr-2 px-1 rounded text-[10px]',
-                      log.level === 'ERROR' && 'bg-red-500/20 text-red-400',
-                      log.level === 'WARNING' && 'bg-amber-500/20 text-amber-400',
-                      log.level === 'INFO' && 'bg-cyan-500/20 text-cyan-400',
-                      log.level === 'DEBUG' && 'bg-slate-500/20 text-slate-400',
-                    )}>
-                      {log.level}
-                    </span>
-                    {log.message}
-                  </div>
-                ))
+                  )}
+                  <span className="text-slate-300">{log.message}</span>
+                </div>
+              ))
             )}
+            <div ref={logsEndRef} />
           </div>
         </Card>
       )}
@@ -796,3 +1059,4 @@ export function SandboxDashboardPage() {
 }
 
 export default SandboxDashboardPage;
+

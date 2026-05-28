@@ -13,6 +13,7 @@ import yaml
 
 from forensics_sandbox_agent.domain.entities.simulator_descriptor import SimulatorDescriptor
 from forensics_sandbox_agent.domain.simulator_mapping import (
+    SIMULATOR_REGISTRY,
     get_generic_name,
     get_display_name,
     get_executable_name,
@@ -22,62 +23,19 @@ from forensics_sandbox_agent.domain.simulator_mapping import (
 class SimulatorCatalog:
     """Manages the collection of available simulators."""
 
-    DEFAULT_SIMULATORS = [
+    DEFAULT_SIMULATORS: list[SimulatorDescriptor] = [
         SimulatorDescriptor(
-            id="system_service_1",
-            display_name="Ransomware Simulator",
+            id=entry["id"],
+            display_name=entry["display_name"],
             version="1.0.0",
-            description="Simulates file encryption and ransom behavior for forensic analysis",
-            category="ransomware",
+            description=entry["description"],
+            category=entry["behavioral_profile"],
             executable_path="",
             is_safe=True,
             requires_isolation=True,
-            timeout_seconds=300,
-        ),
-        SimulatorDescriptor(
-            id="system_service_2",
-            display_name="Spyware Simulator",
-            version="1.0.0",
-            description="Simulates surveillance and data exfiltration behavior for forensic analysis",
-            category="spyware",
-            executable_path="",
-            is_safe=True,
-            requires_isolation=True,
-            timeout_seconds=300,
-        ),
-        SimulatorDescriptor(
-            id="system_service_3",
-            display_name="Trojan Simulator",
-            version="1.0.0",
-            description="Simulates trojan backdoor and persistence behavior for forensic analysis",
-            category="trojan",
-            executable_path="",
-            is_safe=True,
-            requires_isolation=True,
-            timeout_seconds=300,
-        ),
-        SimulatorDescriptor(
-            id="system_service_4",
-            display_name="Botnet Simulator",
-            version="1.0.0",
-            description="Simulates command and control communication for forensic analysis",
-            category="botnet",
-            executable_path="",
-            is_safe=True,
-            requires_isolation=True,
-            timeout_seconds=300,
-        ),
-        SimulatorDescriptor(
-            id="system_service_5",
-            display_name="Credential Stealer Simulator",
-            version="1.0.0",
-            description="Simulates credential harvesting behavior for forensic analysis",
-            category="credential-stealer",
-            executable_path="",
-            is_safe=True,
-            requires_isolation=True,
-            timeout_seconds=300,
-        ),
+            timeout_seconds=entry["timeout_seconds"],
+        )
+        for entry in SIMULATOR_REGISTRY
     ]
 
     def __init__(
@@ -166,19 +124,24 @@ class SimulatorCatalog:
         """Resolve executable paths for simulators using generic names."""
         dist_path = self._project_root() / "dist" / "simulators"
 
+        def _try_resolve(sim: SimulatorDescriptor, base: Path) -> Optional[str]:
+            generic_name = get_generic_name(sim.id)
+            if generic_name:
+                exe_name = get_executable_name(generic_name)
+                if exe_name:
+                    candidate = base / exe_name
+                    if candidate.exists():
+                        return str(candidate)
+            return None
+
         if dist_path.exists():
             for sim in self._simulators:
-                generic_name = get_generic_name(sim.id)
-                if generic_name:
-                    exe_name = get_executable_name(generic_name)
-                else:
-                    exe_name = f"{sim.display_name.replace(' ', '')}.exe"
-                potential_path = dist_path / exe_name
-                if potential_path.exists():
-                    sim.executable_path = str(potential_path)
-                    sim.metadata["packaged_executable"] = str(potential_path)
-                    sim.metadata["generic_name"] = generic_name
-                    self._logger.debug(f"Found simulator executable: {exe_name}")
+                result = _try_resolve(sim, dist_path)
+                if result:
+                    sim.executable_path = result
+                    sim.metadata["packaged_executable"] = result
+                    sim.metadata["generic_name"] = get_generic_name(sim.id)
+                    self._logger.debug(f"Found simulator executable: {Path(result).name}")
 
         # Also check environment variable for custom path
         custom_path = os.environ.get("SIMULATOR_PATH")
@@ -186,14 +149,9 @@ class SimulatorCatalog:
             for sim in self._simulators:
                 custom = Path(custom_path)
                 if custom.is_dir():
-                    generic_name = get_generic_name(sim.id)
-                    if generic_name:
-                        exe_name = get_executable_name(generic_name)
-                    else:
-                        exe_name = f"{sim.display_name.replace(' ', '')}.exe"
-                    candidate = custom / exe_name
-                    if candidate.exists():
-                        sim.executable_path = str(candidate)
+                    result = _try_resolve(sim, custom)
+                    if result:
+                        sim.executable_path = result
                 elif custom.is_file():
                     sim.executable_path = str(custom)
 

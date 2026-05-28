@@ -3,6 +3,7 @@
  * Detects suspicious behavioral patterns and attack signatures
  */
 
+import logger from '../config/logger';
 import { v4 as uuidv4 } from 'uuid';
 import {
   NormalizedEvent,
@@ -219,7 +220,7 @@ export class BehaviorAnalyzer {
           findings.push(finding);
         }
       } catch (error) {
-        console.error(`Error applying behavior rule ${rule.type}: ${error}`);
+        logger.error(`Error applying behavior rule ${rule.type}: ${error}`);
       }
     }
 

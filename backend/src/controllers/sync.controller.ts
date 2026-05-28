@@ -423,6 +423,12 @@ export class SyncController {
 
       // Update session with heartbeat data
       (session as any).lastHeartbeat = new Date();
+
+      // Allow agent to push status updates (e.g., mark as failed on shutdown)
+      if (status) {
+        (session as any).status = status;
+      }
+
       (session as any).vmState = vmState;
       (session as any).memoryUsage = memoryUsage;
       (session as any).cpuUsage = cpuUsage;

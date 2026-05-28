@@ -3,7 +3,7 @@
  * Consistent form input system
  */
 
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import { cn } from '../../design-system';
 import { AlertCircle } from 'lucide-react';
 
@@ -19,7 +19,8 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(({
   label, error, helperText, leftIcon, rightIcon, fullWidth = false, className, id, ...props
 }, ref) => {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const inputId = id || `input-${generatedId}`;
 
   return (
     <div className={cn('flex flex-col gap-1.5', fullWidth && 'w-full')}>
@@ -72,7 +73,8 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   label, error, helperText, fullWidth = false, className, id, ...props
 }, ref) => {
-  const textareaId = id || `textarea-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const textareaId = id || `textarea-${generatedId}`;
 
   return (
     <div className={cn('flex flex-col gap-1.5', fullWidth && 'w-full')}>

@@ -54,11 +54,11 @@ export const SocketEvent = {
 } as const;
 
 export interface TelemetryEvent {
-  id: string;
+  session_id: string;
   timestamp: string;
-  type: string;
-  source: string;
-  details: Record<string, unknown>;
+  event_type: string;
+  category: string;
+  data: Record<string, unknown>;
   suspiciousScore?: number;
 }
 
@@ -110,6 +110,12 @@ export interface AIAnalysisUpdate {
 
 type EventCallback<T = unknown> = (data: T) => void;
 
+const debugSocket = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.debug(...args);
+  }
+};
+
 class SocketService {
   private socket: Socket | null = null;
   private isConnected: boolean = false;
@@ -124,12 +130,17 @@ class SocketService {
 
   // Connect to WebSocket server
   connect(): void {
-    if (this.socket?.connected) {
-      console.log('[Socket] Already connected');
+    if (this.socket?.connected || this.socket?.connecting) {
+      debugSocket('[Socket] Already connected or connecting');
       return;
     }
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+    }
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
 
     this.socket = io(this.getSocketUrl(), {
       reconnection: true,
@@ -148,19 +159,19 @@ class SocketService {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      console.log('[Socket] Connected:', this.socket?.id);
+      debugSocket('[Socket] Connected:', this.socket?.id);
       this.isConnected = true;
       this.emitEvent(SocketEvent.CONNECT);
     });
 
     this.socket.on('disconnect', (reason: string) => {
-      console.log('[Socket] Disconnected:', reason);
+      debugSocket('[Socket] Disconnected:', reason);
       this.isConnected = false;
       this.emitEvent(SocketEvent.DISCONNECT, reason);
     });
 
     this.socket.on('auth_success', (data: { userId: string; role: string }) => {
-      console.log('[Socket] Authenticated:', data);
+      debugSocket('[Socket] Authenticated:', data);
       this.emitEvent(SocketEvent.AUTH_SUCCESS, data);
     });
 
@@ -179,11 +190,11 @@ class SocketService {
     });
 
     this.socket.on('reconnect', (attemptNumber: number) => {
-      console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
+      debugSocket('[Socket] Reconnected after', attemptNumber, 'attempts');
     });
 
     this.socket.on('reconnect_attempt', (attemptNumber: number) => {
-      console.log('[Socket] Reconnection attempt:', attemptNumber);
+      debugSocket('[Socket] Reconnection attempt:', attemptNumber);
     });
 
     this.socket.on('reconnect_failed', () => {
@@ -261,19 +272,25 @@ class SocketService {
   // Subscribe to specific investigation updates
   subscribeToInvestigation(investigationId: string): void {
     this.socket?.emit('subscribe:investigation', investigationId);
-    console.log(`[Socket] Subscribed to investigation: ${investigationId}`);
+    debugSocket(`[Socket] Subscribed to investigation: ${investigationId}`);
   }
 
   // Unsubscribe from investigation updates
   unsubscribeFromInvestigation(investigationId: string): void {
     this.socket?.emit('unsubscribe:investigation', investigationId);
-    console.log(`[Socket] Unsubscribed from investigation: ${investigationId}`);
+    debugSocket(`[Socket] Unsubscribed from investigation: ${investigationId}`);
   }
 
   // Subscribe to sandbox session updates
   subscribeToSandboxSession(sessionId: string): void {
     this.socket?.emit('subscribe:sandbox', sessionId);
-    console.log(`[Socket] Subscribed to sandbox session: ${sessionId}`);
+    debugSocket(`[Socket] Subscribed to sandbox session: ${sessionId}`);
+  }
+
+  // Unsubscribe from sandbox updates
+  unsubscribeFromSandboxSession(sessionId: string): void {
+    this.socket?.emit('unsubscribe:sandbox', sessionId);
+    debugSocket(`[Socket] Unsubscribed from sandbox session: ${sessionId}`);
   }
 
   // Register event listener
@@ -315,11 +332,11 @@ class SocketService {
   // Disconnect from server
   disconnect(): void {
     if (this.socket) {
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;
-      this.listeners.clear();
-      console.log('[Socket] Disconnected');
+      debugSocket('[Socket] Disconnected');
     }
   }
 

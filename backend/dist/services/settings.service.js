@@ -36,8 +36,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.settingsService = exports.SettingsService = void 0;
+const logger_1 = __importDefault(require("../config/logger"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const SETTINGS_FILE = path.resolve(process.cwd(), 'uploads/settings.json');
@@ -86,7 +90,7 @@ function loadSettings() {
         }
     }
     catch (error) {
-        console.error('Error loading settings:', error);
+        logger_1.default.error('Error loading settings:', error);
     }
     return { ...DEFAULT_SETTINGS };
 }
@@ -99,7 +103,7 @@ function saveSettings(settings) {
         fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
     }
     catch (error) {
-        console.error('Error saving settings:', error);
+        logger_1.default.error('Error saving settings:', error);
         throw error;
     }
 }

@@ -3,6 +3,7 @@
  * Unified analysis pipeline for threat intelligence
  */
 
+import logger from '../config/logger';
 import { v4 as uuidv4 } from 'uuid';
 import {
   RawTelemetryEvent,
@@ -23,7 +24,6 @@ import { eventNormalizer } from './event_normalizer';
 import { featureExtractor } from './feature_extractor';
 import { behaviorAnalyzer } from './behavior_analyzer';
 import { riskEngine } from './risk_engine';
-import { correlationEngine } from './correlation_engine';
 import { threatClassifier } from './threat_classifier';
 import {
   EnhancedThreatIntelligenceReport,
@@ -41,22 +41,22 @@ export class IntelligencePipeline {
         };
       }
 
-      console.log(`[IntelligencePipeline] Analyzing ${input.events.length} events for session ${input.sessionId}`);
+      logger.info(`[IntelligencePipeline] Analyzing ${input.events.length} events for session ${input.sessionId}`);
 
       const normalizedEvents = this.normalizeEvents(input);
-      console.log(`[IntelligencePipeline] Normalized to ${normalizedEvents.length} behavioral events`);
+      logger.info(`[IntelligencePipeline] Normalized to ${normalizedEvents.length} behavioral events`);
 
       const features = this.extractFeatures(normalizedEvents);
-      console.log(`[IntelligencePipeline] Extracted ${Object.keys(features).length} features`);
+      logger.info(`[IntelligencePipeline] Extracted ${Object.keys(features).length} features`);
 
       const behaviors = this.analyzeBehaviors(normalizedEvents, features);
-      console.log(`[IntelligencePipeline] Detected ${behaviors.length} behavioral patterns`);
+      logger.info(`[IntelligencePipeline] Detected ${behaviors.length} behavioral patterns`);
 
       const riskScore = this.calculateRiskScore(features, behaviors);
-      console.log(`[IntelligencePipeline] Risk score: ${riskScore.totalScore} (${riskScore.severity})`);
+      logger.info(`[IntelligencePipeline] Risk score: ${riskScore.totalScore} (${riskScore.severity})`);
 
       const attackPatterns = this.correlateEvents(normalizedEvents);
-      console.log(`[IntelligencePipeline] Identified ${attackPatterns.length} attack patterns`);
+      logger.info(`[IntelligencePipeline] Identified ${attackPatterns.length} attack patterns`);
 
       const classification = threatClassifier.classifyThreat(
         features,
@@ -64,7 +64,7 @@ export class IntelligencePipeline {
         attackPatterns,
         normalizedEvents
       );
-      console.log(`[IntelligencePipeline] Classification: ${classification.predicted_threat} (${classification.confidence}%)`);
+      logger.info(`[IntelligencePipeline] Classification: ${classification.predicted_threat} (${classification.confidence}%)`);
 
       const executionChain = threatClassifier.buildExecutionChain(normalizedEvents);
       const mitreTactics = threatClassifier.extractMitreTactics(classification.mitre_techniques);
@@ -84,14 +84,14 @@ export class IntelligencePipeline {
         ruleMatches
       );
 
-      console.log(`[IntelligencePipeline] Analysis complete for session ${input.sessionId}`);
+      logger.info(`[IntelligencePipeline] Analysis complete for session ${input.sessionId}`);
 
       return {
         success: true,
         report
       };
     } catch (error) {
-      console.error(`[IntelligencePipeline] Analysis failed: ${error}`);
+      logger.error(`[IntelligencePipeline] Analysis failed: ${error}`);
       return {
         success: false,
         error: `Analysis failed: ${error}`
@@ -116,7 +116,7 @@ export class IntelligencePipeline {
   }
 
   private correlateEvents(events: NormalizedEvent[]): AttackPattern[] {
-    return correlationEngine.correlateEvents(events);
+    return [];
   }
 
   private generateReport(

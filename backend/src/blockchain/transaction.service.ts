@@ -3,6 +3,7 @@
  * Manages blockchain transaction workflows and confirmation tracking
  */
 
+import logger from '../config/logger';
 import { ethers } from 'ethers';
 import { blockchainConfig } from './config';
 import { smartContractService } from './smart-contract.service';
@@ -345,6 +346,12 @@ export class TransactionService {
     const txRecord = this.transactionHistory.get(txId);
     if (!txRecord || !txRecord.transactionHash) return;
 
+    // Clear existing interval if already monitoring this txId
+    if (this.pendingTransactions.has(txId)) {
+      clearInterval(this.pendingTransactions.get(txId)!);
+      this.pendingTransactions.delete(txId);
+    }
+
     // Schedule confirmation check
     const intervalId = setInterval(async () => {
       const tx = this.transactionHistory.get(txId);
@@ -384,7 +391,7 @@ export class TransactionService {
         tx.updatedAt = new Date();
         this.transactionHistory.set(txId, tx);
       } catch (error) {
-        console.error(`[Transaction] Confirmation check failed for ${txId}:`, error);
+        logger.error(`[Transaction] Confirmation check failed for ${txId}:`, error);
       }
     }, this.confirmationInterval);
 
@@ -508,6 +515,11 @@ export class TransactionService {
 
     for (const [txId, tx] of this.transactionHistory.entries()) {
       if (tx.updatedAt.getTime() < cutoff) {
+        const interval = this.pendingTransactions.get(txId);
+        if (interval) {
+          clearInterval(interval);
+          this.pendingTransactions.delete(txId);
+        }
         this.transactionHistory.delete(txId);
       }
     }

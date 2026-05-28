@@ -162,7 +162,6 @@ const evidenceIntegritySchema = new mongoose_1.Schema({
         ref: 'Evidence',
         required: true,
         unique: true,
-        index: true,
     },
     // Hash information
     currentHash: {
@@ -259,7 +258,6 @@ const evidencePackageHashSchema = new mongoose_1.Schema({
         type: String,
         required: true,
         unique: true,
-        index: true,
     },
     // Investigation reference
     investigationId: {
@@ -335,9 +333,7 @@ blockchainAuditSchema.index({ evidenceId: 1, eventType: 1 });
 blockchainAuditSchema.index({ timestamp: -1 });
 blockchainAuditSchema.index({ transactionHash: 1 });
 evidenceIntegritySchema.index({ integrityState: 1 });
-evidenceIntegritySchema.index({ currentHash: 1 });
 evidenceIntegritySchema.index({ lastVerifiedAt: -1 });
-evidencePackageHashSchema.index({ investigationId: 1 });
 evidencePackageHashSchema.index({ rootHash: 1 });
 blockchainVerificationSchema.index({ fingerprint: 1, status: 1 });
 blockchainVerificationSchema.index({ blockNumber: -1 });

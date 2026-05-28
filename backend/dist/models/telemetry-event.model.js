@@ -62,7 +62,7 @@ const telemetryEventSchema = new mongoose_1.Schema({
     timestamp: {
         type: Date,
         default: Date.now,
-        index: true,
+        index: { expireAfterSeconds: 2592000 },
     },
     processId: String,
     processName: String,

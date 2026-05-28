@@ -74,8 +74,10 @@ export class QueueWorker {
   private handlers: Map<string, JobHandler> = new Map();
   private processing = new Map<string, Job>();
   private config: QueueConfig;
-  private isProcessing = false;
+  private inFlightJobs = 0;
+  private isStopped = false;
   private processingInterval?: NodeJS.Timeout;
+  private timers: ReturnType<typeof setTimeout>[] = [];
 
   constructor(config: Partial<QueueConfig> = {}) {
     this.config = {
@@ -140,21 +142,21 @@ export class QueueWorker {
    * Process queued jobs
    */
   async processQueue(): Promise<void> {
-    if (this.isProcessing) return;
-    this.isProcessing = true;
+    if (this.inFlightJobs >= this.config.maxConcurrent) return;
 
-    try {
-      while (this.queue.length > 0 && this.processing.size < this.config.maxConcurrent) {
-        const job = this.queue.shift();
-        if (job) {
-          this.processing.set(job.id, job);
-          this.processJob(job).catch(err => {
-            logger.error(`Job processing error: ${job.id}`, { error: err.message });
-          });
-        }
-      }
-    } finally {
-      this.isProcessing = false;
+    const available = this.config.maxConcurrent - this.inFlightJobs;
+    const jobs = this.queue.splice(0, available);
+
+    if (jobs.length === 0) return;
+
+    this.inFlightJobs += jobs.length;
+
+    await Promise.allSettled(jobs.map(job => this.processJob(job)));
+
+    this.inFlightJobs -= jobs.length;
+
+    if (this.queue.length > 0 && !this.isStopped) {
+      this.processQueue();
     }
   }
 
@@ -184,7 +186,8 @@ export class QueueWorker {
     try {
       // Set timeout for processing
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Job processing timeout')), this.config.processTimeout);
+        const processTimer = setTimeout(() => reject(new Error('Job processing timeout')), this.config.processTimeout);
+        this.timers.push(processTimer);
       });
 
       job.result = await Promise.race([handler(job), timeoutPromise]);
@@ -211,7 +214,7 @@ export class QueueWorker {
         job.error = (error as Error).message;
 
         // Re-queue for retry
-        setTimeout(() => {
+        const retryTimer = setTimeout(() => {
           const insertIndex = this.queue.findIndex(j => j.priority > job.priority);
           if (insertIndex === -1) {
             this.queue.push(job);
@@ -220,6 +223,7 @@ export class QueueWorker {
           }
           this.processQueue();
         }, this.config.retryDelay);
+        this.timers.push(retryTimer);
       } else {
         job.status = JobStatus.FAILED;
         job.error = (error as Error).message;
@@ -228,7 +232,22 @@ export class QueueWorker {
     }
 
     this.processing.delete(job.id);
+    if (this.processing.size > 1000) {
+      this.cleanupOldJobs();
+    }
     this.processQueue(); // Process next job
+  }
+
+  /**
+   * Clean up completed/failed jobs older than 30 minutes
+   */
+  private cleanupOldJobs(): void {
+    const cutoff = Date.now() - 30 * 60 * 1000;
+    this.queue = this.queue.filter(j => {
+      const createdAt = new Date(j.createdAt).getTime();
+      const isOld = cutoff - createdAt > 0;
+      return !(isOld && (j.status === JobStatus.COMPLETED || j.status === JobStatus.FAILED));
+    });
   }
 
   /**
@@ -314,10 +333,13 @@ export class QueueWorker {
    * Stop automatic processing
    */
   stop(): void {
+    this.isStopped = true;
     if (this.processingInterval) {
       clearInterval(this.processingInterval);
       this.processingInterval = undefined;
     }
+    this.timers.forEach(t => clearTimeout(t));
+    this.timers = [];
     logger.info(`Queue worker stopped: ${this.config.name}`);
   }
 }

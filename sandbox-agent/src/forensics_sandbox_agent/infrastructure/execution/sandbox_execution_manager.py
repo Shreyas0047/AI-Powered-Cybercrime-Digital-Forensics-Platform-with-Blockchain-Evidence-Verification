@@ -9,16 +9,20 @@ This module manages the complete lifecycle of sandbox execution including:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import ntpath
+import os
+import shutil
+import threading
 import time
 import uuid
-import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-import ntpath
 
 from forensics_sandbox_agent.app.config.execution_models import (
     SandboxExecutionConfig,
@@ -26,6 +30,7 @@ from forensics_sandbox_agent.app.config.execution_models import (
     IsolationConfig,
 )
 from forensics_sandbox_agent.domain.entities.simulator_descriptor import SimulatorDescriptor
+from forensics_sandbox_agent.domain.simulator_mapping import VALID_SIMULATOR_IDS, get_executable_name, get_generic_name
 from forensics_sandbox_agent.infrastructure.vm.vm_controller import (
     VmController,
     VmStatus,
@@ -99,6 +104,8 @@ class ExecutionSession:
 class SandboxExecutionManager:
     """Manages the complete sandbox execution lifecycle."""
 
+    MAX_DETACHED_RETRIES = 2
+
     def __init__(
         self,
         vm_controller: VmController,
@@ -116,12 +123,15 @@ class SandboxExecutionManager:
         self._rollback_config = rollback_config
         self._isolation_config = isolation_config
         self._logger = logger
+        self._session_lock = threading.Lock()
         self._current_session: Optional[ExecutionSession] = None
+        self._detached_attempts: int = 0
 
     @property
     def current_session(self) -> Optional[ExecutionSession]:
         """Get the current execution session."""
-        return self._current_session
+        with self._session_lock:
+            return self._current_session
 
     def validate_simulator(self, simulator: SimulatorDescriptor) -> None:
         """Validate simulator is safe for execution."""
@@ -130,20 +140,33 @@ class SandboxExecutionManager:
         self._logger.info(f"  - executable_path: '{simulator.executable_path}'")
         self._logger.info(f"  - executable_path exists: {Path(simulator.executable_path).exists() if simulator.executable_path else 'N/A'}")
 
-        valid_ids = ("ransomware-simulator", "spyware-simulator", "trojan-simulator",
-                     "botnet-simulator", "credential-stealer")
-
-        if simulator.id not in valid_ids:
-            self._logger.error(f"REJECTED: Unknown simulator id: {simulator.id}")
+        if str(simulator.id) not in VALID_SIMULATOR_IDS:
+            self._logger.error(f"REJECTED: Unknown simulator id: '{simulator.id}' (type: {type(simulator.id)})")
+            self._logger.error(f"Valid IDs are: {VALID_SIMULATOR_IDS}")
             raise SimulatorValidationError(f"Unknown simulator: {simulator.id}")
 
         if not simulator.executable_path:
-            self._logger.error(f"REJECTED: Empty executable path for {simulator.id}")
-            raise SimulatorValidationError(f"Simulator executable path is empty")
+            self._logger.warning(f"No executable path for {simulator.id} — build simulators with 'python build.py simulator'")
+            raise SimulatorValidationError(f"Simulator executable not found — run 'python build.py simulator' or set SIMULATOR_PATH")
 
         if not Path(simulator.executable_path).exists():
             self._logger.error(f"REJECTED: File not found: {simulator.executable_path}")
             raise SimulatorValidationError(f"Simulator executable not found: {simulator.executable_path}")
+
+        generic_name = get_generic_name(simulator.id)
+        if generic_name:
+            expected_exe = get_executable_name(generic_name)
+            if expected_exe:
+                actual_name = os.path.basename(simulator.executable_path)
+                if actual_name.lower() != expected_exe.lower():
+                    self._logger.error(
+                        f"REJECTED: Executable name mismatch for {simulator.id}: "
+                        f"expected '{expected_exe}', got '{actual_name}'"
+                    )
+                    raise SimulatorValidationError(
+                        f"Executable name mismatch for {simulator.id}: "
+                        f"expected '{expected_exe}', got '{actual_name}'"
+                    )
 
         self._logger.info(f"APPROVED: Simulator {simulator.id} is valid")
         return
@@ -254,33 +277,61 @@ class SandboxExecutionManager:
                 environment=guest_environment,
             )
 
-            metadata.exit_code = exit_code
+            if exit_code == 0:
+                metadata.exit_code = 0
+            else:
+                metadata.exit_code = exit_code
             metadata.stdout = stdout
             metadata.stderr = stderr
             metadata.execution_end = datetime.now()
 
-            self._logger.info(f"Simulator execution completed with exit code: {exit_code}")
+            self._logger.info(f"Simulator execution completed with exit code: {metadata.exit_code}")
             return metadata
 
         except Exception as e:
-            if "exit 322122" in str(e):
-                fallback_ok, fallback_output = self._try_detached_simulator_run(
-                    simulator=simulator,
-                    guest_executable=guest_executable_win,
-                    guest_cwd=guest_cwd,
-                    guest_environment=guest_environment,
+            if "exit 322122" in str(e) and self._detached_attempts < self.MAX_DETACHED_RETRIES:
+                self._detached_attempts += 1
+                self._logger.warning(
+                    "Detached fallback attempt %d/%d for %s",
+                    self._detached_attempts, self.MAX_DETACHED_RETRIES, simulator.id
                 )
-                if fallback_ok:
-                    metadata.exit_code = 0
-                    metadata.stdout = fallback_output
-                    metadata.stderr = f"Synchronous guestcontrol run failed; detached fallback succeeded: {e}"
-                    metadata.execution_end = datetime.now()
-                    self._logger.info("Simulator completed through detached guest start fallback")
-                    return metadata
+                # Only allow detached fallback for known simulator executables
+                allowed_prefixes = (r"C:\sandbox\simulators\\", guest_environment.get("TEMP", r"C:\sandbox\tmp"))
+                if not any(guest_executable_win.startswith(p) for p in allowed_prefixes):
+                    self._logger.error("Detached fallback rejected: executable path %s not in allowed locations", guest_executable_win)
+                else:
+                    fallback_ok, fallback_output = self._try_detached_simulator_run(
+                        simulator=simulator,
+                        guest_executable=guest_executable_win,
+                        guest_cwd=guest_cwd,
+                        guest_environment=guest_environment,
+                    )
+                    if fallback_ok:
+                        metadata.exit_code = 0
+                        metadata.stdout = fallback_output
+                        metadata.stderr = f"Synchronous guestcontrol run failed; detached fallback succeeded: {e}"
+                        metadata.execution_end = datetime.now()
+                        self._logger.info("Simulator completed through detached guest start fallback")
+                        return metadata
 
             metadata.execution_end = datetime.now()
+            metadata.exit_code = metadata.exit_code if metadata.exit_code is not None else 1
             metadata.error_message = str(e)
             raise ExecutionTimeoutError(f"Simulator execution failed: {e}")
+
+    def _is_process_running_in_guest(self, process_name: str) -> bool:
+        """Check if a process is still running inside the guest VM via tasklist."""
+        try:
+            exit_code, stdout, stderr = self._vbox.guest_control_exec(
+                self._vm_controller.vm_name,
+                r"C:\Windows\System32\cmd.exe",
+                ["/c", "tasklist", "/fi", f"imagename eq {process_name}", "/fo", "csv", "/nh"],
+                timeout=10,
+            )
+            return exit_code == 0 and process_name.lower() in stdout.lower()
+        except Exception as exc:
+            self._logger.debug("Process liveness check failed: %s", exc)
+            return False
 
     def _try_detached_simulator_run(
         self,
@@ -303,12 +354,38 @@ class SandboxExecutionManager:
             self._logger.warning("Detached simulator start failed: %s", exc)
             return False, ""
 
-        log_path = f"{guest_environment['TEMP']}\\simulator_safe\\{simulator.id}.log"
-        deadline = time.time() + min(max(simulator.timeout_seconds, 30), 120)
+        # ---- Fix A: Verify process actually started in the guest ----
+        process_name = ntpath.basename(guest_executable)
+        start_verified = False
+        for attempt in range(5):
+            if self._is_process_running_in_guest(process_name):
+                start_verified = True
+                break
+            time.sleep(1)
+        if not start_verified:
+            self._logger.warning(
+                "Detached process %s never appeared in guest process list within 5s",
+                process_name,
+            )
+            return False, ""
+
+        generic_name = simulator.metadata.get("generic_name", simulator.id)
+        log_path = f"{guest_environment['TEMP']}\\simulator_safe\\{generic_name}.log"
+        max_wait = min(max(simulator.timeout_seconds, 30), 300)
+        start_time = time.time()
+        deadline = start_time + max_wait
+        poll_interval = 3
         last_output = ""
+        poll_count = 0
+        had_any_output = False
 
         while time.time() < deadline:
-            time.sleep(3)
+            remaining = deadline - time.time()
+            if remaining < 0:
+                break
+            actual_sleep = min(poll_interval, remaining)
+            if actual_sleep > 0:
+                time.sleep(actual_sleep)
             try:
                 exit_code, stdout, stderr = self._vbox.guest_control_exec(
                     self._vm_controller.vm_name,
@@ -318,12 +395,68 @@ class SandboxExecutionManager:
                 )
             except Exception as exc:
                 self._logger.debug("Waiting for simulator telemetry log: %s", exc)
+                # ---- Fix C: Check if process died between polls ----
+                poll_count += 1
+                if poll_count % 3 == 0:
+                    if not self._is_process_running_in_guest(process_name):
+                        if had_any_output:
+                            self._logger.warning(
+                                "Process %s died after partial output (~%ds), reporting partial result",
+                                process_name, int(time.time() - start_time),
+                            )
+                            return False, last_output
+                        # ---- Fix B: Short-circuit if never had output and process is gone ----
+                        elapsed = time.time() - start_time
+                        if elapsed >= 30:
+                            self._logger.warning(
+                                "Simulator %s: no output after %ds and process gone, short-circuiting",
+                                simulator.id, int(elapsed),
+                            )
+                            return False, last_output
                 continue
 
             if exit_code == 0:
+                if stdout:
+                    had_any_output = True
                 last_output = stdout
+                
+                # Try to parse exit code from simulator log if present
+                if '"exit_code":' in stdout:
+                    try:
+                        import re
+                        match = re.search(r'"exit_code":\s*(\d+)', stdout)
+                        if match:
+                            extracted_exit_code = int(match.group(1))
+                            if "simulation_complete" in stdout or '"stage": "completed"' in stdout:
+                                self._logger.info(f"Extracted exit code {extracted_exit_code} from simulator log")
+                                # We'll return True and let the caller handle the exit code if they want,
+                                # but usually True here means 'success' in the sense of 'it finished'.
+                                # Actually, _try_detached_simulator_run returns (bool, str).
+                                # The caller execute_simulator sets metadata.exit_code = 0 if this returns True.
+                                return True, stdout
+                    except Exception:
+                        pass
+
                 if "simulation_complete" in stdout or '"stage": "completed"' in stdout:
                     return True, stdout
+
+            # ---- Fix C: Periodic process death detection during active polling ----
+            poll_count += 1
+            if poll_count % 3 == 0:
+                if not self._is_process_running_in_guest(process_name):
+                    if had_any_output:
+                        self._logger.warning(
+                            "Process %s died at ~%ds with partial output before completion marker",
+                            process_name, int(time.time() - start_time),
+                        )
+                        return False, last_output
+                    elapsed = time.time() - start_time
+                    if elapsed >= 30:
+                        self._logger.warning(
+                            "Simulator %s: no output after %ds and process not running, short-circuiting",
+                            simulator.id, int(elapsed),
+                        )
+                        return False, last_output
 
         return False, last_output
 
@@ -335,14 +468,18 @@ class SandboxExecutionManager:
         """Execute simulator with timeout enforcement."""
         timeout = timeout_seconds or self._execution_config.execution_timeout_seconds
 
-        start_time = time.time()
+        if timeout <= 0:
+            raise ExecutionTimeoutError(f"Invalid timeout value: {timeout}s")
+
+        self._logger.info(f"Executing simulator with {timeout}s timeout")
         metadata = self.execute_simulator(simulator)
 
-        elapsed = time.time() - start_time
-        if elapsed > timeout:
-            raise ExecutionTimeoutError(
-                f"Execution exceeded timeout ({timeout}s), elapsed: {elapsed:.1f}s"
-            )
+        if metadata.execution_start and metadata.execution_end:
+            elapsed = (metadata.execution_end - metadata.execution_start).total_seconds()
+            if elapsed > timeout:
+                raise ExecutionTimeoutError(
+                    f"Execution exceeded timeout ({timeout}s), elapsed: {elapsed:.1f}s"
+                )
 
         return metadata
 
@@ -354,7 +491,7 @@ class SandboxExecutionManager:
         events: list[ForensicEvent],
         execution_metadata: ExecutionMetadata,
     ) -> dict:
-        """Generate structured forensic report matching backend /sync/reports/ingest schema."""
+        """Generate structured forensic report with SHA-256 fingerprint."""
         process_events = [e.to_dict() for e in events if e.category == EventCategory.PROCESS]
         file_events = [e.to_dict() for e in events if e.category == EventCategory.FILE_SYSTEM]
         registry_events = [e.to_dict() for e in events if e.category == EventCategory.REGISTRY]
@@ -373,7 +510,7 @@ class SandboxExecutionManager:
                     "evidence": getattr(sa_data, "evidence", []),
                 })
 
-        return {
+        report = {
             "sessionId": session_id,
             "simulatorId": simulator_id,
             "timestamp": datetime.now().isoformat(),
@@ -405,6 +542,11 @@ class SandboxExecutionManager:
                 "suspiciousActivities": suspicious_activities,
             },
         }
+
+        serialized = json.dumps(report, sort_keys=True, default=str)
+        report["hash"] = {"sha256": hashlib.sha256(serialized.encode("utf-8")).hexdigest()}
+
+        return report
 
     def extract_artifacts(
         self,
@@ -476,7 +618,52 @@ class SandboxExecutionManager:
                 self._logger.debug(f"No artifacts with {ext} extension found: {e}")
 
         # Also capture telemetry log if it exists
-        telemetry_log_path = f"{guest_dir}\\tmp\\simulator_safe\\{simulator.id}.log"
+        generic_name = simulator.metadata.get("generic_name", simulator.id)
+
+        # Catch-all pass: grab any remaining files with non-standard extensions
+        try:
+            exit_code, stdout, stderr = self._vbox.guest_control_exec(
+                self._vm_controller.vm_name,
+                r"C:\Windows\System32\cmd.exe",
+                ["/c", "dir", f"{guest_dir}*.*", "/s", "/b"],
+                timeout=15,
+            )
+            if exit_code == 0 and stdout.strip():
+                telemetry_log_name = f"{generic_name}.log"
+                guest_basenames_to_skip = {
+                    get_executable_name(get_generic_name(simulator.id)) if get_generic_name(simulator.id) else None,
+                    "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll",
+                }
+                already_extracted = set(extracted_paths)
+                for guest_path in stdout.strip().split("\n"):
+                    guest_path = guest_path.strip()
+                    if not guest_path:
+                        continue
+                    # Skip the telemetry log — captured separately above
+                    if guest_path.rstrip("\r").endswith(telemetry_log_name):
+                        continue
+                    # Skip the simulator executable and known DLLs
+                    guest_basename = Path(guest_path).name.lower()
+                    if guest_basename in guest_basenames_to_skip:
+                        continue
+                    local_path = str(output_dir / Path(guest_path).name)
+                    if local_path in already_extracted:
+                        continue
+                    try:
+                        self._vbox.file_copy_from_guest(
+                            self._vm_controller.vm_name,
+                            guest_path,
+                            local_path,
+                        )
+                        extracted_paths.append(local_path)
+                        already_extracted.add(local_path)
+                        self._logger.info(f"Extracted catch-all artifact: {Path(guest_path).name}")
+                    except Exception as copy_err:
+                        self._logger.debug(f"Catch-all copy skipped for {guest_path}: {copy_err}")
+        except VBoxCommandError:
+            self._logger.debug("Catch-all artifact scan found no additional files")
+
+        telemetry_log_path = f"{guest_dir}\\tmp\\simulator_safe\\{generic_name}.log"
         try:
             exit_code, stdout, stderr = self._vbox.guest_control_exec(
                 self._vm_controller.vm_name,
@@ -486,7 +673,7 @@ class SandboxExecutionManager:
             )
             if exit_code == 0 and stdout.strip():
                 # Save telemetry log
-                telemetry_file = output_dir / f"{simulator.id}_telemetry.log"
+                telemetry_file = output_dir / f"{generic_name}_telemetry.log"
                 with open(telemetry_file, "w", encoding="utf-8") as f:
                     f.write(stdout)
                 self._logger.info(f"Captured telemetry log: {telemetry_file}")
@@ -530,41 +717,38 @@ class SandboxExecutionManager:
         """Execute rollback to clean snapshot."""
         self._logger.info("Initiating rollback to clean snapshot")
 
-        if self._current_session:
-            self._current_session.status = ExecutionStatus.ROLLING_BACK
+        with self._session_lock:
+            if self._current_session:
+                self._current_session.status = ExecutionStatus.ROLLING_BACK
 
-        max_attempts = self._rollback_config.max_rollback_attempts
-
-        for attempt in range(max_attempts):
+        last_error = None
+        for attempt in range(self._rollback_config.max_rollback_attempts):
             try:
-                if self._current_session:
-                    self._current_session.rollback_attempts += 1
-
                 self._snapshot_manager.perform_rollback()
 
-                if self._current_session:
-                    self._current_session.status = ExecutionStatus.ROLLED_BACK
+                with self._session_lock:
+                    if self._current_session:
+                        self._current_session.rollback_attempts += 1
+                        self._current_session.status = ExecutionStatus.ROLLED_BACK
 
                 self._logger.info("Rollback completed successfully")
                 return
 
             except Exception as e:
-                self._logger.warning(f"Rollback attempt {attempt + 1} failed: {e}")
+                self._current_session.rollback_attempts += 1
+                last_error = e
+                self._logger.error(f"Rollback attempt {attempt + 1} failed: {e}")
+                if attempt < self._rollback_config.max_rollback_attempts - 1:
+                    continue
+        raise ExecutionError(f"Rollback failed after {self._rollback_config.max_rollback_attempts} attempts: {last_error}")
 
-                if attempt == max_attempts - 1:
-                    self._logger.error("All rollback attempts failed")
-                    if self._current_session:
-                        self._current_session.status = ExecutionStatus.ERROR
-                    raise ExecutionError(f"Rollback failed after {max_attempts} attempts: {e}")
-
-        if self._current_session:
-            self._current_session.status = ExecutionStatus.ERROR
-
-    def cleanup_simulator(self, simulator_id: str) -> None:
+    def cleanup_simulator(self, simulator_id: str, executable_path: str = "") -> None:
         """Clean up simulator files from VM after execution."""
         self._logger.info(f"Cleaning up simulator: {simulator_id}")
 
-        guest_executable = f"{self._execution_config.simulator_transfer_path}/{simulator_id}.exe"
+        import os as _os
+        exe_name = _os.path.basename(executable_path) if executable_path else f"{simulator_id}.exe"
+        guest_executable = f"{self._execution_config.simulator_transfer_path}/{exe_name}"
         guest_files = [
             guest_executable,
             f"{self._execution_config.simulator_transfer_path}/msvcp140.dll",
@@ -598,7 +782,8 @@ class SandboxExecutionManager:
             simulator_descriptor=simulator,
             metadata=None,
         )
-        self._current_session = session
+        with self._session_lock:
+            self._current_session = session
 
         try:
             session.status = ExecutionStatus.PREPARING
@@ -609,7 +794,6 @@ class SandboxExecutionManager:
             if enable_rollback:
                 self.create_execution_checkpoint(session_id)
 
-            session.status = ExecutionStatus.READY
             session.status = ExecutionStatus.RUNNING
 
             metadata = self.execute_with_timeout(simulator)

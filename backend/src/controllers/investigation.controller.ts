@@ -7,6 +7,7 @@ import { Response } from 'express';
 import { investigationService } from '../services';
 import { AuthenticatedRequest } from '../middleware';
 import { ApiResponse } from '../types';
+import { Evidence } from '../models';
 
 export class InvestigationController {
   /**
@@ -97,6 +98,36 @@ export class InvestigationController {
       success: true,
       message: 'Investigation updated',
       data: { investigation },
+    };
+
+    res.json(response);
+  }
+
+  /**
+   * GET /api/v1/investigations/:id/forensic-report
+   * Get forensic report for investigation
+   */
+  async getForensicReport(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const investigation = await investigationService.findById(req.params.id);
+
+    // Get related evidence with analysis
+    const evidence = await Evidence.find({ investigationId: req.params.id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Forensic report retrieved',
+      data: {
+        investigation,
+        evidence,
+        analysis: {
+          summary: `Forensic analysis report for investigation: ${investigation.title}`,
+          evidenceCount: evidence.length,
+          generatedAt: new Date().toISOString(),
+          generatedBy: req.user?.id,
+        },
+      },
     };
 
     res.json(response);

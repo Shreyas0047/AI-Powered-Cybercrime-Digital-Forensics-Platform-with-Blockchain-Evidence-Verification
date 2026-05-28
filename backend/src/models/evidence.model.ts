@@ -87,8 +87,8 @@ const evidenceSchema = new Schema({
   // Core identification
   evidenceId: {
     type: String,
+    required: true,
     unique: true,
-    index: true,
   },
 
   // Investigation reference
@@ -270,9 +270,11 @@ const evidenceSchema = new Schema({
   }],
   customMetadata: {
     type: Schema.Types.Mixed,
+    // User-provided metadata (manual input)
   },
   metadata: {
     type: Schema.Types.Mixed,
+    // System-generated metadata (auto-populated)
   },
 
   // External references
@@ -364,7 +366,7 @@ evidenceSchema.methods.verify = function(userId: string) {
 evidenceSchema.methods.markAnalyzed = function(analysisSummary: string) {
   this.analysisCompleted = true;
   this.analysisSummary = analysisSummary;
-  this.status = EvidenceStatus.ANALYZING;
+  this.status = EvidenceStatus.VERIFIED;
   return this.save();
 };
 

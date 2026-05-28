@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import type { UserRole } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import MainLayout from '../layouts/MainLayout';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
+import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import EnhancedDashboardPage from '../pages/EnhancedDashboardPage';
 import InvestigationsPage from '../pages/InvestigationsPage';
 import InvestigationDetailPage from '../pages/InvestigationDetailPage';
@@ -16,14 +18,62 @@ import BlockchainOperationsPage from '../pages/BlockchainOperationsPage';
 import ThreatIntelligencePage from '../pages/ThreatIntelligencePage';
 import ForensicAnalyticsPage from '../pages/ForensicAnalyticsPage';
 import ReportsPage from '../pages/ReportsPage';
+import AIAnalysisPage from '../pages/AIAnalysisPage';
 import SettingsPage from '../pages/SettingsPage';
 import LogsPage from '../pages/LogsPage';
 import EvidenceArtifactsPage from '../pages/EvidenceArtifactsPage';
+import ChainOfCustodyPage from '../pages/ChainOfCustodyPage';
 import UsersPage from '../pages/UsersPage';
+
+// Loading screen shown during auth check
+function AuthLoadingScreen() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#0f172a',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#22d3ee'
+    }}>
+      <h1 style={{ fontSize: '32px', marginBottom: '10px', color: '#fff' }}>ForensicsAI</h1>
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '3px solid #0891b2',
+        borderTopColor: 'transparent',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        marginTop: '20px'
+      }} />
+      <p style={{ marginTop: '20px', color: '#94a3b8' }}>Loading platform...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, checkAuth } = useAuthStore();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await checkAuth();
+      } catch {
+        // ignore
+      } finally {
+        setChecking(false);
+      }
+    };
+    init();
+  }, [checkAuth]);
+
+  if (checking) {
+    return <AuthLoadingScreen />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -58,18 +108,6 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Placeholder components for routes not yet implemented
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-center h-[60vh]">
-      <div className="text-center">
-        <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
-        <p className="text-slate-500 mt-2">This page is coming soon...</p>
-      </div>
-    </div>
-  );
-}
-
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -84,6 +122,14 @@ export const router = createBrowserRouter([
     element: (
       <PublicRoute>
         <RegisterPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: '/forgot-password',
+    element: (
+      <PublicRoute>
+        <ForgotPasswordPage />
       </PublicRoute>
     ),
   },
@@ -121,7 +167,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'ai-analysis',
-        element: <PlaceholderPage title="AI Analysis" />,
+        element: <AIAnalysisPage />,
       },
       {
         path: 'telemetry',
@@ -143,7 +189,7 @@ export const router = createBrowserRouter([
         path: 'evidence-artifacts',
         element: <EvidenceArtifactsPage />,
       },
-{
+      {
         path: 'health',
         element: (
           <RoleRoute allowedRoles={['admin', 'super_admin']}>
@@ -160,9 +206,17 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'chain-of-custody',
+        element: (
+          <RoleRoute allowedRoles={['admin', 'super_admin', 'forensic_analyst']}>
+            <ChainOfCustodyPage />
+          </RoleRoute>
+        ),
+      },
+      {
         path: 'threat-intelligence',
         element: (
-          <RoleRoute allowedRoles={['admin', 'super_admin', 'analyst', 'forensic_analyst']}>
+          <RoleRoute allowedRoles={['admin', 'super_admin', 'forensic_analyst']}>
             <ThreatIntelligencePage />
           </RoleRoute>
         ),
@@ -182,38 +236,6 @@ export const router = createBrowserRouter([
             <UsersPage />
           </RoleRoute>
         ),
-      },
-      {
-        path: 'settings',
-        element: (
-          <RoleRoute allowedRoles={['admin', 'super_admin']}>
-            <SettingsPage />
-          </RoleRoute>
-        ),
-      },
-      {
-        path: 'audit',
-        element: (
-          <RoleRoute allowedRoles={['admin', 'super_admin']}>
-            <LogsPage />
-          </RoleRoute>
-        ),
-      },
-      {
-        path: 'blockchain-operations',
-        element: <BlockchainOperationsPage />,
-      },
-      {
-        path: 'threat-intelligence',
-        element: <ThreatIntelligencePage />,
-      },
-      {
-        path: 'forensic-analytics',
-        element: <ForensicAnalyticsPage />,
-      },
-      {
-        path: 'users',
-        element: <UsersPage />,
       },
       {
         path: '',

@@ -90,32 +90,39 @@ export const typography = {
 // Design Tokens - Color System
 // ============================================
 export const colors = {
-  // Primary - Cyan
+  // Primary - Amber (forensic evidence)
   primary: {
-    50: '#ecfeff',
-    100: '#cffafe',
-    200: '#a5f3fc',
-    300: '#67e8f9',
-    400: '#22d3ee',
-    500: '#06b6d4',
-    600: '#0891b2',
-    700: '#0e7490',
-    800: '#155e75',
-    900: '#164e63',
+    50: '#fffbeb',
+    100: '#fef3c7',
+    200: '#fde68a',
+    300: '#fcd34d',
+    400: '#f59e0b',
+    500: '#d97706',
+    600: '#b45309',
+    700: '#92400e',
+    800: '#78350f',
+    900: '#451a03',
   },
 
-  // Secondary - Violet
+  // Secondary - Teal
   secondary: {
-    50: '#faf5ff',
-    100: '#f3e8ff',
-    200: '#e9d5ff',
-    300: '#d8b4fe',
-    400: '#c084fc',
-    500: '#a855f7',
-    600: '#9333ea',
-    700: '#7e22ce',
-    800: '#6b21a8',
-    900: '#581c87',
+    50: '#ecfdf5',
+    100: '#d1fae5',
+    200: '#a7f3d0',
+    300: '#6ee7b7',
+    400: '#4b9b9f',
+    500: '#3b8488',
+    600: '#2d6d71',
+    700: '#23595c',
+    800: '#1a4548',
+    900: '#0f2e30',
+  },
+
+  // Tertiary - Muted violet
+  tertiary: {
+    400: '#9886c9',
+    500: '#7c6baf',
+    600: '#655694',
   },
 
   // Severity Colors
@@ -220,8 +227,8 @@ export const shadows = {
   elevated: '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06)',
   dropdown: '0 10px 40px -5px rgb(0 0 0 / 0.12), 0 4px 6px -2px rgb(0 0 0 / 0.08)',
   glow: {
-    cyan: '0 0 20px rgb(6 182 212 / 0.25)',
-    violet: '0 0 20px rgb(168 85 247 / 0.25)',
+    amber: '0 0 20px rgb(245 158 11 / 0.25)',
+    teal: '0 0 20px rgb(59 132 136 / 0.25)',
     red: '0 0 20px rgb(239 68 68 / 0.25)',
   },
 } as const;
@@ -341,18 +348,18 @@ export const animations = {
 export const buttonVariants = {
   // Primary variants
   primary: `
+    bg-gradient-to-r from-amber-400 to-amber-500
+    text-white
+    hover:from-amber-500 hover:to-amber-600
+    shadow-sm hover:shadow-md
+    focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2
+  `,
+  secondary: `
     bg-gradient-to-r from-cyan-500 to-cyan-600
     text-white
     hover:from-cyan-600 hover:to-cyan-700
     shadow-sm hover:shadow-md
     focus:ring-2 focus:ring-cyan-500/50 focus:ring-offset-2
-  `,
-  secondary: `
-    bg-gradient-to-r from-violet-500 to-violet-600
-    text-white
-    hover:from-violet-600 hover:to-violet-700
-    shadow-sm hover:shadow-md
-    focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2
   `,
 
   // Neutral variants
@@ -414,7 +421,7 @@ export const cardVariants = {
   `,
   accent: `
     bg-white dark:bg-slate-800/80
-    border border-cyan-200 dark:border-cyan-700/50
+    border border-amber-200 dark:border-amber-700/50
     shadow-card
   `,
 } as const;

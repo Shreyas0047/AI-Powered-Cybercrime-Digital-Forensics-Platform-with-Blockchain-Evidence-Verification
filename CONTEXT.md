@@ -334,8 +334,87 @@ python build.py clean
 
 ---
 
+## Agency Agents (OpenCode)
+
+The following specialized AI agents are available in `.opencode/agents/` to accelerate development:
+
+| Agent | Purpose |
+|-------|---------|
+| **Codebase Onboarding Engineer** | Understand project structure fast - trace code paths, explain architecture |
+| **Frontend Developer** | React/TypeScript + Vite UI development, component design, performance |
+| **Backend Architect** | Express.js API design, MongoDB architecture, scalability |
+| **Security Engineer** | Threat modeling, security review, vulnerability assessment |
+| **API Tester** | Endpoint testing, integration QA, validation |
+
+**Usage**: When working on tasks, reference these agents for:
+- Explaining how code works → Codebase Onboarding Engineer
+- Building UI components → Frontend Developer
+- Designing API endpoints → Backend Architect
+- Security review → Security Engineer
+- Testing endpoints → API Tester
+
+---
+
 ## Current Date
 
-2026-05-19
+2026-05-21
 
-(Last updated: Production - Enterprise Hardening Complete)
+(Last updated: Frontend blank page debug & fix + AI Analysis page implementation)
+
+---
+
+## Session History & Known Issues
+
+### Session: 2026-05-21 - Frontend Blank Page Fix
+
+**Problem:** Entire frontend UI showed a blank white page at `http://localhost:5173/`.
+
+**Root Causes Found:**
+1. **Axios had NO timeout** (`frontend/src/services/api.ts`) — When the backend wasn't running, `checkAuth()` hung indefinitely, causing a permanent blank page.
+2. **ProtectedRoute returned `null` during auth check** (`frontend/src/router/AppRoutes.tsx`) — During auth initialization, it rendered nothing instead of a loading state.
+3. **Duplicate route definitions** — `settings`, `audit`, `blockchain-operations`, `threat-intelligence`, `forensic-analytics`, and `users` were each defined 2–3 times in the route tree with conflicting wrappers.
+
+**Fixes Applied:**
+| File | Change |
+|------|--------|
+| `frontend/src/services/api.ts` | Added `timeout: 10000` to axios instance |
+| `frontend/src/router/AppRoutes.tsx` | Removed duplicate routes; added `AuthLoadingScreen` spinner during auth check; `ProtectedRoute` now calls `checkAuth()` on mount |
+| `frontend/src/main.tsx` | Removed unused `AuthInitializer` import; simplified `App` wrapper |
+
+**Files Changed:**
+- `frontend/src/router/AppRoutes.tsx` — Clean route tree, no duplicates, auth loading screen
+- `frontend/src/services/api.ts` — 10s timeout on all API calls
+- `frontend/src/main.tsx` — Clean entry point
+- `frontend/src/pages/AIAnalysisPage.tsx` — New comprehensive AI analysis page (7 tabs: Overview, Threat Classification, MITRE ATT&CK, Attack Chain, Heuristics, Anomalies, Comparison)
+- `frontend/src/components/ErrorBoundary.tsx` — New error boundary to catch React errors
+- `frontend/src/App.tsx` — Dead code (AuthInitializer, LoadingScreen) — NOT imported anywhere, kept for reference
+
+**Verification:**
+- Frontend build: ✅ Passes (2282 modules, 900kB JS)
+- Backend build: ✅ Passes
+- Backend starts: ✅ Port 3000, MongoDB connected
+- Frontend serves HTML: ✅ 200 OK at localhost:5173
+
+**Still Needs Verification:**
+- Browser console errors (F12) — not captured yet
+- Full end-to-end flow in browser with both servers running
+- Login → Dashboard → AI Analysis page navigation
+
+### Session: AI Analysis Page Implementation
+
+**Created:** `frontend/src/pages/AIAnalysisPage.tsx` (1362 lines)
+
+**Features:**
+- 7 tabs: Overview, Threat Classification, MITRE ATT&CK, Attack Chain, Heuristics, Anomalies, Comparison
+- Live session intelligence (connects to sandbox sessions)
+- Real-time threat scoring, attack chain visualization, MITRE ATT&CK heatmap
+- Anomaly detection display, behavioral pattern comparison
+- Connected to backend APIs with proper loading/error states
+- Uses `analysisStore` for state management with mock data fallbacks
+
+**Dependencies:**
+- `frontend/src/stores/analysisStore.ts` — Analysis state management
+- `frontend/src/components/visualizations/AttackChain.tsx`
+- `frontend/src/components/visualizations/EvidenceGraph.tsx`
+- `frontend/src/components/visualizations/MITREHeatmap.tsx`
+- `frontend/src/components/visualizations/RiskScoreGauge.tsx`

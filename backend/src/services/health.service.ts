@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import { getConnectionPoolStats } from './database-optimization.service';
 import { getWorkerStats } from './queue.service';
 import { getServiceHealth } from '../middleware/tracing.middleware';
+import { SandboxSession } from '../models';
 
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'down';
@@ -214,6 +215,44 @@ class HealthMonitor {
   }
 
   /**
+   * Check for stale sandbox sessions (no heartbeat >90s) and mark as failed.
+   * This reconciles the state when an agent disconnects without a clean shutdown.
+   */
+  async checkStaleSessions(): Promise<number> {
+    try {
+      const staleThreshold = new Date(Date.now() - 90 * 1000);
+
+      const result = await SandboxSession.updateMany(
+        {
+          status: 'running',
+          $or: [
+            { lastHeartbeat: { $lt: staleThreshold } },
+            { lastHeartbeat: null, createdAt: { $lt: staleThreshold } },
+          ],
+        },
+        {
+          $set: {
+            status: 'failed',
+            endTime: new Date(),
+            errorMessages: ['Session agent disconnected'],
+          },
+        }
+      );
+
+      if (result.modifiedCount > 0) {
+        logger.warn(
+          `[StaleSessions] Marked ${result.modifiedCount} stale session(s) as failed (no heartbeat for >90s)`
+        );
+      }
+
+      return result.modifiedCount;
+    } catch (error) {
+      logger.error('[StaleSessions] Failed to check for stale sessions:', error);
+      return 0;
+    }
+  }
+
+  /**
    * Get full health status
    */
   async getHealthStatus(): Promise<HealthStatus> {
@@ -364,3 +403,14 @@ forensics_queue_pending ${Object.values(metrics.workers).reduce((sum, w) => sum 
 forensics_queue_processing ${Object.values(metrics.workers).reduce((sum, w) => sum + w.processing, 0)}
 `.trim();
 }
+
+// ============================================
+// Stale Session Reconciliation (background task)
+// Runs every 30 seconds to detect and mark sessions
+// whose agent has disconnected without a clean shutdown.
+// ============================================
+setInterval(() => {
+  healthMonitor.checkStaleSessions().catch((err: Error) => {
+    logger.error('[StaleSessions] Reconciliation interval error:', err);
+  });
+}, 30 * 1000).unref();

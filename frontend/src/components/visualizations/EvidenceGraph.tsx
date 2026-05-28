@@ -9,14 +9,12 @@ import {
   Search,
   ZoomIn,
   ZoomOut,
-  Maximize2,
   FileText,
   Cpu,
   Network,
   HardDrive,
   Fingerprint,
   Shield,
-  Activity,
   Link2,
   X,
   ChevronRight,
@@ -70,31 +68,9 @@ const severityColors = {
   low: 'bg-emerald-500',
 };
 
-const defaultNodes: GraphNode[] = [
-  { id: '1', label: 'explorer.exe', type: 'process', severity: 'low', metadata: { PID: '3544', Path: 'C:\\Windows' } },
-  { id: '2', label: 'threat_file_1.exe', type: 'threat', severity: 'critical', metadata: { Hash: 'a1b2c3d4', Detection: 'Ransomware' } },
-  { id: '3', label: 'PowerShell', type: 'process', severity: 'high', metadata: { PID: '4892', Parent: 'threat_file_1.exe' } },
-  { id: '4', label: '192.168.1.100', type: 'network', severity: 'high', metadata: { Port: '4444', Protocol: 'TCP' } },
-  { id: '5', label: 'user_documents', type: 'file', severity: 'critical', metadata: { Files: '247 encrypted', Extension: '.locked' } },
-  { id: '6', label: 'HKLM\\Run', type: 'registry', severity: 'high', metadata: { Key: 'WindowsUpdate', Value: 'suspicious.exe' } },
-  { id: '7', label: 'ransom_note.txt', type: 'artifact', severity: 'critical', metadata: { Location: 'C:\\Users\\Desktop', Size: '2KB' } },
-  { id: '8', label: 'malware_config.bin', type: 'artifact', severity: 'high', metadata: { Size: '15KB', Encrypted: 'Yes' } },
-];
-
-const defaultEdges: GraphEdge[] = [
-  { source: '1', target: '2', label: 'spawns', type: 'spawns' },
-  { source: '2', target: '3', label: 'spawns', type: 'spawns' },
-  { source: '3', target: '4', label: 'connects', type: 'connects' },
-  { source: '2', target: '5', label: 'modifies', type: 'modifies' },
-  { source: '2', target: '6', label: 'modifies', type: 'modifies' },
-  { source: '2', target: '7', label: 'contains', type: 'contains' },
-  { source: '2', target: '8', label: 'contains', type: 'contains' },
-  { source: '3', target: '8', label: 'accesses', type: 'accesses' },
-];
-
 export function EvidenceGraph({
-  nodes = defaultNodes,
-  edges = defaultEdges,
+  nodes = [],
+  edges = [],
   title = 'Evidence Relationship Graph',
 }: EvidenceGraphProps) {
   const { isDark } = useTheme();
@@ -235,7 +211,15 @@ export function EvidenceGraph({
 
       {/* Graph Area */}
       <div className="relative p-5">
-        <div className="relative overflow-hidden" style={{ height: 400 }}>
+        {nodes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Link2 className="w-12 h-12 text-slate-400 mb-3" />
+            <p className="text-sm font-medium text-slate-500">No evidence graph data available</p>
+            <p className="text-xs text-slate-400 mt-1">Evidence relationships will appear after analysis</p>
+          </div>
+        ) : (
+          <div>
+          <div className="relative overflow-hidden" style={{ height: 400 }}>
           <svg
             className="absolute inset-0"
             viewBox="0 0 600 400"
@@ -356,6 +340,8 @@ export function EvidenceGraph({
             </div>
           ))}
         </div>
+        </div>
+        )}
       </div>
 
       {/* Node Detail Panel */}

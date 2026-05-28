@@ -6,8 +6,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sandboxSyncService = exports.SandboxSyncService = void 0;
 const models_1 = require("../models");
+const telemetry_event_model_1 = require("../models/telemetry-event.model");
 const types_1 = require("../types");
 const middleware_1 = require("../middleware");
+const websocket_service_1 = require("./websocket.service");
 // import { v4 as uuidv4 } from 'uuid';
 class SandboxSyncService {
     /**
@@ -27,6 +29,7 @@ class SandboxSyncService {
             status: types_1.SandboxSessionStatus.RUNNING,
             startTime: new Date(data.startTime),
         });
+        websocket_service_1.websocketService.emitSandboxSessionUpdate(session.sessionId, session);
         return session;
     }
     /**
@@ -46,6 +49,7 @@ class SandboxSyncService {
         session.errorMessages = data.errors || [];
         session.syncedAt = new Date();
         await session.save();
+        websocket_service_1.websocketService.emitSandboxSessionUpdate(session.sessionId, session);
         return session;
     }
     /**
@@ -57,11 +61,33 @@ class SandboxSyncService {
         if (!session) {
             throw new middleware_1.AppError('Session not found', 400, 'NOT_FOUND');
         }
-        // In a full implementation, these would be stored in an events collection
-        // For now, we just increment the counter
-        session.eventsCollected += data.events.length;
+        const normalizedEvents = data.events.map((event, index) => ({
+            sessionId: data.sessionId,
+            eventType: event.type || event.eventType || event.event_type || 'unknown',
+            timestamp: new Date(event.timestamp || Date.now()),
+            processId: event.processId || event.process_id || event.pid,
+            processName: event.processName || event.process_name || event.source,
+            metadata: event.details || event.data || event.metadata || {},
+            raw: event,
+        }));
+        if (normalizedEvents.length > 0) {
+            await telemetry_event_model_1.TelemetryEvent.insertMany(normalizedEvents, { ordered: false });
+        }
+        session.eventsCollected += normalizedEvents.length;
+        session.recentEvents = [
+            ...(session.recentEvents || []),
+            ...data.events.map((event, index) => ({
+                id: event.id || `${data.sessionId}-${Date.now()}-${index}`,
+                timestamp: event.timestamp || new Date().toISOString(),
+                type: event.type || event.eventType || event.event_type || 'unknown',
+                source: event.source || event.processName || event.process_name || 'sandbox',
+                details: event.details || event.data || event.metadata || {},
+                receivedAt: new Date(),
+            })),
+        ].slice(-200);
         await session.save();
-        return { received: data.events.length };
+        websocket_service_1.websocketService.emitSandboxTelemetry(data.sessionId, { received: normalizedEvents.length });
+        return { received: normalizedEvents.length };
     }
     /**
      * Get all sessions

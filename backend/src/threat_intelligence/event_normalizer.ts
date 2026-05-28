@@ -3,6 +3,7 @@
  * Converts raw forensic telemetry into standardized behavioral events
  */
 
+import logger from '../config/logger';
 import { v4 as uuidv4 } from 'uuid';
 import {
   RawTelemetryEvent,
@@ -48,7 +49,7 @@ export class EventNormalizer {
           normalizedEvents.push(normalized);
         }
       } catch (error) {
-        console.error(`Failed to normalize event: ${error}`);
+        logger.error(`Failed to normalize event: ${error}`);
       }
     }
 

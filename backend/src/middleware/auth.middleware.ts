@@ -109,9 +109,11 @@ export function authorize(...allowedRoles: Array<UserRole | string | Array<UserR
 }
 
 function normalizeRole(role: UserRole | string): UserRole {
-  if (role === 'analyst') {
-    return UserRole.FORENSIC_ANALYST;
+  const validRoles = Object.values(UserRole) as string[];
+  if (validRoles.includes(role)) {
+    return role as UserRole;
   }
+  // No silent aliases — reject unknown roles
   return role as UserRole;
 }
 

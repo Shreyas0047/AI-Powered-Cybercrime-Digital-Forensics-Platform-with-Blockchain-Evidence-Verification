@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware';
+import { authenticate, authorize, asyncHandler } from '../middleware';
 import { analyticsController } from '../controllers/analytics.controller';
 
 const router = Router();
@@ -28,7 +28,7 @@ router.get('/patterns', authenticate, analyticsController.getBehavioralPatterns)
 router.post(
   '/analyze-behavior',
   authenticate,
-  authorize(['admin', 'analyst']),
+  authorize(['admin', 'forensic_analyst']),
   analyticsController.analyzeProcessBehavior
 );
 
@@ -40,7 +40,7 @@ router.post(
 router.post(
   '/detect-anomalies',
   authenticate,
-  authorize(['admin', 'analyst']),
+  authorize(['admin', 'forensic_analyst']),
   analyticsController.detectAnomalies
 );
 
@@ -52,7 +52,7 @@ router.post(
 router.post(
   '/baseline',
   authenticate,
-  authorize(['admin', 'analyst']),
+  authorize(['admin', 'forensic_analyst']),
   analyticsController.analyzeBaseline
 );
 
@@ -86,7 +86,7 @@ router.get(
 router.post(
   '/clusters/:investigationId/score',
   authenticate,
-  authorize(['admin', 'analyst']),
+  authorize(['admin', 'forensic_analyst']),
   analyticsController.scoreRelationship
 );
 
@@ -116,8 +116,32 @@ router.get(
 router.get(
   '/dashboard',
   authenticate,
-  authorize(['admin', 'analyst']),
+  authorize(['admin', 'forensic_analyst']),
   analyticsController.getDashboardData
+);
+
+/**
+ * @route   POST /api/v1/analytics/session/analyze
+ * @desc    Analyze a sandbox session
+ * @access  Private (Authenticated, Admin/Forensic Analyst)
+ */
+router.post(
+  '/session/analyze',
+  authenticate,
+  authorize(['admin', 'forensic_analyst']),
+  asyncHandler(analyticsController.analyzeSession)
+);
+
+/**
+ * @route   POST /api/v1/analytics/sessions/compare
+ * @desc    Compare multiple sandbox sessions
+ * @access  Private (Authenticated, Admin/Forensic Analyst)
+ */
+router.post(
+  '/sessions/compare',
+  authenticate,
+  authorize(['admin', 'forensic_analyst']),
+  asyncHandler(analyticsController.compareSessions)
 );
 
 export default router;
