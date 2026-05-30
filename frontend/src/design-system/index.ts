@@ -1,6 +1,6 @@
 /**
  * Enterprise Design System
- * Centralized design tokens, styles, and utilities for the ForensicsAI platform
+ * Centralized design tokens, styles, and utilities for the NyxTrace platform
  */
 
 import { clsx, type ClassValue } from 'clsx';

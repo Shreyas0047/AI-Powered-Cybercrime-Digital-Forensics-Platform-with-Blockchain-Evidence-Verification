@@ -10,6 +10,8 @@ import { behavioralAnalyticsService, Anomaly, ProcessBehavior } from '../service
 import { investigationCorrelationService, InvestigationCluster, InvestigationRelationship, CorrelationInsight } from '../services/investigation-correlation.service';
 import { SandboxSession } from '../models';
 import { TelemetryEvent } from '../models/telemetry-event.model';
+import { sandboxRuntimeService } from '../services';
+import { sandboxSyncService } from '../services';
 
 type NormalizedTelemetry = {
   eventType: string;
@@ -56,6 +58,21 @@ export class AnalyticsController {
 
     const normalized = events.map((event) => this.normalizeEvent(event));
     if (normalized.length > 0) return normalized;
+
+    // Fallback: try fetching events directly from the sandbox agent runtime
+    try {
+      const agentData = await sandboxRuntimeService.getSessionEvents(sessionId);
+      if (agentData.events && agentData.events.length > 0) {
+        // Persist to TelemetryEvent collection so future analyses don't need the agent
+        await sandboxSyncService.receiveForensicEvents({
+          sessionId,
+          events: agentData.events,
+        });
+        return agentData.events.map((event: any) => this.normalizeEvent(event));
+      }
+    } catch {
+      // Agent unavailable — fall through to recentEvents
+    }
 
     const recentEvents = (session?.recentEvents || []).map((event: any) => this.normalizeEvent(event));
     return recentEvents;

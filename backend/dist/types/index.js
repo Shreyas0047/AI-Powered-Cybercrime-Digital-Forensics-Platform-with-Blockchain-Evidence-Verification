@@ -1,7 +1,7 @@
 "use strict";
 /**
  * Core Type Definitions
- * Central type exports for the forensics platform backend
+ * Central type exports for the NyxTrace backend
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;

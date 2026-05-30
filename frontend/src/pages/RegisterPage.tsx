@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, User } from 'lucide-react';
@@ -232,7 +232,7 @@ export function RegisterPage() {
           >
             <Shield className="w-10 h-10 text-[var(--surface-base)] transition-transform duration-500 group-hover:scale-110" />
           </motion.div>
-          <h1 className="text-4xl font-bold tracking-tight font-display text-[var(--text-primary)]">ForensicsAI</h1>
+          <h1 className="text-4xl font-bold tracking-tight font-display text-[var(--text-primary)]">NyxTrace</h1>
           <p className="overline mt-3">Enterprise Cyber Investigation Platform</p>
         </div>
 

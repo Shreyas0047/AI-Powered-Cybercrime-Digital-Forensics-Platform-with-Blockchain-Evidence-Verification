@@ -225,6 +225,19 @@ export class SandboxController {
     try {
       const runtimeSession = await sandboxRuntimeService.stopSession(req.params.sessionId);
 
+      // Fetch and persist events before marking session complete
+      try {
+        const eventsData = await sandboxRuntimeService.getSessionEvents(req.params.sessionId);
+        if (eventsData.events && eventsData.events.length > 0) {
+          await sandboxSyncService.receiveForensicEvents({
+            sessionId: req.params.sessionId,
+            events: eventsData.events,
+          });
+        }
+      } catch (eventsErr) {
+        logger.warn(`Failed to forward events on stop for session ${req.params.sessionId}:`, eventsErr);
+      }
+
       await sandboxSyncService.receiveSessionComplete({
         sessionId: runtimeSession.session_id,
         status: 'failed' as any,
@@ -256,6 +269,19 @@ export class SandboxController {
    */
   async terminateSession(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      // Fetch and persist events before terminating
+      try {
+        const eventsData = await sandboxRuntimeService.getSessionEvents(req.params.sessionId);
+        if (eventsData.events && eventsData.events.length > 0) {
+          await sandboxSyncService.receiveForensicEvents({
+            sessionId: req.params.sessionId,
+            events: eventsData.events,
+          });
+        }
+      } catch (eventsErr) {
+        logger.warn(`Failed to forward events on terminate for session ${req.params.sessionId}:`, eventsErr);
+      }
+
       const runtimeSession = await sandboxRuntimeService.terminateSession(req.params.sessionId);
 
       await sandboxSyncService.receiveSessionComplete({

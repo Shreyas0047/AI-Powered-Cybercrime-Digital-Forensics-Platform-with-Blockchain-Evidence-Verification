@@ -360,12 +360,12 @@ export class AuthService {
 
     const accessToken = jwt.sign(payload, config.jwt.secret as string, {
       expiresIn: config.jwt.expiry,
-      issuer: 'forensics-platform',
+      issuer: 'nyxtrace',
     } as any);
 
     const refreshToken = jwt.sign(payload, config.jwt.refreshSecret as string, {
       expiresIn: config.jwt.refreshExpiry,
-      issuer: 'forensics-platform',
+      issuer: 'nyxtrace',
     } as any);
 
     return { accessToken, refreshToken };

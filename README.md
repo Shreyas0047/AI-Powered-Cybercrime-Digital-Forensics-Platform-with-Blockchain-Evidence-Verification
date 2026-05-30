@@ -1,6 +1,6 @@
-# ForensicsAI Platform
+# NyxTrace
 
-AI-powered cybercrime digital forensics platform with blockchain evidence verification.
+AI-powered cybercrime digital NyxTrace with blockchain evidence verification.
 
 This is an educational cybersecurity platform for malware behavior simulation and forensic analysis in controlled VirtualBox sandbox environments. It is not offensive security tooling.
 

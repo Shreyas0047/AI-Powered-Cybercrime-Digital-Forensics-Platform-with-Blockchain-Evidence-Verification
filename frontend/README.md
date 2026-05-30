@@ -1,4 +1,4 @@
-# ForensicsAI Platform - Frontend
+# NyxTrace - Frontend
 
 Enterprise React frontend for investigations, evidence, alerts, sandbox sessions, telemetry, blockchain operations, threat intelligence, and forensic analytics.
 

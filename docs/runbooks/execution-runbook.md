@@ -48,7 +48,7 @@ C:\sandbox\guest.marker
 Content:
 
 ```
-Forensics Sandbox VM
+NyxTrace Sandbox VM
 This file indicates the VM is approved for sandbox execution.
 ```
 

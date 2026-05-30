@@ -275,7 +275,7 @@ class QueueWorker {
 }
 exports.QueueWorker = QueueWorker;
 /**
- * Job Types for the forensics platform
+ * Job Types for the NyxTrace
  */
 var ForensicsJobType;
 (function (ForensicsJobType) {

@@ -1,43 +1,63 @@
-INFO:     Started server process [12040]
+INFO:     Started server process [20400]
 INFO:     Waiting for application startup.
-2026-05-30 08:47:56,367 | INFO | agent.app | === Sandbox Agent v2.0.0 starting ===
-2026-05-30 08:47:56,371 | INFO | agent.vm | VMManager initialized: vbox=C:\Program Files\Oracle\VirtualBox\VBoxManage.EXE, vm=ForensicsSandbox
+2026-05-30 15:49:18,602 | INFO | agent.app | === Sandbox Agent v2.0.0 starting ===
+2026-05-30 15:49:18,606 | INFO | agent.vm | VMManager initialized: vbox=C:\Program Files\Oracle\VirtualBox\VBoxManage.EXE, vm=ForensicsSandbox
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
-2026-05-30 08:48:05,888 | INFO | agent.vm | REVERT: Force-killing VM and restoring snapshot
-2026-05-30 08:48:11,427 | INFO | agent.vm | REVERT: Snapshot 'CleanBaseline' restored
-2026-05-30 08:48:13,428 | INFO | agent.vm | BOOT: Starting VM (headless=False)
-2026-05-30 08:48:13,514 | WARNING | agent.vm | BOOT: Switching paravirt-provider hyperv \u2192 default
-2026-05-30 08:48:13,631 | INFO | agent.vm | BOOT: VM start command issued (mode=separate)
-2026-05-30 08:48:13,631 | INFO | agent.vm | HEARTBEAT: Waiting for Guest Additions (timeout=120s)
-2026-05-30 08:49:33,299 | INFO | agent.vm | HEARTBEAT: Guest ready in 79.7s
-2026-05-30 08:49:46,295 | WARNING | agent.pipeline | Guest marker not found — proceeding anyway (dev mode)
-2026-05-30 08:50:03,367 | INFO | agent.vm | STAGE: Copied telemetry_helper.py \u2192 C:\sandbox\simulators\telemetry_helper.py
-2026-05-30 08:50:04,300 | INFO | agent.vm | STAGE: Copied ransomware_sim.py \u2192 C:\sandbox\simulators\ransomware_sim.py
-2026-05-30 08:50:12,592 | ERROR | agent.pipeline | Pipeline error for session aec58409-f03c-464d-9027-6d51da687bc7
-Traceback (most recent call last):
-  File "C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\sandbox-agent-v2\agent\pipeline.py", line 105, in _run_pipeline
-    await asyncio.wait_for(
-    ...<2 lines>...
-    )
-  File "C:\python313\Lib\asyncio\tasks.py", line 507, in wait_for
-    return await fut
-           ^^^^^^^^^
-  File "C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\sandbox-agent-v2\agent\pipeline.py", line 152, in _execute_stages
-    result = await asyncio.to_thread(
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<5 lines>...
-    )
-    ^
-  File "C:\python313\Lib\asyncio\threads.py", line 25, in to_thread
-    return await loop.run_in_executor(None, func_call)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\python313\Lib\concurrent\futures\thread.py", line 59, in run
-    result = self.fn(*self.args, **self.kwargs)
-  File "C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\sandbox-agent-v2\agent\vm.py", line 324, in guest_exec
-    return self._run(cmd, timeout=timeout + 15)
-           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\shreyas\Desktop\cybersec projects\gowda virus project\sandbox-agent-v2\agent\vm.py", line 98, in _run
-    raise VMError(f"VBoxManage [{' '.join(args[:3])}] exit={r.code}: {r.stderr[:300]}")
-agent.vm.VMError: VBoxManage [guestcontrol ForensicsSandbox run] exit=126: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
-
+2026-05-30 15:49:22,865 | INFO | agent.vm | REVERT: Force-killing VM and restoring snapshot
+2026-05-30 15:49:28,869 | INFO | agent.vm | REVERT: Snapshot 'CleanBaselinePython' restored
+2026-05-30 15:49:30,871 | INFO | agent.vm | BOOT: Starting VM (headless=False)
+2026-05-30 15:49:30,952 | WARNING | agent.vm | BOOT: Switching paravirt-provider hyperv \u2192 default
+2026-05-30 15:49:31,059 | INFO | agent.vm | BOOT: VM start command issued (mode=separate)
+2026-05-30 15:49:31,059 | INFO | agent.vm | HEARTBEAT: Waiting for Guest Additions (timeout=360s)
+2026-05-30 15:50:13,105 | INFO | agent.vm | HEARTBEAT: Guest ready in 42.0s
+2026-05-30 15:50:19,402 | WARNING | agent.pipeline | Guest marker not found — proceeding anyway (dev mode)
+2026-05-30 15:50:26,118 | INFO | agent.vm | STAGE: Copied telemetry_helper.py \u2192 C:\sandbox\simulators\telemetry_helper.py
+2026-05-30 15:50:33,252 | INFO | agent.vm | STAGE: Copied ransomware_sim.py \u2192 C:\sandbox\simulators\ransomware_sim.py
+INFO:     ('127.0.0.1', 51540) - "WebSocket /telemetry/live" [accepted]
+2026-05-30 15:54:05,472 | INFO | agent.app | Telemetry WS connected (1)
+INFO:     connection open
+INFO:     ('127.0.0.1', 64191) - "WebSocket /logs/live" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 51363) - "WebSocket /telemetry/live" [accepted]
+2026-05-30 15:54:05,605 | INFO | agent.app | Telemetry WS connected (2)
+INFO:     connection open
+INFO:     ('127.0.0.1', 51916) - "WebSocket /logs/live" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 56909) - "WebSocket /telemetry/live" [accepted]
+2026-05-30 15:54:05,776 | INFO | agent.app | Telemetry WS connected (3)
+INFO:     connection open
+INFO:     ('127.0.0.1', 55595) - "WebSocket /logs/live" [accepted]
+INFO:     connection open
+2026-05-30 15:54:12,270 | INFO | agent.vm | REVERT: Force-killing VM and restoring snapshot
+2026-05-30 15:54:17,764 | INFO | agent.vm | REVERT: Snapshot 'CleanBaselinePython' restored
+2026-05-30 15:54:19,765 | INFO | agent.vm | BOOT: Starting VM (headless=False)
+2026-05-30 15:54:19,833 | WARNING | agent.vm | BOOT: Switching paravirt-provider hyperv \u2192 default
+2026-05-30 15:54:19,937 | INFO | agent.vm | BOOT: VM start command issued (mode=separate)
+2026-05-30 15:54:19,938 | INFO | agent.vm | HEARTBEAT: Waiting for Guest Additions (timeout=360s)
+2026-05-30 15:55:04,244 | INFO | agent.vm | HEARTBEAT: Guest ready in 44.3s
+2026-05-30 15:55:15,779 | WARNING | agent.pipeline | Guest marker not found — proceeding anyway (dev mode)
+2026-05-30 15:55:18,254 | INFO | agent.vm | STAGE: Copied telemetry_helper.py \u2192 C:\sandbox\simulators\telemetry_helper.py
+2026-05-30 15:55:19,273 | INFO | agent.vm | STAGE: Copied sim_delta.py \u2192 C:\sandbox\simulators\sim_delta.py
+INFO:     connection closed
+INFO:     connection closed
+INFO:     ('127.0.0.1', 56647) - "WebSocket /telemetry/live" [accepted]
+2026-05-30 15:56:07,856 | INFO | agent.app | Telemetry WS connected (3)
+INFO:     connection open
+INFO:     ('127.0.0.1', 58983) - "WebSocket /telemetry/live" [accepted]
+2026-05-30 15:56:07,907 | INFO | agent.app | Telemetry WS connected (4)
+INFO:     connection open
+INFO:     ('127.0.0.1', 62899) - "WebSocket /telemetry/live" [accepted]
+2026-05-30 15:56:07,924 | INFO | agent.app | Telemetry WS connected (5)
+INFO:     connection open
+INFO:     ('127.0.0.1', 61028) - "WebSocket /telemetry/live" [accepted]
+2026-05-30 15:56:07,940 | INFO | agent.app | Telemetry WS connected (6)
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed

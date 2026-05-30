@@ -1,7 +1,7 @@
 "use strict";
 /**
  * Central Configuration Module
- * Loads and validates environment variables for the forensics platform
+ * Loads and validates environment variables for the NyxTrace
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };

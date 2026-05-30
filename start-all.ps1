@@ -39,7 +39,7 @@ function Wait-ForHealth {
 }
 
 Write-Host ""
-Write-Host "=== ForensicsAI Platform Startup ===" -ForegroundColor Cyan
+Write-Host "=== NyxTrace Startup ===" -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Backend

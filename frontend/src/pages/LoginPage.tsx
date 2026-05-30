@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Mail, Eye, EyeOff } from 'lucide-react';
@@ -51,7 +51,7 @@ export function LoginPage() {
             <Shield className="w-10 h-10 text-[var(--surface-base)] transition-transform duration-500 group-hover:scale-110" />
           </motion.div>
           <h1 className="text-4xl font-bold tracking-tight font-display text-[var(--text-primary)]">
-            ForensicsAI
+            NyxTrace
           </h1>
           <p className="overline mt-3">Enterprise Cyber Investigation Platform</p>
         </div>

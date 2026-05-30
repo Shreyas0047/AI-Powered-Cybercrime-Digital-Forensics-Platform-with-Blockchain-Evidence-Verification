@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Mail, Lock, KeyRound, ArrowLeft, Eye, EyeOff, CheckCircle } from 'lucide-react';
@@ -183,7 +183,7 @@ export function ForgotPasswordPage() {
           >
             <Shield className="w-8 h-8 text-slate-900" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-slate-900">ForensicsAI</h1>
+          <h1 className="text-3xl font-bold text-slate-900">NyxTrace</h1>
           <p className="text-slate-500 mt-2">Reset your password</p>
         </div>
 
@@ -391,7 +391,7 @@ export function ForgotPasswordPage() {
         </p>
 
         <p className="text-center text-sm text-slate-500 mt-6">
-          &copy; 2024 ForensicsAI Platform. Enterprise Edition.
+          &copy; 2024 NyxTrace. Enterprise Edition.
         </p>
       </motion.div>
     </div>

@@ -1,7 +1,7 @@
-# ForensicsAI Platform: System Analysis
+# NyxTrace: System Analysis
 
 ## Project Overview
-The **ForensicsAI Platform** is an integrated ecosystem for simulating malware behavior and conducting digital forensic investigations. It combines real-time telemetry, AI-driven analysis, and blockchain-backed evidence verification.
+The **NyxTrace** is an integrated ecosystem for simulating malware behavior and conducting digital forensic investigations. It combines real-time telemetry, AI-driven analysis, and blockchain-backed evidence verification.
 
 ## Core Components
 

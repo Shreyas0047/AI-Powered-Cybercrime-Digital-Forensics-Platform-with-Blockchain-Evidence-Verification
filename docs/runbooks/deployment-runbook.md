@@ -91,13 +91,13 @@ Invoke-WebRequest http://localhost:3000/api/v1/operations/metrics
 ## Database Backup
 
 ```powershell
-mongodump --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\forensics-platform.gz --gzip
+mongodump --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\nyxtrace.gz --gzip
 ```
 
 Restore:
 
 ```powershell
-mongorestore --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\forensics-platform.gz --gzip
+mongorestore --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\nyxtrace.gz --gzip
 ```
 
 ## Logs

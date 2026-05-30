@@ -345,7 +345,7 @@ export class QueueWorker {
 }
 
 /**
- * Job Types for the forensics platform
+ * Job Types for the NyxTrace
  */
 export enum ForensicsJobType {
   VERIFY_EVIDENCE = 'verify_evidence',

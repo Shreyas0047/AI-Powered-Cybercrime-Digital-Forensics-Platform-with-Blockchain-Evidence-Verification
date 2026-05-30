@@ -316,11 +316,11 @@ class AuthService {
         };
         const accessToken = jsonwebtoken_1.default.sign(payload, config_1.config.jwt.secret, {
             expiresIn: config_1.config.jwt.expiry,
-            issuer: 'forensics-platform',
+            issuer: 'nyxtrace',
         });
         const refreshToken = jsonwebtoken_1.default.sign(payload, config_1.config.jwt.refreshSecret, {
             expiresIn: config_1.config.jwt.refreshExpiry,
-            issuer: 'forensics-platform',
+            issuer: 'nyxtrace',
         });
         return { accessToken, refreshToken };
     }

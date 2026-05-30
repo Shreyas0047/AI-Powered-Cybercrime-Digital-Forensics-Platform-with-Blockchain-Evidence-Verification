@@ -102,7 +102,7 @@ function createEmailVerificationToken(email: string, role: RegistrationRole): st
 
   return jwt.sign(payload, emailVerificationSecret(), {
     expiresIn: EMAIL_VERIFICATION_TOKEN_TTL_SECONDS,
-    issuer: 'forensics-platform',
+    issuer: 'nyxtrace',
     audience: 'registration',
   });
 }
@@ -110,7 +110,7 @@ function createEmailVerificationToken(email: string, role: RegistrationRole): st
 function verifyEmailVerificationToken(token: string): EmailVerificationTokenPayload | null {
   try {
     const decoded = jwt.verify(token, emailVerificationSecret(), {
-      issuer: 'forensics-platform',
+      issuer: 'nyxtrace',
       audience: 'registration',
     }) as EmailVerificationTokenPayload;
 
@@ -142,7 +142,7 @@ function createTransporter() {
 
 function fromAddress(): string {
   const smtpFrom = process.env.SMTP_FROM?.trim() || requiredEnv('SMTP_USER');
-  return smtpFrom.includes('<') ? smtpFrom : `ForensicsAI <${smtpFrom}>`;
+  return smtpFrom.includes('<') ? smtpFrom : `NyxTrace <${smtpFrom}>`;
 }
 
 function otpEmailHtml(otp: string, role: RegistrationRole): string {
@@ -150,7 +150,7 @@ function otpEmailHtml(otp: string, role: RegistrationRole): string {
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
-      <h2 style="color: #0891b2;">ForensicsAI Email Verification</h2>
+      <h2 style="color: #0891b2;">NyxTrace Email Verification</h2>
       <p>Your ${roleName} registration verification code is:</p>
       <div style="background: #f1f5f9; border-radius: 12px; padding: 24px; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: 8px; color: #0891b2;">
         ${otp}
@@ -211,8 +211,8 @@ export async function sendOTP(email: string, roleInput: string): Promise<{ succe
     await transporter.sendMail({
       from: fromAddress(),
       to: normalizedEmail,
-      subject: 'ForensicsAI verification code',
-      text: `Your ForensicsAI verification code is ${otp}. It expires in 10 minutes.`,
+      subject: 'NyxTrace verification code',
+      text: `Your NyxTrace verification code is ${otp}. It expires in 10 minutes.`,
       html: otpEmailHtml(otp, role),
     });
 
@@ -321,7 +321,7 @@ function createPasswordResetToken(email: string): string {
 
   return jwt.sign(payload, emailVerificationSecret(), {
     expiresIn: PASSWORD_RESET_TOKEN_TTL_SECONDS,
-    issuer: 'forensics-platform',
+    issuer: 'nyxtrace',
     audience: 'password_reset',
   });
 }
@@ -329,7 +329,7 @@ function createPasswordResetToken(email: string): string {
 export function verifyPasswordResetToken(token: string): PasswordResetTokenPayload | null {
   try {
     const decoded = jwt.verify(token, emailVerificationSecret(), {
-      issuer: 'forensics-platform',
+      issuer: 'nyxtrace',
       audience: 'password_reset',
     }) as PasswordResetTokenPayload;
 
@@ -346,7 +346,7 @@ export function verifyPasswordResetToken(token: string): PasswordResetTokenPaylo
 function resetOtpEmailHtml(otp: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
-      <h2 style="color: #0891b2;">ForensicsAI Password Reset</h2>
+      <h2 style="color: #0891b2;">NyxTrace Password Reset</h2>
       <p>Your password reset verification code is:</p>
       <div style="background: #f1f5f9; border-radius: 12px; padding: 24px; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: 8px; color: #0891b2;">
         ${otp}
@@ -392,8 +392,8 @@ export async function sendPasswordResetOTP(email: string): Promise<{ success: bo
     await transporter.sendMail({
       from: fromAddress(),
       to: normalizedEmail,
-      subject: 'ForensicsAI Password Reset Code',
-      text: `Your ForensicsAI password reset code is ${otp}. It expires in 10 minutes.`,
+      subject: 'NyxTrace Password Reset Code',
+      text: `Your NyxTrace password reset code is ${otp}. It expires in 10 minutes.`,
       html: resetOtpEmailHtml(otp),
     });
 

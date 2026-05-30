@@ -23,7 +23,7 @@ log = logging.getLogger("agent.vm")
 
 # Config
 VM_NAME = "ForensicsSandbox"
-SNAPSHOT = "CleanBaseline"
+SNAPSHOT = "CleanBaselinePython"
 GUEST_USER = "guestuser"
 GUEST_PASS = "guest"
 GUEST_BASE = r"C:\sandbox"
@@ -308,12 +308,18 @@ class VMManager:
     # =========================================================================
 
     def guest_exec(self, exe: str, args: list[str] | None = None, timeout: int = 300, cwd: str | None = None) -> ExecResult:
-        """Run a command inside the guest VM."""
+        """Run a command inside the guest VM. Returns the ExecResult regardless
+        of exit code so the caller can parse stdout (e.g. simulator telemetry)
+        even when the guest process exits non-zero. Only raises if VBoxManage
+        itself fails to launch the guest process or times out at the host level.
+        Must include --wait-stdout so VBoxManage returns the captured output."""
         cmd = [
             "guestcontrol", self._vm, "run",
             "--username", GUEST_USER, "--password", GUEST_PASS,
             "--exe", exe,
             f"--timeout={timeout * 1000}",
+            "--wait-stdout",
+            "--wait-stderr",
         ]
         if cwd:
             cmd.append(f"--cwd={cwd}")
@@ -321,4 +327,12 @@ class VMManager:
             cmd.append("--")
             cmd.extend(args)
 
-        return self._run(cmd, timeout=timeout + 15)
+        full_cmd = [self._vbox] + cmd
+        try:
+            proc = subprocess.run(
+                full_cmd, capture_output=True, text=True,
+                timeout=timeout + 30, creationflags=_NO_WINDOW,
+            )
+            return ExecResult(proc.returncode, proc.stdout, proc.stderr)
+        except subprocess.TimeoutExpired as e:
+            raise VMError(f"guest_exec host-side timeout after {timeout + 30}s")

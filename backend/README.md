@@ -1,6 +1,6 @@
-# ForensicsAI Platform - Backend
+# NyxTrace - Backend
 
-Enterprise backend API for the AI-powered cybercrime digital forensics platform with blockchain evidence verification.
+Enterprise backend API for the AI-powered cybercrime digital NyxTrace with blockchain evidence verification.
 
 ## Features
 

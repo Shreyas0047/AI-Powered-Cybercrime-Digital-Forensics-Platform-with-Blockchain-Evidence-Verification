@@ -1,4 +1,4 @@
-"""Entry point — Forensics Sandbox Agent v2."""
+"""Entry point — NyxTrace Sandbox Agent v2."""
 
 import sys
 from pathlib import Path

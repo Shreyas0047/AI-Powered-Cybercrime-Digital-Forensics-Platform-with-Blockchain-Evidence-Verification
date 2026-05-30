@@ -188,7 +188,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               transition={{ duration: 0.12 }}
             >
               <h1 className="font-display font-semibold text-[15px] text-[#ebe8e3] tracking-tight leading-tight">
-                ForensicsAI
+                NyxTrace
               </h1>
               <p className="overline text-[9px] mt-0.5">Cyber Intelligence</p>
             </motion.div>

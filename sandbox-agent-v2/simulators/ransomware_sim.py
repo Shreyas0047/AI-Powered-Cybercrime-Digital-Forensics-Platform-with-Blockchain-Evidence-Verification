@@ -109,7 +109,7 @@ def main() -> int:
     docs.mkdir(parents=True, exist_ok=True)
     desktop.mkdir(parents=True, exist_ok=True)
 
-    key = hashlib.sha256(b"ForensicsAI-Simulation-Key-2024").digest()
+    key = hashlib.sha256(b"NyxTrace-Simulation-Key-2024").digest()
     cipher = AES256(key)
 
     # --- Phase 1: Create target files ---
@@ -175,7 +175,7 @@ h1{{font-size:3em}}code{{background:#16213e;padding:2px 8px;border-radius:4px}}<
 <p>To recover your files, send <b>0.5 BTC</b> to:</p>
 <code>bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</code>
 <hr><p style="color:#555">This is a FORENSIC SIMULATION. No real damage has occurred.<br>
-Key: ForensicsAI-Simulation-Key-2024</p></body></html>""")
+Key: NyxTrace-Simulation-Key-2024</p></body></html>""", encoding="utf-8")
     emit("FILE", "RANSOM_NOTE", str(note_path), "CRITICAL",
          source_process="ransomware.exe", detail="Ransom note dropped", type="html")
 

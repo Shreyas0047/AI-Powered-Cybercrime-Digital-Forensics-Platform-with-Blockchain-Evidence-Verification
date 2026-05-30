@@ -1,6 +1,6 @@
 # Operational Runbook
 
-This runbook covers local operations for the ForensicsAI platform. Docker commands have been removed because container deployment is not part of the supported project workflow.
+This runbook covers local operations for the NyxTrace platform. Docker commands have been removed because container deployment is not part of the supported project workflow.
 
 ## Service Startup
 
@@ -116,13 +116,13 @@ Backup:
 
 ```powershell
 New-Item -ItemType Directory -Force backups
-mongodump --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\forensics-platform.gz --gzip
+mongodump --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\nyxtrace.gz --gzip
 ```
 
 Restore:
 
 ```powershell
-mongorestore --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\forensics-platform.gz --gzip
+mongorestore --uri "mongodb://localhost:27017/forensics_platform" --archive=backups\nyxtrace.gz --gzip
 ```
 
 ## Worker Control

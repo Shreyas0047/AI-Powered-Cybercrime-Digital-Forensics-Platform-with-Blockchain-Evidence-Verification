@@ -1,7 +1,7 @@
 {
-  "name": "forensics-platform-backend",
+  "name": "nyxtrace-backend",
   "version": "2.0.0",
-  "description": "ForensicsAI Platform - Enterprise Backend API",
+  "description": "NyxTrace - Enterprise Backend API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
@@ -24,7 +24,7 @@
     "enterprise",
     "blockchain"
   ],
-  "author": "ForensicsAI Platform Team",
+  "author": "NyxTrace Team",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.2",

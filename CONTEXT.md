@@ -1,8 +1,8 @@
-# ForensicsAI Platform - Project Context
+# NyxTrace - Project Context
 
 ## Project Overview
 
-**Name:** AI-Powered Cybercrime Digital Forensics Platform with Blockchain Evidence Verification
+**Name:** AI-Powered Cybercrime Digital NyxTrace with Blockchain Evidence Verification
 
 **Purpose:** Educational cybersecurity platform for malware behavior simulation and forensic analysis in controlled VirtualBox sandbox environments. NOT offensive security tooling.
 

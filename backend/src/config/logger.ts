@@ -41,7 +41,7 @@ const consoleFormat = winston.format.combine(
 const logger = winston.createLogger({
   level: LOG_LEVEL,
   format: jsonFormat,
-  defaultMeta: { service: 'forensics-platform' },
+  defaultMeta: { service: 'nyxtrace' },
   transports: [
     // File transport for all logs
     new winston.transports.File({
@@ -69,7 +69,7 @@ if (NODE_ENV !== 'production') {
 export const auditLogger = winston.createLogger({
   level: 'info',
   format: jsonFormat,
-  defaultMeta: { service: 'forensics-platform', type: 'audit' },
+  defaultMeta: { service: 'nyxtrace', type: 'audit' },
   transports: [
     new winston.transports.File({
       filename: path.join(logDir, 'audit.log'),
@@ -82,7 +82,7 @@ export const auditLogger = winston.createLogger({
 export const securityLogger = winston.createLogger({
   level: 'warn',
   format: jsonFormat,
-  defaultMeta: { service: 'forensics-platform', type: 'security' },
+  defaultMeta: { service: 'nyxtrace', type: 'security' },
   transports: [
     new winston.transports.File({
       filename: path.join(logDir, 'security.log'),
@@ -95,7 +95,7 @@ export const securityLogger = winston.createLogger({
 export const apiLogger = winston.createLogger({
   level: 'info',
   format: jsonFormat,
-  defaultMeta: { service: 'forensics-platform', type: 'api' },
+  defaultMeta: { service: 'nyxtrace', type: 'api' },
   transports: [
     new winston.transports.File({
       filename: path.join(logDir, 'api.log'),

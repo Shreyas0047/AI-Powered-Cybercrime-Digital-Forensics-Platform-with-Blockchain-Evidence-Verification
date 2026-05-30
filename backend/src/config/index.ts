@@ -1,6 +1,6 @@
 /**
  * Central Configuration Module
- * Loads and validates environment variables for the forensics platform
+ * Loads and validates environment variables for the NyxTrace
  */
 
 import logger from './logger';

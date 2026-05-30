@@ -69,7 +69,7 @@ function LoadingScreen() {
       justifyContent: 'center',
       color: '#22d3ee'
     }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '10px', color: '#fff' }}>ForensicsAI</h1>
+      <h1 style={{ fontSize: '32px', marginBottom: '10px', color: '#fff' }}>NyxTrace</h1>
       <div style={{
         width: '40px',
         height: '40px',

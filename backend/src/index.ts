@@ -1,5 +1,5 @@
 /**
- * Forensics Platform Backend - Main Entry Point
+ * NyxTrace Backend - Main Entry Point
  * Express.js server with enterprise-grade architecture
  */
 
@@ -95,9 +95,9 @@ app.use(routes);
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    name: 'Forensics Platform API',
+    name: 'NyxTrace API',
     version: '1.0.0',
-    description: 'AI-Powered Cybercrime Digital Forensics Platform',
+    description: 'AI-Powered Cybercrime Digital NyxTrace',
     documentation: '/api/v1',
   });
 });
@@ -123,7 +123,7 @@ async function startServer(): Promise<void> {
       websocketService.initialize(server);
       logger.info([
         '============================================================',
-        'Forensics Platform Backend',
+        'NyxTrace Backend',
         '------------------------------------------------------------',
         `Environment: ${nodeEnv}`,
         `Port: ${port}`,
@@ -134,7 +134,7 @@ async function startServer(): Promise<void> {
       /*
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║   🎯 Forensics Platform Backend                               ║
+║   🎯 NyxTrace Backend                               ║
 ║   ─────────────────────────────────────────────               ║
 ║                                                               ║
 ║   Environment: ${nodeEnv.padEnd(45)}║

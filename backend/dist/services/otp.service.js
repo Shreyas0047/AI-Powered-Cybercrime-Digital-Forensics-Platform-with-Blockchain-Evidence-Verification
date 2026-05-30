@@ -74,14 +74,14 @@ function createEmailVerificationToken(email, role) {
     };
     return jsonwebtoken_1.default.sign(payload, emailVerificationSecret(), {
         expiresIn: EMAIL_VERIFICATION_TOKEN_TTL_SECONDS,
-        issuer: 'forensics-platform',
+        issuer: 'nyxtrace',
         audience: 'registration',
     });
 }
 function verifyEmailVerificationToken(token) {
     try {
         const decoded = jsonwebtoken_1.default.verify(token, emailVerificationSecret(), {
-            issuer: 'forensics-platform',
+            issuer: 'nyxtrace',
             audience: 'registration',
         });
         if (decoded.purpose !== 'email_verification') {
@@ -109,13 +109,13 @@ function createTransporter() {
 }
 function fromAddress() {
     const smtpFrom = process.env.SMTP_FROM?.trim() || requiredEnv('SMTP_USER');
-    return smtpFrom.includes('<') ? smtpFrom : `ForensicsAI <${smtpFrom}>`;
+    return smtpFrom.includes('<') ? smtpFrom : `NyxTrace <${smtpFrom}>`;
 }
 function otpEmailHtml(otp, role) {
     const roleName = role === 'admin' ? 'Administrator' : 'Analyst';
     return `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
-      <h2 style="color: #0891b2;">ForensicsAI Email Verification</h2>
+      <h2 style="color: #0891b2;">NyxTrace Email Verification</h2>
       <p>Your ${roleName} registration verification code is:</p>
       <div style="background: #f1f5f9; border-radius: 12px; padding: 24px; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: 8px; color: #0891b2;">
         ${otp}
@@ -164,8 +164,8 @@ async function sendOTP(email, roleInput) {
         await transporter.sendMail({
             from: fromAddress(),
             to: normalizedEmail,
-            subject: 'ForensicsAI verification code',
-            text: `Your ForensicsAI verification code is ${otp}. It expires in 10 minutes.`,
+            subject: 'NyxTrace verification code',
+            text: `Your NyxTrace verification code is ${otp}. It expires in 10 minutes.`,
             html: otpEmailHtml(otp, role),
         });
         logger_1.default.info(`Email OTP sent to ${normalizedEmail}`);
@@ -249,14 +249,14 @@ function createPasswordResetToken(email) {
     };
     return jsonwebtoken_1.default.sign(payload, emailVerificationSecret(), {
         expiresIn: PASSWORD_RESET_TOKEN_TTL_SECONDS,
-        issuer: 'forensics-platform',
+        issuer: 'nyxtrace',
         audience: 'password_reset',
     });
 }
 function verifyPasswordResetToken(token) {
     try {
         const decoded = jsonwebtoken_1.default.verify(token, emailVerificationSecret(), {
-            issuer: 'forensics-platform',
+            issuer: 'nyxtrace',
             audience: 'password_reset',
         });
         if (decoded.purpose !== 'password_reset') {
@@ -271,7 +271,7 @@ function verifyPasswordResetToken(token) {
 function resetOtpEmailHtml(otp) {
     return `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
-      <h2 style="color: #0891b2;">ForensicsAI Password Reset</h2>
+      <h2 style="color: #0891b2;">NyxTrace Password Reset</h2>
       <p>Your password reset verification code is:</p>
       <div style="background: #f1f5f9; border-radius: 12px; padding: 24px; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: 8px; color: #0891b2;">
         ${otp}
@@ -308,8 +308,8 @@ async function sendPasswordResetOTP(email) {
         await transporter.sendMail({
             from: fromAddress(),
             to: normalizedEmail,
-            subject: 'ForensicsAI Password Reset Code',
-            text: `Your ForensicsAI password reset code is ${otp}. It expires in 10 minutes.`,
+            subject: 'NyxTrace Password Reset Code',
+            text: `Your NyxTrace password reset code is ${otp}. It expires in 10 minutes.`,
             html: resetOtpEmailHtml(otp),
         });
         logger_1.default.info(`Password reset OTP sent to ${normalizedEmail}`);

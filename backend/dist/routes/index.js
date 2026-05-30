@@ -66,9 +66,9 @@ router.get('/health', (req, res) => {
 // Root endpoint
 router.get('/', (req, res) => {
     res.json({
-        name: 'Forensics Platform API',
+        name: 'NyxTrace API',
         version: '1.0.0',
-        description: 'AI-Powered Cybercrime Digital Forensics Platform',
+        description: 'AI-Powered Cybercrime Digital NyxTrace',
         documentation: '/api/v1',
     });
 });

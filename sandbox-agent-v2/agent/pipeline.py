@@ -104,7 +104,7 @@ class SessionPipeline:
         try:
             await asyncio.wait_for(
                 self._execute_stages(session),
-                timeout=timeout + 60,
+                timeout=timeout + 420,
             )
         except asyncio.TimeoutError:
             session.transition(SessionState.FAILED, f"Pipeline timed out after {timeout}s")
@@ -133,7 +133,7 @@ class SessionPipeline:
 
         # Wait for Guest Additions
         self._emit_log("INFO", "Waiting for Guest OS to become ready", sid)
-        ready = await asyncio.to_thread(self._vm.wait_for_guest, 120)
+        ready = await asyncio.to_thread(self._vm.wait_for_guest, 360)
         if not ready:
             raise VMError("Guest Additions did not become ready — VM may have aborted")
 
@@ -149,10 +149,16 @@ class SessionPipeline:
         # --- EXECUTE ---
         session.transition(SessionState.EXECUTING)
         self._emit_log("INFO", "Executing simulator in guest VM", sid)
+        # Invoke Python by full path. Plain `python` resolves to the Microsoft
+        # Store alias stub on a fresh Windows 11 guest, which exits 9009 with
+        # an "install from the Microsoft Store" message. Override via the
+        # SANDBOX_GUEST_PYTHON env var if you install Python somewhere else.
+        import os as _os
+        guest_python = _os.environ.get("SANDBOX_GUEST_PYTHON", r"C:\Python311\python.exe")
         result = await asyncio.to_thread(
             self._vm.guest_exec,
             r"C:\Windows\System32\cmd.exe",
-            ["/c", "python", guest_script],
+            ["/c", guest_python, guest_script],
             timeout=300,
             cwd=GUEST_SIMULATORS,
         )

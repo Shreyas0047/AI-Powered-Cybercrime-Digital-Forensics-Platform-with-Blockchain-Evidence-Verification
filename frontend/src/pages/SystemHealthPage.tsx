@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Server,
@@ -72,11 +72,11 @@ export function SystemHealthPage() {
 
       try {
         const backendStart = Date.now();
-        const backendResp = await api.get('/health');
+        const backendResp = await api.get('/operations/health');
         const backendTime = Date.now() - backendStart;
         newServices.push({
           name: 'Backend API',
-          status: backendResp.data?.status === 'ok' ? 'healthy' : 'degraded',
+          status: backendResp.data?.status === 'healthy' ? 'healthy' : 'degraded',
           responseTime: backendTime,
           lastCheck: now,
           details: `Express.js on port 3001`,
@@ -387,8 +387,8 @@ export function SystemHealthPage() {
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white">ForensicsAI Platform</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">AI-Powered Cybercrime Digital Forensics Platform</p>
+                <h3 className="font-bold text-slate-900 dark:text-white">NyxTrace</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">AI-Powered Cybercrime Digital NyxTrace</p>
               </div>
             </div>
             <div className="text-right">

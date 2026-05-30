@@ -1,6 +1,6 @@
 /**
  * Core Type Definitions
- * Central type exports for the forensics platform backend
+ * Central type exports for the NyxTrace backend
  */
 
 import { Types } from 'mongoose';
