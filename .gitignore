@@ -29,6 +29,9 @@ build/
 *.local
 logs/
 backend/logs/
+backend/backend_*.log
+sandbox-agent-v2/runtime.log
+sandbox-agent-v2/runtime.err
 reports/
 exports/
 

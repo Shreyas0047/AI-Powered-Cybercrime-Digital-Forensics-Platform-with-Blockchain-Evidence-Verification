@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../services/api';
+import { useDebounce } from '../hooks/useDebounce';
 import type { User, UserRole } from '../types';
 import { Users, Plus, Edit2, Trash2, Search, ChevronLeft, ChevronRight, X, Shield, AlertCircle } from 'lucide-react';
 
@@ -31,6 +32,7 @@ export const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -50,7 +52,7 @@ export const UsersPage: React.FC = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await api.getUsers({ page: currentPage, limit: 10, search: searchQuery });
+      const response = await api.getUsers({ page: currentPage, limit: 10, search: debouncedSearch });
       if (response.success && response.data) {
         setUsers(response.data.users);
         setTotalUsers(response.data.total);
@@ -65,7 +67,7 @@ export const UsersPage: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchQuery]);
+  }, [currentPage, debouncedSearch]);
 
   const handleCreateUser = async () => {
     try {

@@ -162,7 +162,7 @@ export function AttackChain({ stages = [], title = 'Attack Chain' }: AttackChain
           <div className="space-y-2">
             {stages.map((stage, index) => {
               const config = statusConfig[stage.status];
-              const Icon = iconMap[stage.icon.name] || Activity;
+              const Icon = iconMap[(stage.icon as { name?: string })?.name || ''] || Activity;
               const isExpanded = expandedStage === stage.id;
               const isPending = stage.status === 'pending';
 

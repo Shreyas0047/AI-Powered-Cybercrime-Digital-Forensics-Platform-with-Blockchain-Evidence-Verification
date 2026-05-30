@@ -108,11 +108,15 @@ export interface Evidence {
   status: EvidenceStatus;
   filePath: string;
   fileSize: number;
+  /** Flat alias for fileSize emitted by some backend serializers. */
+  size?: number;
   mimeType: string;
   hash?: {
     sha256?: string;
     md5?: string;
   };
+  /** Flat alias for hash.sha256 emitted by some backend serializers. */
+  sha256?: string;
   collectedAt: string;
   collectedBy: User;
   verified: boolean;
@@ -260,13 +264,17 @@ export type SandboxSessionStatus =
 export interface TelemetryEvent {
   id?: string;
   type?: string;
-  details?: string;
+  details?: string | Record<string, unknown>;
   session_id: string;
   timestamp: string;
   event_type: string;
   category: string;
   data: Record<string, unknown>;
   suspiciousScore?: number;
+  /** Severity emitted by sandbox-agent ForensicEvent (CRITICAL/WARNING/INFO/etc.). */
+  severity?: string;
+  /** Optional human-readable message attached to log-style events. */
+  message?: string;
 }
 
 export type TelemetryEventType =
@@ -482,6 +490,7 @@ export interface ComprehensiveForensicReport {
     confidence: number;
     severityLevel: string;
     severityScore: number;
+    reasons?: string[];
   };
   mitreTechniques: Array<{
     id: string;

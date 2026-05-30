@@ -89,7 +89,7 @@ export function RegisterPage() {
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const response = await api.post<{ success: boolean; message: string; data?: { devOtp?: string } }>('/auth/send-otp', {
+      const response = await api.post<{ devOtp?: string }>('/auth/send-otp', {
         email: normalizedEmail,
         role,
       });

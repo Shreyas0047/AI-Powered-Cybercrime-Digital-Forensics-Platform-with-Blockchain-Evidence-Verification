@@ -176,6 +176,11 @@ class SessionPipeline:
         total = len(self._events.get(sid, []))
         self._emit_log("INFO", f"Session completed — {total} events collected", sid)
         self._update_monitoring(sid)
+        # Generate sandbox-report.json for AI Analysis pipeline
+        try:
+            self._generate_report(session)
+        except Exception as exc:
+            log.warning("Failed to generate sandbox-report.json for %s: %s", sid, exc)
 
     # =========================================================================
     # STAGE: Transfer simulator to guest
@@ -264,6 +269,112 @@ class SessionPipeline:
             is_active=False,
             session_id=sid,
         )
+
+    # =========================================================================
+    # REPORT GENERATION (sandbox-report.json)
+    # =========================================================================
+
+    def _generate_report(self, session: RuntimeSession) -> Optional[Path]:
+        """Generate sandbox-report.json after session completion.
+
+        The report is consumed by the backend AI Analysis pipeline to derive
+        threat classification, MITRE mapping, attack chain, etc. It is also
+        served to the Reports page via reports.service.ts.
+        """
+        sid = session.session_id
+        events = self._events.get(sid, [])
+
+        # Categorize events by type for AI Analysis pipeline
+        process_activity = [e for e in events if e.get("category", "").upper() == "PROCESS"]
+        file_activity = [e for e in events if e.get("category", "").upper() == "FILE"]
+        registry_activity = [e for e in events if e.get("category", "").upper() == "REGISTRY"]
+        network_activity = [e for e in events if e.get("category", "").upper() == "NETWORK"]
+
+        # Severity counts for AI Analysis
+        severity_counts: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+        for e in events:
+            sev = e.get("severity", "info").lower()
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+
+        # Build chronological timeline (sorted by timestamp)
+        timeline = sorted(
+            [
+                {
+                    "timestamp": e.get("timestamp", ""),
+                    "category": e.get("category", "SYSTEM"),
+                    "event_type": e.get("event_type", e.get("type", "event")),
+                    "severity": e.get("severity", "info"),
+                    "details": e.get("details", e.get("data", {})),
+                }
+                for e in events
+            ],
+            key=lambda x: x.get("timestamp", ""),
+        )
+
+        # Resolve simulator name (matches backend SIMULATOR_DISPLAY_NAMES)
+        sim_display = {
+            "system-service-alpha": "Sample Alpha",
+            "system-service-beta": "Sample Beta",
+            "system-service-gamma": "Sample Gamma",
+            "system-service-delta": "Sample Delta",
+            "system-service-epsilon": "Sample Epsilon",
+            "ransomware-simulator": "Sample Alpha",
+            "spyware-simulator": "Sample Beta",
+            "trojan-simulator": "Sample Gamma",
+            "botnet-simulator": "Sample Delta",
+            "credential-stealer": "Sample Epsilon",
+        }
+        simulator_name = sim_display.get(session.simulator_id, session.simulator_id)
+
+        report = {
+            "report_metadata": {
+                "exportedAt": datetime.now(timezone.utc).isoformat(),
+                "format_version": "1.0",
+                "generator": "sandbox-agent-v2",
+            },
+            "session": {
+                "sessionId": sid,
+                "session_id": sid,
+                "simulatorId": session.simulator_id,
+                "simulator_id": session.simulator_id,
+                "simulatorName": simulator_name,
+                "simulator_name": simulator_name,
+                "state": session.state.value if hasattr(session.state, "value") else str(session.state),
+                "createdAt": session.created_at,
+                "updatedAt": session.updated_at,
+                "executionTime": 0,
+            },
+            "summary": {
+                "total_events": len(events),
+                "process_count": len(process_activity),
+                "file_count": len(file_activity),
+                "registry_count": len(registry_activity),
+                "network_count": len(network_activity),
+                "severity_counts": severity_counts,
+            },
+            "process_activity": process_activity,
+            "file_activity": file_activity,
+            "registry_activity": registry_activity,
+            "network_activity": network_activity,
+            "timeline": timeline,
+            "events": events,
+        }
+
+        # Write to <project_root>/uploads/reports/<session_id>.json
+        # The backend reports.service.ts reads from uploads/reports.
+        try:
+            project_root = Path(__file__).resolve().parents[2]
+            reports_dir = project_root / "uploads" / "reports"
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            report_path = reports_dir / f"sandbox-report-{sid}.json"
+            with report_path.open("w", encoding="utf-8") as fh:
+                json.dump(report, fh, indent=2, default=str)
+            self._emit_log("INFO", f"Generated {report_path.name} ({len(events)} events)", sid)
+            return report_path
+        except Exception as exc:
+            log.exception("Failed writing sandbox report: %s", exc)
+            return None
 
     # =========================================================================
     # LOGGING (broadcasts to /logs/live WebSocket)

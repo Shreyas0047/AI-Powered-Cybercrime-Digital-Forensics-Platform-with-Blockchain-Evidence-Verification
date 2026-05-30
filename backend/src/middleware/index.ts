@@ -68,3 +68,10 @@ export {
   ForbiddenError,
   ConflictError,
 } from './error.middleware';
+
+export {
+  requestContextMiddleware,
+  getCorrelationId,
+  withRequestContext,
+} from './request-context';
+export type { RequestContext } from './request-context';

@@ -3,6 +3,7 @@ import { Radio, RefreshCw } from 'lucide-react';
 import { useRealtimeStore } from '../../stores/realtimeStore';
 import { cn } from '../../design-system';
 import api from '../../services/api';
+import { config } from '../../config';
 
 export function ConnectionStatus() {
   const { isConnected, connect, disconnect } = useRealtimeStore();
@@ -21,7 +22,7 @@ export function ConnectionStatus() {
       }
     };
     checkHealth();
-    const interval = setInterval(checkHealth, 15000);
+    const interval = setInterval(checkHealth, config.polling.connectionHealthMs);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -48,7 +49,7 @@ export function ConnectionStatus() {
   // - Offline: REST API also down (degraded)
   const status = isConnected ? 'live' : apiHealthy ? 'connected' : apiHealthy === false ? 'offline' : 'connecting';
 
-  const config = {
+  const styles = {
     live: { dot: 'text-emerald-400', label: 'Live', labelColor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
     connected: { dot: 'text-emerald-400', label: 'Connected', labelColor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
     connecting: { dot: 'text-[#6c6862]', label: 'Connecting', labelColor: 'text-[#a09b93]', bg: 'bg-white/5', border: 'border-white/10' },
@@ -57,9 +58,9 @@ export function ConnectionStatus() {
 
   return (
     <div className="flex items-center gap-2">
-      <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-md border', config.bg, config.border)}>
-        <Radio strokeWidth={1.75} className={cn('w-3 h-3', config.dot, status === 'live' && 'animate-pulse')} />
-        <span className={cn('text-[11px] font-mono font-medium', config.labelColor)}>{config.label}</span>
+      <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-md border', styles.bg, styles.border)}>
+        <Radio strokeWidth={1.75} className={cn('w-3 h-3', styles.dot, status === 'live' && 'animate-pulse')} />
+        <span className={cn('text-[11px] font-mono font-medium', styles.labelColor)}>{styles.label}</span>
       </div>
 
       {status === 'offline' && (

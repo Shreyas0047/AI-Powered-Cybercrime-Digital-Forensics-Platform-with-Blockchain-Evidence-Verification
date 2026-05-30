@@ -6,7 +6,10 @@
 import { SandboxSession, Investigation, Alert, AuditLog, AlertType, AlertSeverity, AlertSource } from '../models';
 import { NotFoundError, ValidationError } from '../middleware';
 import { evidenceValidationService, TelemetryPayload } from './evidence-validation.service';
+import { threatIntelligenceService } from './threat-intelligence.service';
+import { IOCTypes, IOCSeverity } from '../models/threat.model';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../config/logger';
 
 export interface IngestedTelemetry {
   sessionId: string;
@@ -225,7 +228,79 @@ export class TelemetryIngestionService {
     if (event.details?.ioc) {
       const iocs = (session as any).extractedIOCs || [];
       (session as any).extractedIOCs = [...iocs, ...event.details.ioc].slice(-100);
+
+      // Also persist to the threat intelligence IOC collection so they appear in Threat Intel page
+      const iocList = Array.isArray(event.details.ioc) ? event.details.ioc : [event.details.ioc];
+      for (const ioc of iocList) {
+        try {
+          const mappedType = this.mapIocType(ioc.type || ioc.iocType || '');
+          if (!mappedType || !ioc.value) continue;
+
+          await threatIntelligenceService.createIOC(
+            {
+              type: mappedType,
+              value: String(ioc.value),
+              severity: this.mapIocSeverity(ioc.severity),
+              category: 'sandbox',
+              description: ioc.context || `Extracted from sandbox session ${session.sessionId}`,
+              source: 'sandbox',
+              confidence: 75,
+              linkedEvidence: [],
+              linkedInvestigations: session.investigationId ? [session.investigationId.toString()] : [],
+            },
+            uploadedBy || 'system',
+          );
+        } catch (err: any) {
+          if (err?.code !== 11000) {
+            logger.debug(`[Telemetry] Skipped IOC persistence: ${err?.message || 'unknown'}`);
+          }
+        }
+      }
     }
+  }
+
+  private mapIocType(type: string): IOCTypes | null {
+    const t = (type || '').toLowerCase();
+    switch (t) {
+      case 'url': return IOCTypes.URL;
+      case 'domain': return IOCTypes.DOMAIN;
+      case 'ip':
+      case 'ipv4':
+      case 'ipv6':
+      case 'ip_address':
+        return IOCTypes.IP_ADDRESS;
+      case 'md5':
+      case 'sha1':
+      case 'sha256':
+      case 'hash':
+      case 'file_hash':
+        return IOCTypes.FILE_HASH;
+      case 'process':
+      case 'process_name':
+        return IOCTypes.PROCESS_NAME;
+      case 'registry':
+      case 'registry_key':
+        return IOCTypes.REGISTRY_KEY;
+      case 'file':
+      case 'file_path':
+        return IOCTypes.FILE_PATH;
+      case 'command':
+      case 'command_line':
+        return IOCTypes.COMMAND_LINE;
+      case 'email':
+        return IOCTypes.EMAIL;
+      default:
+        return null;
+    }
+  }
+
+  private mapIocSeverity(severity?: string): IOCSeverity {
+    const s = (severity || '').toLowerCase();
+    if (s === 'critical') return IOCSeverity.CRITICAL;
+    if (s === 'high') return IOCSeverity.HIGH;
+    if (s === 'low') return IOCSeverity.LOW;
+    if (s === 'info') return IOCSeverity.INFO;
+    return IOCSeverity.MEDIUM;
   }
 
   /**

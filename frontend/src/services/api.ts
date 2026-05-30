@@ -19,8 +19,9 @@ import type {
   ForensicReportSummary, ForensicReportDetail, LogEntry,
   AppSettings, EvidenceArtifact, ForensicEvidenceDetail
 } from '../types/reports';
+import { config } from '../config';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_BASE_URL = config.env.apiUrl;
 
 function normalizeEntity<T extends Record<string, any>>(entity: T): T {
   if (!entity) return entity;
@@ -46,7 +47,6 @@ function processQueue(error: unknown, token: string | null = null) {
 
 // Service connectivity state
 let _backendDown = false;
-let _lastConnectivityChange = 0;
 const SERVICE_DOWN_EVENT = 'forensics:service_down';
 const SERVICE_UP_EVENT = 'forensics:service_up';
 
@@ -57,7 +57,6 @@ export function isBackendDown(): boolean {
 function setBackendStatus(down: boolean) {
   if (_backendDown === down) return;
   _backendDown = down;
-  _lastConnectivityChange = Date.now();
   window.dispatchEvent(new CustomEvent(down ? SERVICE_DOWN_EVENT : SERVICE_UP_EVENT));
 }
 
@@ -65,26 +64,46 @@ function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Generate a short correlation ID for end-to-end request tracing.
+ * Uses crypto.randomUUID where available, falls back to a Math.random hex.
+ */
+function generateCorrelationId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {
+    // ignore — fall through to fallback
+  }
+  return `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 class ApiService {
   private client: AxiosInstance;
-  private maxRetries = 2;
+  private maxRetries = config.api.maxRetries;
 
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000,
+      timeout: config.api.requestTimeoutMs,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
     // Request interceptor for auth token
-    this.client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    this.client.interceptors.request.use((cfg: InternalAxiosRequestConfig) => {
       const token = localStorage.getItem('accessToken');
       if (token && token !== 'null' && token !== 'undefined') {
-        config.headers.Authorization = `Bearer ${token}`;
+        cfg.headers.Authorization = `Bearer ${token}`;
       }
-      return config;
+      // Tag every outbound request with a correlation ID so it can be
+      // traced end-to-end across frontend, backend, and sandbox agent logs.
+      if (!cfg.headers['X-Correlation-ID']) {
+        cfg.headers['X-Correlation-ID'] = generateCorrelationId();
+      }
+      return cfg;
     });
 
     // Response interceptor — retry on network errors, track connectivity
@@ -350,7 +369,7 @@ class ApiService {
     timeout_seconds?: number;
   }): Promise<ApiResponse<{ session: { session_id: string; state: string; simulator_id: string; created_at: string; updated_at: string; error?: string } }>> {
     const response = await this.client.post('/sandbox/sessions', request, {
-      timeout: 20000,
+      timeout: config.api.longRequestTimeoutMs,
     });
     return response.data;
   }
@@ -567,7 +586,7 @@ async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<Ha
     return response.data;
   }
 
-  async exportReport(id: string, format: 'json' | 'text' = 'json'): Promise<Blob> {
+  async exportReport(id: string, format: 'json' | 'text' | 'pdf' = 'json'): Promise<Blob> {
     const response = await this.client.get(`/reports/${id}/export`, {
       params: { format },
       responseType: 'blob',
@@ -591,6 +610,39 @@ async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<Ha
     files: string[];
   }>> {
     const response = await this.client.get('/logs/stats');
+    return response.data;
+  }
+
+  // Audit Logs (structured user/system events: login, evidence uploaded, sessions)
+  async getAuditLogs(params?: {
+    page?: number;
+    limit?: number;
+    action?: string;
+    entityType?: string;
+    status?: string;
+    search?: string;
+  }): Promise<ApiResponse<Array<{
+    id: string;
+    timestamp: string;
+    action: string;
+    entityType?: string;
+    entityId?: string;
+    status?: string;
+    details?: Record<string, any>;
+    ipAddress?: string;
+    user?: { id: string; username?: string; email?: string; name?: string } | null;
+    errorMessage?: string;
+  }>>> {
+    const response = await this.client.get('/logs/audit', { params });
+    return response.data;
+  }
+
+  async getAuditStats(): Promise<ApiResponse<{
+    total: number;
+    byAction: Array<{ action: string; count: number }>;
+    byStatus: Record<string, number>;
+  }>> {
+    const response = await this.client.get('/logs/audit/stats');
     return response.data;
   }
 
@@ -769,9 +821,40 @@ async verifyHash(filePath: string, expectedHash: string): Promise<ApiResponse<Ha
   }
 
   // Generic HTTP methods for flexibility
+  //
+  // GET requests are deduplicated when called concurrently with the same
+  // URL+params: identical in-flight requests share a single Promise. This
+  // prevents polling storms when multiple components mount and request the
+  // same endpoint within `config.api.dedupTtlMs`.
+  private inflight: Map<string, { promise: Promise<ApiResponse<any>>; expires: number }> = new Map();
+
   async get<T = any>(path: string, params?: Record<string, unknown>): Promise<ApiResponse<T>> {
-    const response = await this.client.get<ApiResponse<T>>(path, { params });
-    return response.data;
+    const key = `${path}::${params ? JSON.stringify(params) : ''}`;
+    const now = Date.now();
+
+    // Prune stale entries
+    for (const [k, entry] of this.inflight) {
+      if (entry.expires < now) this.inflight.delete(k);
+    }
+
+    const existing = this.inflight.get(key);
+    if (existing) {
+      return existing.promise as Promise<ApiResponse<T>>;
+    }
+
+    const promise = (async () => {
+      try {
+        const response = await this.client.get<ApiResponse<T>>(path, { params });
+        return response.data;
+      } finally {
+        // Hold the entry briefly so a burst of concurrent calls coalesces,
+        // but release it so the next polling tick gets a fresh response.
+        setTimeout(() => this.inflight.delete(key), config.api.dedupTtlMs);
+      }
+    })();
+
+    this.inflight.set(key, { promise, expires: now + config.api.dedupTtlMs + 5_000 });
+    return promise;
   }
 
   async post<T = any>(path: string, data?: unknown): Promise<ApiResponse<T>> {

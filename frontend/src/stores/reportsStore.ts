@@ -18,7 +18,7 @@ interface ReportsState {
   };
   fetchReports: (params?: Partial<ReportsState['filters'] & { page: number; limit: number }>) => Promise<void>;
   fetchReportById: (id: string) => Promise<void>;
-  exportReport: (id: string, format: 'json' | 'text') => Promise<void>;
+  exportReport: (id: string, format: 'json' | 'text' | 'pdf') => Promise<void>;
   setFilters: (filters: Partial<ReportsState['filters']>) => void;
   clearCurrentReport: () => void;
 }
@@ -90,13 +90,14 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     }
   },
 
-  exportReport: async (id: string, format: 'json' | 'text') => {
+  exportReport: async (id: string, format: 'json' | 'text' | 'pdf') => {
     try {
       const blob = await api.exportReport(id, format);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const filename = `report_${id}_${new Date().toISOString().split('T')[0]}.${format === 'json' ? 'json' : 'txt'}`;
+      const ext = format === 'json' ? 'json' : format === 'pdf' ? 'pdf' : 'txt';
+      const filename = `report_${id}_${new Date().toISOString().split('T')[0]}.${ext}`;
       a.download = filename;
       document.body.appendChild(a);
       a.click();

@@ -289,14 +289,19 @@ class HealthMonitor {
    */
   async getHealthStatus(): Promise<HealthStatus> {
     const services: Record<string, ServiceHealthStatus> = {};
-    const criticalServices = [
-      'database',
-      'websocket',
-      'blockchain',
-      'queue',
-      'aiService',
-      'sandboxAgent',
-    ];
+
+    // Always-on critical services
+    const criticalServices: string[] = ['database', 'websocket', 'queue', 'sandboxAgent'];
+
+    // Optional services — only probed when explicitly enabled. Otherwise we'd
+    // permanently show them as 'down' and degrade the overall status, which
+    // hides real problems behind known-disabled features.
+    if ((process.env.AI_SERVICE_ENABLED ?? 'false').toLowerCase() === 'true') {
+      criticalServices.push('aiService');
+    }
+    if ((process.env.BLOCKCHAIN_ENABLED ?? 'false').toLowerCase() === 'true') {
+      criticalServices.push('blockchain');
+    }
 
     for (const service of criticalServices) {
       services[service] = await this.checkServiceHealth(service);

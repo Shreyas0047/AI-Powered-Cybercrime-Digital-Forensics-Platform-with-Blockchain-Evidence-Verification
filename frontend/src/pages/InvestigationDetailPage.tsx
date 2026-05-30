@@ -22,6 +22,7 @@ import { StatusBadge, SeverityBadge } from '../components/ui/Badge';
 import { DashboardCard } from '../components/enterprise/DashboardGrid';
 import { useInvestigationStore } from '../stores/investigationStore';
 import { useTimelineStore } from '../stores/timelineStore';
+import { useAuthStore } from '../stores/authStore';
 import { formatRelativeTime } from '../utils/helpers';
 import { cn } from '../design-system';
 
@@ -41,6 +42,7 @@ export function InvestigationDetailPage() {
 
   const { currentInvestigation, isLoading, error, fetchInvestigation, updateInvestigation } = useInvestigationStore();
   const { events, notes, setEvents, addNote } = useTimelineStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (id) {
@@ -65,14 +67,16 @@ export function InvestigationDetailPage() {
       await addNote({
         investigationId: id || '',
         content: noteContent.trim(),
-        type: noteType as any,
+        type: noteType as 'observation' | 'finding' | 'conclusion' | 'remediation' | 'escalation',
+        createdBy: user?.id || 'unknown',
+        createdByName: user?.name || 'Unknown',
       });
       setNoteContent('');
       setShowNoteModal(false);
     } finally {
       setNoteLoading(false);
     }
-  }, [noteContent, noteType, id, addNote]);
+  }, [noteContent, noteType, id, addNote, user]);
 
   const tabs = [
     { id: 'overview' as const, label: 'Overview', icon: Eye },
@@ -327,7 +331,7 @@ export function InvestigationDetailPage() {
                     behavior: { bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800' },
                     anomaly: { bg: 'bg-rose-50 dark:bg-rose-900/20', border: 'border-rose-200 dark:border-rose-800' },
                   };
-                  const colors = eventColors[event.type] || eventColors.process;
+                  const colors = eventColors[event.type || 'process'] || eventColors.process;
                   return (
                     <div key={event.id} className="flex gap-4">
                       <div className="flex flex-col items-center">

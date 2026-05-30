@@ -49,7 +49,7 @@
             ↓
 ┌────────────────────────────────────────────────────────────────────────┐
 │                     VirtualBox VM (Windows 11)                         │
-│  - Snapshot: CleanBaseline                                             │
+│  - Snapshot: CleanBaselinePython                                       │
 │  - Execution: Headless mode                                            │
 │  - Guest Additions: Required                                           │
 └────────────────────────────────────────────────────────────────────────┘
@@ -199,7 +199,7 @@ Source of truth: `sandbox-agent-v2/agent/app.py` (`SIMULATORS` list) and `sandbo
 | **OS** | Windows 11 EFI |
 | **Username** | guestuser |
 | **Password** | guest |
-| **Snapshot** | CleanBaseline |
+| **Snapshot** | CleanBaselinePython |
 | **Guest Additions** | Required |
 | **Headless Mode** | true (default for runtime) |
 

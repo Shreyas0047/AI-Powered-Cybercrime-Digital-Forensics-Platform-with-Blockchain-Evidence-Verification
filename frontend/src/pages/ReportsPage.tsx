@@ -263,6 +263,7 @@ export function ReportsPage() {
                 <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{currentReport.reportFile}</p>
               </div>
               <div className="flex gap-2">
+                <Button variant="primary" size="sm" leftIcon={<Download className="w-4 h-4" />} onClick={() => exportReport(currentReport.id, 'pdf')}>PDF</Button>
                 <Button variant="outline" size="sm" leftIcon={<Download className="w-4 h-4" />} onClick={() => exportReport(currentReport.id, 'json')}>JSON</Button>
                 <Button variant="outline" size="sm" leftIcon={<Download className="w-4 h-4" />} onClick={() => exportReport(currentReport.id, 'text')}>TXT</Button>
               </div>
@@ -325,7 +326,7 @@ export function ReportsPage() {
                         {events.slice(0, 5).map((evt: unknown) => {
                           const e = evt as { operation?: string; timestamp?: string; severity?: string; details?: Record<string, unknown> };
                           return (
-                            <div key={e.timestamp + e.operation} className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded text-xs mb-1">
+                            <div key={(e.timestamp || '') + (e.operation || '')} className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded text-xs mb-1">
                               <span className="text-slate-400 font-mono">{e.timestamp}</span>
                               <span className="mx-2 text-slate-300">|</span>
                               <span className="text-slate-700 dark:text-slate-300">{e.operation}</span>

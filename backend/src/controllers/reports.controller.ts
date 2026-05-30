@@ -59,7 +59,7 @@ export class ReportsController {
 
   async exportReport(req: AuthenticatedRequest, res: Response): Promise<void> {
     const { format = 'json' } = req.query as Record<string, string>;
-    const result = await reportsService.exportReport(req.params.id, format as 'json' | 'text');
+    const result = await reportsService.exportReport(req.params.id, format as 'json' | 'text' | 'pdf');
 
     if (!result) {
       res.status(404).json({

@@ -5,7 +5,7 @@ import api from '../services/api';
 const DEFAULT_SETTINGS: AppSettings = {
   vm: {
     vmName: 'ForensicsSandbox',
-    snapshotName: 'CleanBaseline',
+    snapshotName: 'CleanBaselinePython',
     headlessMode: false,
     startupTimeout: 60,
     shutdownTimeout: 30,

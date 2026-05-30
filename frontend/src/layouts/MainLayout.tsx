@@ -5,7 +5,8 @@
 
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
 import { StatusBanner } from '../components/ui/StatusBanner';
@@ -128,7 +129,15 @@ export function MainLayout() {
               }}
               className="h-full"
             >
-              <Outlet />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-24">
+                    <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                  </div>
+                }
+              >
+                <Outlet />
+              </Suspense>
             </motion.div>
           </AnimatePresence>
         </main>

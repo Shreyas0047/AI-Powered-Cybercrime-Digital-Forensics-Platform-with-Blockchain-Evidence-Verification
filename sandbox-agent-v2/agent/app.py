@@ -87,7 +87,8 @@ def _add_log(level: str, message: str, session_id: Optional[str] = None) -> None
 async def lifespan(app: FastAPI):
     global _vm, _pipeline, _start_time
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+    from agent.logging_config import configure_json_logging
+    configure_json_logging(service="sandbox-agent")
     _start_time = time.time()
 
     log.info("=== Sandbox Agent v2.0.0 starting ===")
@@ -153,6 +154,25 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Surface the inbound correlation ID on every response and stash it on the
+    # request scope so handlers/log statements can include it.
+    @app.middleware("http")
+    async def _correlation_id_middleware(request, call_next):
+        from agent.tracing import correlation_id
+
+        cid = request.headers.get("x-correlation-id") or request.headers.get("X-Correlation-ID")
+        token = correlation_id.set(cid) if cid else None
+        try:
+            if cid:
+                request.state.correlation_id = cid
+            response = await call_next(request)
+            if cid:
+                response.headers["X-Correlation-ID"] = cid
+            return response
+        finally:
+            if token:
+                correlation_id.reset(token)
 
     # -------------------------------------------------------------------------
     # HEALTH

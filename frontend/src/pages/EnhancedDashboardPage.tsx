@@ -9,11 +9,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Search, AlertTriangle, FileText, Activity, Plus, ArrowUpRight,
-  TrendingUp, Bell, type LucideIcon,
+  TrendingUp, Bell, Shield, type LucideIcon,
 } from 'lucide-react';
 import { useInvestigationStore } from '../stores/investigationStore';
 import { useAlertStore } from '../stores/alertStore';
 import { useSandboxStore } from '../stores/sandboxStore';
+import { useThreatIntelStore } from '../stores/threatIntelStore';
 import { cn } from '../design-system';
 
 const stagger = {
@@ -145,18 +146,24 @@ export function EnhancedDashboardPage() {
   const { investigations, fetchInvestigations } = useInvestigationStore();
   const { alerts, fetchAlerts } = useAlertStore();
   const { stats: sandboxStats, fetchSessions, fetchStats } = useSandboxStore();
+  const { analysisHistory, loadHistory: loadThreatHistory } = useThreatIntelStore();
 
   useEffect(() => {
     fetchInvestigations({ page: 1, limit: 5 });
     fetchAlerts({ page: 1, limit: 5 });
     fetchSessions({ page: 1, limit: 20 });
     fetchStats();
-  }, [fetchInvestigations, fetchAlerts, fetchSessions, fetchStats]);
+    loadThreatHistory();
+  }, [fetchInvestigations, fetchAlerts, fetchSessions, fetchStats, loadThreatHistory]);
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const activeInvestigations = investigations.length;
   const totalEvidence = investigations.reduce((acc, inv) => acc + (inv.evidenceCount || 0), 0);
   const runningSessions = sandboxStats?.byStatus?.running || 0;
+  // Threat detections: count of analyses (PDF/Word/URL) flagged as suspicious or worse + high-severity alerts
+  const threatDetections = analysisHistory.filter(
+    a => ['high', 'critical', 'medium', 'malicious', 'suspicious'].includes((a.threatLevel || '').toLowerCase())
+  ).length + alerts.filter(a => ['critical', 'high'].includes(a.severity)).length;
 
   const severityDist = [
     { severity: 'critical', count: alerts.filter(a => a.severity === 'critical').length, color: 'bg-rose-500' },
@@ -223,7 +230,7 @@ export function EnhancedDashboardPage() {
         </motion.div>
 
         {/* ─── KPI Row ─── */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           <KPITile
             label="Active Cases"
             value={activeInvestigations}
@@ -255,6 +262,14 @@ export function EnhancedDashboardPage() {
             trend={`${runningSessions} running`}
             accent="emerald"
             onClick={() => navigate('/sandbox')}
+          />
+          <KPITile
+            label="Threat Detections"
+            value={threatDetections}
+            icon={Shield}
+            trend={threatDetections > 0 ? 'Detected threats' : 'No threats'}
+            accent="rose"
+            onClick={() => navigate('/threat-intelligence')}
           />
         </div>
 

@@ -7,9 +7,13 @@ exports.analysisService = exports.AnalysisService = void 0;
 const path_1 = __importDefault(require("path"));
 const uuid_1 = require("uuid");
 const analysis_report_model_1 = __importDefault(require("../models/analysis-report.model"));
+const alert_model_1 = require("../models/alert.model");
 const document_analysis_1 = require("../document_analysis");
 const url_intelligence_1 = require("../url_intelligence");
+const threat_intelligence_service_1 = require("./threat-intelligence.service");
+const threat_model_1 = require("../models/threat.model");
 const middleware_1 = require("../middleware");
+const logger_1 = __importDefault(require("../config/logger"));
 class AnalysisService {
     uploadDir = './uploads/analysis';
     async analyzeDocument(filePath, filename) {
@@ -58,6 +62,18 @@ class AnalysisService {
             },
             analysisTimestamp: new Date(),
         });
+        // Auto-generate alert for high-risk documents (PDF or Word)
+        await this.maybeCreateAlert({
+            analysisId,
+            sourceType: ext === '.pdf' ? 'pdf' : 'docx',
+            sourceName: filename,
+            threatScore: result.threat_score,
+            threatLevel: result.threat_level,
+            summary: result.summary,
+            mitreTechniques: result.mitre_techniques,
+        });
+        // Persist extracted IOCs to the IOC collection so they appear in Threat Intel
+        await this.persistIocs(result.extractedIocs || [], ext === '.pdf' ? 'pdf_analysis' : 'docx_analysis');
         return { analysisId, ...result, report: report.toJSON() };
     }
     async analyzeUrl(url) {
@@ -87,6 +103,22 @@ class AnalysisService {
             },
             analysisTimestamp: new Date(),
         });
+        // Auto-generate alert for malicious/high-risk URLs
+        await this.maybeCreateAlert({
+            analysisId,
+            sourceType: 'url',
+            sourceName: url,
+            threatScore: result.risk_score,
+            threatLevel: result.risk_level,
+            summary: result.summary,
+            mitreTechniques: this.getUrlMitreTechniques(result),
+        });
+        // Persist extracted IOCs to the IOC collection
+        await this.persistIocs(result.extracted_iocs || [], 'url_analysis');
+        // Always persist the URL itself as an IOC
+        if (url) {
+            await this.persistIocs([{ type: 'url', value: url, severity: this.threatLevelToSeverity(result.risk_level) }], 'url_analysis');
+        }
         return { analysisId, ...result, report: report.toJSON() };
     }
     async getAnalysisById(analysisId) {
@@ -151,6 +183,150 @@ class AnalysisService {
         if (result.heuristics_triggered?.includes('path_traversal'))
             techniques.push('T1003');
         return techniques;
+    }
+    /**
+     * Auto-generate an Alert when document/URL analysis flags high-risk content.
+     * Maps the analysis threat level to an Alert severity. Critical / high score
+     * thresholds match the workflow:
+     *   High Risk PDF       -> Critical Alert
+     *   Malicious URL       -> Critical Alert
+     *   Medium / suspicious -> High Alert
+     */
+    async maybeCreateAlert(input) {
+        const level = (input.threatLevel || '').toLowerCase();
+        const score = input.threatScore || 0;
+        // Only generate alerts for medium-risk and above
+        const isHighRisk = ['critical', 'high', 'malicious'].includes(level) || score >= 70;
+        const isMediumRisk = ['medium', 'suspicious'].includes(level) || (score >= 40 && score < 70);
+        if (!isHighRisk && !isMediumRisk) {
+            return;
+        }
+        const severity = isHighRisk ? alert_model_1.AlertSeverity.CRITICAL : alert_model_1.AlertSeverity.HIGH;
+        const alertId = `ALT-${Date.now()}-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+        const titlePrefix = input.sourceType === 'pdf' ? 'High Risk PDF' :
+            input.sourceType === 'docx' ? 'High Risk Document' :
+                'Malicious URL';
+        try {
+            await alert_model_1.Alert.create({
+                alertId,
+                title: `${titlePrefix} Detected: ${input.sourceName}`.slice(0, 500),
+                description: input.summary || `${titlePrefix} detected via AI analysis (score: ${score}, level: ${level})`,
+                type: input.sourceType === 'url' ? alert_model_1.AlertType.THREAT_INTEL : alert_model_1.AlertType.EVIDENCE,
+                severity,
+                source: alert_model_1.AlertSource.AI,
+                status: alert_model_1.AlertStatus.NEW,
+                mitreTechniques: input.mitreTechniques || [],
+                tags: [input.sourceType, 'ai-analysis', 'auto-generated', level],
+                metadata: {
+                    analysisId: input.analysisId,
+                    sourceType: input.sourceType,
+                    sourceName: input.sourceName,
+                    threatScore: score,
+                    threatLevel: level,
+                    autoGenerated: true,
+                },
+            });
+            logger_1.default.info(`[Analysis] Auto-generated ${severity} alert ${alertId} for ${input.sourceType} analysis ${input.analysisId}`);
+        }
+        catch (err) {
+            logger_1.default.warn(`[Analysis] Failed to auto-generate alert for analysis ${input.analysisId}:`, err);
+        }
+    }
+    /**
+     * Persist extracted IOCs to the threat intelligence IOC collection.
+     * IOCs from document/URL analysis become available in the Threat Intel page.
+     */
+    async persistIocs(iocs, source) {
+        if (!iocs || iocs.length === 0) {
+            return;
+        }
+        for (const ioc of iocs) {
+            try {
+                const mappedType = this.mapIocType(ioc.type);
+                if (!mappedType)
+                    continue;
+                const severity = this.mapIocSeverity(ioc.severity);
+                await threat_intelligence_service_1.threatIntelligenceService.createIOC({
+                    type: mappedType,
+                    value: ioc.value,
+                    severity,
+                    category: source,
+                    description: ioc.context || `Extracted from ${source}`,
+                    source,
+                    confidence: 70,
+                }, 'system');
+            }
+            catch (err) {
+                // Silently skip duplicates (unique index violation)
+                if (err?.code !== 11000) {
+                    logger_1.default.debug(`[Analysis] Skipped IOC ${ioc.type}=${ioc.value}: ${err?.message || 'unknown error'}`);
+                }
+            }
+        }
+    }
+    /**
+     * Map analysis IOC type strings to threat model IOCTypes enum.
+     */
+    mapIocType(type) {
+        const t = (type || '').toLowerCase();
+        switch (t) {
+            case 'url':
+                return threat_model_1.IOCTypes.URL;
+            case 'domain':
+                return threat_model_1.IOCTypes.DOMAIN;
+            case 'ip':
+            case 'ipv4':
+            case 'ip_address':
+            case 'ipv6':
+                return threat_model_1.IOCTypes.IP_ADDRESS;
+            case 'md5':
+            case 'sha1':
+            case 'sha256':
+            case 'hash':
+            case 'file_hash':
+                return threat_model_1.IOCTypes.FILE_HASH;
+            case 'email':
+                return threat_model_1.IOCTypes.EMAIL;
+            case 'registry':
+            case 'registry_key':
+                return threat_model_1.IOCTypes.REGISTRY_KEY;
+            case 'file':
+            case 'file_path':
+                return threat_model_1.IOCTypes.FILE_PATH;
+            case 'process':
+            case 'process_name':
+                return threat_model_1.IOCTypes.PROCESS_NAME;
+            case 'command_line':
+            case 'powershell':
+            case 'cmd':
+                return threat_model_1.IOCTypes.COMMAND_LINE;
+            default:
+                return null;
+        }
+    }
+    mapIocSeverity(severity) {
+        const s = (severity || '').toLowerCase();
+        if (s === 'critical')
+            return threat_model_1.IOCSeverity.CRITICAL;
+        if (s === 'high' || s === 'malicious')
+            return threat_model_1.IOCSeverity.HIGH;
+        if (s === 'low')
+            return threat_model_1.IOCSeverity.LOW;
+        if (s === 'info')
+            return threat_model_1.IOCSeverity.INFO;
+        return threat_model_1.IOCSeverity.MEDIUM;
+    }
+    threatLevelToSeverity(level) {
+        const l = (level || '').toLowerCase();
+        if (l === 'critical' || l === 'malicious')
+            return 'critical';
+        if (l === 'high')
+            return 'high';
+        if (l === 'medium' || l === 'suspicious')
+            return 'medium';
+        if (l === 'low')
+            return 'low';
+        return 'info';
     }
 }
 exports.AnalysisService = AnalysisService;

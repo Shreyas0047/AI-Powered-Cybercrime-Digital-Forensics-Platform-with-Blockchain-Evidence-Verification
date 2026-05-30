@@ -3,12 +3,18 @@
  * Telemetry Ingestion Service
  * Handles forensic telemetry events from sandbox agents
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.telemetryIngestionService = exports.TelemetryIngestionService = void 0;
 const models_1 = require("../models");
 const middleware_1 = require("../middleware");
 const evidence_validation_service_1 = require("./evidence-validation.service");
+const threat_intelligence_service_1 = require("./threat-intelligence.service");
+const threat_model_1 = require("../models/threat.model");
 const uuid_1 = require("uuid");
+const logger_1 = __importDefault(require("../config/logger"));
 class TelemetryIngestionService {
     // Suspicious event patterns
     SUSPICIOUS_PATTERNS = [
@@ -164,7 +170,78 @@ class TelemetryIngestionService {
         if (event.details?.ioc) {
             const iocs = session.extractedIOCs || [];
             session.extractedIOCs = [...iocs, ...event.details.ioc].slice(-100);
+            // Also persist to the threat intelligence IOC collection so they appear in Threat Intel page
+            const iocList = Array.isArray(event.details.ioc) ? event.details.ioc : [event.details.ioc];
+            for (const ioc of iocList) {
+                try {
+                    const mappedType = this.mapIocType(ioc.type || ioc.iocType || '');
+                    if (!mappedType || !ioc.value)
+                        continue;
+                    await threat_intelligence_service_1.threatIntelligenceService.createIOC({
+                        type: mappedType,
+                        value: String(ioc.value),
+                        severity: this.mapIocSeverity(ioc.severity),
+                        category: 'sandbox',
+                        description: ioc.context || `Extracted from sandbox session ${session.sessionId}`,
+                        source: 'sandbox',
+                        confidence: 75,
+                        linkedEvidence: [],
+                        linkedInvestigations: session.investigationId ? [session.investigationId.toString()] : [],
+                    }, uploadedBy || 'system');
+                }
+                catch (err) {
+                    if (err?.code !== 11000) {
+                        logger_1.default.debug(`[Telemetry] Skipped IOC persistence: ${err?.message || 'unknown'}`);
+                    }
+                }
+            }
         }
+    }
+    mapIocType(type) {
+        const t = (type || '').toLowerCase();
+        switch (t) {
+            case 'url': return threat_model_1.IOCTypes.URL;
+            case 'domain': return threat_model_1.IOCTypes.DOMAIN;
+            case 'ip':
+            case 'ipv4':
+            case 'ipv6':
+            case 'ip_address':
+                return threat_model_1.IOCTypes.IP_ADDRESS;
+            case 'md5':
+            case 'sha1':
+            case 'sha256':
+            case 'hash':
+            case 'file_hash':
+                return threat_model_1.IOCTypes.FILE_HASH;
+            case 'process':
+            case 'process_name':
+                return threat_model_1.IOCTypes.PROCESS_NAME;
+            case 'registry':
+            case 'registry_key':
+                return threat_model_1.IOCTypes.REGISTRY_KEY;
+            case 'file':
+            case 'file_path':
+                return threat_model_1.IOCTypes.FILE_PATH;
+            case 'command':
+            case 'command_line':
+                return threat_model_1.IOCTypes.COMMAND_LINE;
+            case 'email':
+                return threat_model_1.IOCTypes.EMAIL;
+            default:
+                return null;
+        }
+    }
+    mapIocSeverity(severity) {
+        const s = (severity || '').toLowerCase();
+        if (s === 'critical')
+            return threat_model_1.IOCSeverity.CRITICAL;
+        if (s === 'high')
+            return threat_model_1.IOCSeverity.HIGH;
+        if (s === 'low')
+            return threat_model_1.IOCSeverity.LOW;
+        if (s === 'info')
+            return threat_model_1.IOCSeverity.INFO;
+        return threat_model_1.IOCSeverity.MEDIUM;
     }
     /**
      * Check for suspicious patterns in event

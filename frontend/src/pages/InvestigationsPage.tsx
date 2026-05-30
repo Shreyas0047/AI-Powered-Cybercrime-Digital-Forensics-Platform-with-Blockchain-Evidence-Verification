@@ -21,6 +21,7 @@ import { Select } from '../components/ui/Select';
 import { PageHeader } from '../layouts/PageContainer';
 import { formatRelativeTime } from '../utils/helpers';
 import { useInvestigationStore } from '../stores/investigationStore';
+import type { InvestigationPriority } from '../types';
 import { cn } from '../design-system';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
@@ -45,7 +46,7 @@ export function InvestigationsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newPriority, setNewPriority] = useState('medium');
+  const [newPriority, setNewPriority] = useState<InvestigationPriority>('medium');
   const [createLoading, setCreateLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
@@ -62,7 +63,7 @@ export function InvestigationsPage() {
         description: newDescription.trim(),
         priority: newPriority,
       });
-      if (result.success) {
+      if (result) {
         setShowCreateModal(false);
         setNewTitle('');
         setNewDescription('');
@@ -294,7 +295,7 @@ export function InvestigationsPage() {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Priority</label>
                 <Select
                   value={newPriority}
-                  onChange={(val) => setNewPriority(val)}
+                  onChange={(val) => setNewPriority(val as InvestigationPriority)}
                   options={[
                     { value: 'low', label: 'Low' },
                     { value: 'medium', label: 'Medium' },

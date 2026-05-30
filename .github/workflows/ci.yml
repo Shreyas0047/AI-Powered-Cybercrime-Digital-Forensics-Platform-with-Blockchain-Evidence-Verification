@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend:
+    name: Backend Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci --prefix backend
+      - name: Type check
+        run: npm run build:check --prefix backend
+      - name: Run tests
+        run: npm test --prefix backend
+
+  frontend:
+    name: Frontend Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+      - name: Type check + Build
+        run: npm run build:check --prefix frontend
+
+  python-services:
+    name: Python Services Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies (AI Service)
+        run: pip install -r ai-service/requirements.txt
+      - name: Compile check (AI Service)
+        run: python -m compileall ai-service/app
+      - name: Install dependencies (Sandbox Agent)
+        run: pip install -r sandbox-agent-v2/requirements.txt
+      - name: Compile check (Sandbox Agent)
+        run: python -m compileall sandbox-agent-v2/agent

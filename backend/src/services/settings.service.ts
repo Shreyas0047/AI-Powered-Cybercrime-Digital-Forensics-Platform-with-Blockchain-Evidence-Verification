@@ -13,7 +13,7 @@ const SETTINGS_FILE = path.resolve(process.cwd(), 'uploads/settings.json');
 const DEFAULT_SETTINGS: AppSettings = {
   vm: {
     vmName: 'ForensicsSandbox',
-    snapshotName: 'CleanBaseline',
+    snapshotName: 'CleanBaselinePython',
     headlessMode: false,
     startupTimeout: 60,
     shutdownTimeout: 30,

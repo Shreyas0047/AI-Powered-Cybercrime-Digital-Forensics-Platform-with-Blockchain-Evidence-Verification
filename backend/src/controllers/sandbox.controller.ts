@@ -4,11 +4,14 @@
  */
 
 import { Response } from 'express';
+import path from 'path';
+import fs from 'fs';
 import logger from '../config/logger';
 import { sandboxSyncService, sandboxRuntimeService } from '../services';
 import { AuthenticatedRequest } from '../middleware';
 import { ApiResponse, SandboxSessionStatus } from '../types';
 import { websocketService } from '../services/websocket.service';
+import { blockchainVerificationService } from '../blockchain';
 
 /**
  * Simulator display-name mapping.
@@ -35,6 +38,37 @@ function formatSimulatorName(simulatorId: string): string {
 }
 
 let runtimeStarting = false;
+
+/**
+ * Auto-register the sandbox-report.json on the blockchain after analysis completes.
+ * Implements the workflow: Evidence → SHA256 → Blockchain.
+ * Polls briefly for the report file (the agent writes it after COMPLETE state).
+ */
+async function registerSandboxReportOnBlockchain(sessionId: string, userId: string): Promise<void> {
+  // Locate the sandbox-report-<sessionId>.json file
+  const reportPath = path.resolve(process.cwd(), 'uploads', 'reports', `sandbox-report-${sessionId}.json`);
+
+  // The agent writes the file just after COMPLETE; allow a brief window for the write.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (fs.existsSync(reportPath)) break;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  if (!fs.existsSync(reportPath)) {
+    logger.warn(`[Blockchain] Sandbox report not found at ${reportPath}; skipping auto-registration.`);
+    return;
+  }
+
+  // Use sessionId as the evidence ID so it can be looked up later.
+  const evidenceId = `SANDBOX-${sessionId}`;
+
+  try {
+    const result = await blockchainVerificationService.registerEvidence(evidenceId, reportPath, userId);
+    logger.info(`[Blockchain] Auto-registered sandbox report ${evidenceId} fingerprint=${result.fingerprint.slice(0, 16)}...`);
+  } catch (err) {
+    logger.warn(`[Blockchain] Auto-registration failed for ${evidenceId}:`, err);
+  }
+}
 
 export class SandboxController {
   /**
@@ -144,6 +178,16 @@ export class SandboxController {
               }
             } catch (eventsErr) {
               logger.warn(`Failed to forward events for session ${completedSession.session_id}:`, eventsErr);
+            }
+
+            // Auto-register the sandbox-report.json on the blockchain after analysis completes.
+            // Workflow: Evidence → SHA256 → Blockchain (only after analysis completes)
+            if (status === SandboxSessionStatus.COMPLETED) {
+              try {
+                await registerSandboxReportOnBlockchain(completedSession.session_id, req.user?.id || 'system');
+              } catch (blockchainErr) {
+                logger.warn(`Failed to auto-register sandbox report on blockchain for ${completedSession.session_id}:`, blockchainErr);
+              }
             }
           } catch (err) {
             logger.error(`Failed to record session completion for ${runtimeSession.session_id}:`, err);

@@ -7,10 +7,10 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
 // Mock auth service
 const mockAuthService = {
-  register: jest.fn(),
-  login: jest.fn(),
-  sendOtp: jest.fn(),
-  verifyOtp: jest.fn(),
+  register: jest.fn<any>(),
+  login: jest.fn<any>(),
+  sendOtp: jest.fn<any>(),
+  verifyOtp: jest.fn<any>(),
 };
 
 jest.mock('../services', () => ({
@@ -24,13 +24,13 @@ describe('Auth - Registration Flow', () => {
 
   describe('Input Validation', () => {
     it('should reject registration without email', () => {
-      const body = { password: 'Test@1234', firstName: 'John', lastName: 'Doe', role: 'forensic_analyst' };
+      const body: any = { password: 'Test@1234', firstName: 'John', lastName: 'Doe', role: 'forensic_analyst' };
       expect(body.email).toBeUndefined();
     });
 
     it('should reject registration without password', () => {
-      const body = { email: 'test@example.com', firstName: 'John', lastName: 'Doe', role: 'forensic_analyst' };
-      expect((body as any).password).toBeUndefined();
+      const body: any = { email: 'test@example.com', firstName: 'John', lastName: 'Doe', role: 'forensic_analyst' };
+      expect(body.password).toBeUndefined();
     });
 
     it('should reject weak passwords', () => {

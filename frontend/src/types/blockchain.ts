@@ -92,6 +92,10 @@ export interface TamperAlert {
   acknowledgedBy?: string;
   acknowledgedAt?: string;
   notes?: string;
+  /** Backend-emitted alert classification (e.g. HASH_MISMATCH, MISSING). */
+  type?: string;
+  /** Optional human-readable description. */
+  description?: string;
 }
 
 export interface BlockchainAuditEntry {

@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: unknown) {
           let errorMessage = 'Login failed. Please check your credentials.';
           if (error && typeof error === 'object' && 'response' in error) {
-            const axiosError = error as { response?: { data?: { message?: string } } };
+            const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
             if (axiosError.response?.data?.message) {
               errorMessage = axiosError.response.data.message;
             } else if (axiosError.response?.status === 429) {

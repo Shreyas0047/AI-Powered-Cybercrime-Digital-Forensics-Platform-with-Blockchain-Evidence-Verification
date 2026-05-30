@@ -183,11 +183,18 @@ export const config: AppConfig = {
 
 // Validation
 export function validateConfig(): void {
-  const requiredVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGODB_URI'];
-  const missing = requiredVars.filter(v => !process.env[v]);
+  const criticalVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGODB_URI'];
+  const missing = criticalVars.filter((v) => !process.env[v] || process.env[v] === '');
 
   if (missing.length > 0) {
-    logger.warn(`Warning: Missing environment variables: ${missing.join(', ')}`);
+    const msg = `CRITICAL: Missing required environment variables: ${missing.join(', ')}`;
+    if (process.env.NODE_ENV === 'production') {
+      logger.error(msg);
+      throw new Error(msg);
+    } else {
+      logger.warn(msg);
+      logger.warn('The application may fail to start or behave unexpectedly.');
+    }
   }
 }
 

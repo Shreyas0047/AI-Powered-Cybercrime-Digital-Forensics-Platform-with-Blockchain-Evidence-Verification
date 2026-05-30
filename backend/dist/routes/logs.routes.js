@@ -11,5 +11,7 @@ const router = (0, express_1.Router)();
 router.use(middleware_1.authenticate);
 router.get('/', (0, middleware_1.asyncHandler)(controllers_1.logsController.findAll));
 router.get('/stats', (0, middleware_1.asyncHandler)(controllers_1.logsController.getStats));
+router.get('/audit', (0, middleware_1.asyncHandler)(controllers_1.logsController.getAuditLogs));
+router.get('/audit/stats', (0, middleware_1.asyncHandler)(controllers_1.logsController.getAuditStats));
 exports.default = router;
 //# sourceMappingURL=logs.routes.js.map

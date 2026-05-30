@@ -41,10 +41,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sandboxController = exports.SandboxController = void 0;
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const logger_1 = __importDefault(require("../config/logger"));
 const services_1 = require("../services");
 const types_1 = require("../types");
 const websocket_service_1 = require("../services/websocket.service");
+const blockchain_1 = require("../blockchain");
 /**
  * Simulator display-name mapping.
  *
@@ -68,6 +71,34 @@ function formatSimulatorName(simulatorId) {
     return SIMULATOR_DISPLAY_NAMES[simulatorId] || simulatorId;
 }
 let runtimeStarting = false;
+/**
+ * Auto-register the sandbox-report.json on the blockchain after analysis completes.
+ * Implements the workflow: Evidence → SHA256 → Blockchain.
+ * Polls briefly for the report file (the agent writes it after COMPLETE state).
+ */
+async function registerSandboxReportOnBlockchain(sessionId, userId) {
+    // Locate the sandbox-report-<sessionId>.json file
+    const reportPath = path_1.default.resolve(process.cwd(), 'uploads', 'reports', `sandbox-report-${sessionId}.json`);
+    // The agent writes the file just after COMPLETE; allow a brief window for the write.
+    for (let attempt = 0; attempt < 5; attempt++) {
+        if (fs_1.default.existsSync(reportPath))
+            break;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    if (!fs_1.default.existsSync(reportPath)) {
+        logger_1.default.warn(`[Blockchain] Sandbox report not found at ${reportPath}; skipping auto-registration.`);
+        return;
+    }
+    // Use sessionId as the evidence ID so it can be looked up later.
+    const evidenceId = `SANDBOX-${sessionId}`;
+    try {
+        const result = await blockchain_1.blockchainVerificationService.registerEvidence(evidenceId, reportPath, userId);
+        logger_1.default.info(`[Blockchain] Auto-registered sandbox report ${evidenceId} fingerprint=${result.fingerprint.slice(0, 16)}...`);
+    }
+    catch (err) {
+        logger_1.default.warn(`[Blockchain] Auto-registration failed for ${evidenceId}:`, err);
+    }
+}
 class SandboxController {
     /**
      * GET /api/v1/sandbox/health
@@ -166,6 +197,16 @@ class SandboxController {
                     catch (eventsErr) {
                         logger_1.default.warn(`Failed to forward events for session ${completedSession.session_id}:`, eventsErr);
                     }
+                    // Auto-register the sandbox-report.json on the blockchain after analysis completes.
+                    // Workflow: Evidence → SHA256 → Blockchain (only after analysis completes)
+                    if (status === types_1.SandboxSessionStatus.COMPLETED) {
+                        try {
+                            await registerSandboxReportOnBlockchain(completedSession.session_id, req.user?.id || 'system');
+                        }
+                        catch (blockchainErr) {
+                            logger_1.default.warn(`Failed to auto-register sandbox report on blockchain for ${completedSession.session_id}:`, blockchainErr);
+                        }
+                    }
                 }
                 catch (err) {
                     logger_1.default.error(`Failed to record session completion for ${runtimeSession.session_id}:`, err);
@@ -235,6 +276,19 @@ class SandboxController {
     async stopSession(req, res) {
         try {
             const runtimeSession = await services_1.sandboxRuntimeService.stopSession(req.params.sessionId);
+            // Fetch and persist events before marking session complete
+            try {
+                const eventsData = await services_1.sandboxRuntimeService.getSessionEvents(req.params.sessionId);
+                if (eventsData.events && eventsData.events.length > 0) {
+                    await services_1.sandboxSyncService.receiveForensicEvents({
+                        sessionId: req.params.sessionId,
+                        events: eventsData.events,
+                    });
+                }
+            }
+            catch (eventsErr) {
+                logger_1.default.warn(`Failed to forward events on stop for session ${req.params.sessionId}:`, eventsErr);
+            }
             await services_1.sandboxSyncService.receiveSessionComplete({
                 sessionId: runtimeSession.session_id,
                 status: 'failed',
@@ -263,6 +317,19 @@ class SandboxController {
      */
     async terminateSession(req, res) {
         try {
+            // Fetch and persist events before terminating
+            try {
+                const eventsData = await services_1.sandboxRuntimeService.getSessionEvents(req.params.sessionId);
+                if (eventsData.events && eventsData.events.length > 0) {
+                    await services_1.sandboxSyncService.receiveForensicEvents({
+                        sessionId: req.params.sessionId,
+                        events: eventsData.events,
+                    });
+                }
+            }
+            catch (eventsErr) {
+                logger_1.default.warn(`Failed to forward events on terminate for session ${req.params.sessionId}:`, eventsErr);
+            }
             const runtimeSession = await services_1.sandboxRuntimeService.terminateSession(req.params.sessionId);
             await services_1.sandboxSyncService.receiveSessionComplete({
                 sessionId: runtimeSession.session_id,

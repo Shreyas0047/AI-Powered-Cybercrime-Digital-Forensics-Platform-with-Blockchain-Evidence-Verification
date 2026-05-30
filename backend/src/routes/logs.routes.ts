@@ -13,5 +13,7 @@ router.use(authenticate);
 
 router.get('/', asyncHandler(logsController.findAll));
 router.get('/stats', asyncHandler(logsController.getStats));
+router.get('/audit', asyncHandler(logsController.getAuditLogs));
+router.get('/audit/stats', asyncHandler(logsController.getAuditStats));
 
 export default router;

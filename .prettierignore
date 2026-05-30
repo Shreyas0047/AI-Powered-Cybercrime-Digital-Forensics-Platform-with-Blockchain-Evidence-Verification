@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+coverage
+.venv
+__pycache__
+*.log
+*.lock
+package-lock.json
+backend/dist
+frontend/dist

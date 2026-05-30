@@ -239,7 +239,7 @@ export function EvidenceExplorerPage() {
                             <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
                             <span className="text-xs text-slate-400 dark:text-slate-500 capitalize">{ev.type.replace('_', ' ')}</span>
                             <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
-                            <span className="text-xs text-slate-400 dark:text-slate-500">{formatFileSize(ev.size)}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">{formatFileSize(ev.size ?? ev.fileSize ?? 0)}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -294,7 +294,7 @@ export function EvidenceExplorerPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-slate-500 dark:text-slate-400">Size</span>
-                      <span className="text-sm text-slate-700 dark:text-slate-300">{formatFileSize(selectedEvidence.size)}</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{formatFileSize(selectedEvidence.size ?? selectedEvidence.fileSize ?? 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-slate-500 dark:text-slate-400">Status</span>

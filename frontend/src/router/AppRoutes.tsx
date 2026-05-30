@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import type { UserRole } from '../types';
 import { useAuthStore } from '../stores/authStore';
@@ -8,22 +8,25 @@ import RegisterPage from '../pages/RegisterPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import EnhancedDashboardPage from '../pages/EnhancedDashboardPage';
 import InvestigationsPage from '../pages/InvestigationsPage';
-import InvestigationDetailPage from '../pages/InvestigationDetailPage';
 import AlertsPage from '../pages/AlertsPage';
 import EvidenceExplorerPage from '../pages/EvidenceExplorerPage';
-import SandboxDashboardPage from '../pages/SandboxDashboardPage';
 import LiveTelemetryPage from '../pages/LiveTelemetryPage';
-import SystemHealthPage from '../pages/SystemHealthPage';
 import BlockchainOperationsPage from '../pages/BlockchainOperationsPage';
 import ThreatIntelligencePage from '../pages/ThreatIntelligencePage';
 import ForensicAnalyticsPage from '../pages/ForensicAnalyticsPage';
-import ReportsPage from '../pages/ReportsPage';
-import AIAnalysisPage from '../pages/AIAnalysisPage';
 import SettingsPage from '../pages/SettingsPage';
-import LogsPage from '../pages/LogsPage';
-import EvidenceArtifactsPage from '../pages/EvidenceArtifactsPage';
 import ChainOfCustodyPage from '../pages/ChainOfCustodyPage';
 import UsersPage from '../pages/UsersPage';
+
+// Heavy pages — code-split so they download on demand instead of bloating
+// the initial bundle. Each becomes its own chunk.
+const AIAnalysisPage = lazy(() => import('../pages/AIAnalysisPage'));
+const SandboxDashboardPage = lazy(() => import('../pages/SandboxDashboardPage'));
+const LogsPage = lazy(() => import('../pages/LogsPage'));
+const InvestigationDetailPage = lazy(() => import('../pages/InvestigationDetailPage'));
+const ReportsPage = lazy(() => import('../pages/ReportsPage'));
+const EvidenceArtifactsPage = lazy(() => import('../pages/EvidenceArtifactsPage'));
+const SystemHealthPage = lazy(() => import('../pages/SystemHealthPage'));
 
 // Loading screen shown during auth check
 function AuthLoadingScreen() {

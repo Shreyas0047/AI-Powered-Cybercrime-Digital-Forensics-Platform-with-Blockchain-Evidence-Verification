@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, CheckCircle, AlertTriangle, Clock, Search, ExternalLink } from 'lucide-react';
 import api from '../services/api';
+import type { TamperAlert } from '../types/blockchain';
 
 interface IntegrityStats {
   totalEvidence: number;
@@ -14,16 +15,6 @@ interface IntegrityStats {
   modified: number;
   pending: number;
   tamperAlerts: number;
-}
-
-interface TamperAlert {
-  id: string;
-  evidenceId: string;
-  type: string;
-  severity: string;
-  detectedAt: string;
-  acknowledged: boolean;
-  description?: string;
 }
 
 interface CustodyEvent {

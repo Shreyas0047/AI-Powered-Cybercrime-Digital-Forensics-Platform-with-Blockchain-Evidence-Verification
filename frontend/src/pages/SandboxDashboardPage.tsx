@@ -48,7 +48,7 @@ import { socketService, SocketEvent } from '../services/socket';
 import api from '../services/api';
 import { cn } from '../design-system';
 
-type TabType = 'sessions' | 'monitoring' | 'telemetry' | 'logs';
+type TabType = 'sessions' | 'monitoring' | 'timeline' | 'telemetry' | 'logs';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 
@@ -241,7 +241,7 @@ export function SandboxDashboardPage() {
   };
 
   const handleResetVm = async () => {
-    showStatus('loading', 'Resetting VM...', 'Restoring to CleanBaseline snapshot');
+    showStatus('loading', 'Resetting VM...', 'Restoring to CleanBaselinePython snapshot');
     const result = await resetVm();
     if (result.success) {
       showStatus('success', 'VM reset successfully', 'Ready for new session');
@@ -495,7 +495,7 @@ export function SandboxDashboardPage() {
       )}
 
       <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
-        {(['sessions', 'monitoring', 'telemetry', 'logs'] as TabType[]).map((tab) => (
+        {(['sessions', 'monitoring', 'timeline', 'telemetry', 'logs'] as TabType[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -509,6 +509,7 @@ export function SandboxDashboardPage() {
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
             {tab === 'sessions' && ` (${sessions.length})`}
             {tab === 'monitoring' && totalEvents > 0 && ` (${totalEvents})`}
+            {tab === 'timeline' && telemetry.events.length > 0 && ` (${telemetry.events.length})`}
             {tab === 'telemetry' && telemetry.events.length > 0 && ` (${telemetry.events.length})`}
             {tab === 'logs' && logs.entries.length > 0 && ` (${logs.entries.length})`}
           </button>
@@ -838,6 +839,79 @@ export function SandboxDashboardPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {activeTab === 'timeline' && (
+        <Card className="h-[550px] flex flex-col">
+          <div className="p-3 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between bg-slate-50 dark:bg-slate-800/30">
+            <div className="flex items-center gap-3">
+              <Timer className="w-4 h-4 text-cyan-500" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Event Timeline
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                ({telemetry.events.length} events, chronological)
+              </span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {telemetry.events.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <Timer className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">No timeline events yet</p>
+                <p className="text-xs text-slate-400 mt-1">Start a sandbox session to see events in chronological order</p>
+              </div>
+            ) : (
+              <div className="relative pl-6">
+                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500 via-violet-500 to-amber-500" />
+                {[...telemetry.events]
+                  .sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime())
+                  .map((event, idx) => {
+                    const ts = event.timestamp ? new Date(event.timestamp) : new Date();
+                    const cat = (event.category || event.event_type || 'system').toLowerCase();
+                    const sev = (event.severity || 'info').toLowerCase();
+                    const dotColor =
+                      sev === 'critical' ? 'bg-red-500' :
+                      sev === 'high' ? 'bg-orange-500' :
+                      sev === 'medium' ? 'bg-amber-500' :
+                      cat === 'process' ? 'bg-cyan-500' :
+                      cat === 'file' ? 'bg-violet-500' :
+                      cat === 'registry' ? 'bg-amber-500' :
+                      cat === 'network' ? 'bg-blue-500' :
+                      'bg-slate-500';
+                    return (
+                      <div key={idx} className="relative mb-4 ml-4">
+                        <div className={cn('absolute -left-[26px] top-1.5 w-3 h-3 rounded-full ring-4 ring-white dark:ring-slate-900', dotColor)} />
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700/50">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                              {ts.toLocaleTimeString('en-US', { hour12: false })}.{String(ts.getMilliseconds()).padStart(3, '0')}
+                            </span>
+                            <span className={cn('px-2 py-0.5 text-[10px] font-mono rounded uppercase', categoryColors[cat] || 'bg-slate-500/20 text-slate-400')}>
+                              {cat}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">
+                            {event.event_type || event.type || 'Event'}
+                          </p>
+                          {event.message && (
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{event.message}</p>
+                          )}
+                          {event.details && typeof event.details === 'object' && (
+                            <div className="mt-1 text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
+                              {Object.entries(event.details).slice(0, 2).map(([k, v]) => (
+                                <span key={k} className="mr-3">{k}={String(v).slice(0, 60)}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        </Card>
       )}
 
       {activeTab === 'telemetry' && (

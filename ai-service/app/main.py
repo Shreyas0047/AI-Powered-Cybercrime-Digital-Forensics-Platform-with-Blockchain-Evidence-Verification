@@ -19,12 +19,10 @@ from app.core.models import (
     InvestigationSummary
 )
 from app.modules.telemetry_analysis import telemetry_analyzer
+from app.logging_config import configure_json_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure structured JSON logging (matches backend + sandbox-agent format)
+configure_json_logging(service="ai-service")
 logger = logging.getLogger(__name__)
 
 # Create FastAPI application
@@ -46,8 +44,24 @@ app.add_middleware(
     allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Correlation-ID"],
 )
+
+
+@app.middleware("http")
+async def _correlation_id_middleware(request, call_next):
+    from app.tracing import correlation_id
+
+    cid = request.headers.get("x-correlation-id") or request.headers.get("X-Correlation-ID")
+    token = correlation_id.set(cid) if cid else None
+    try:
+        response = await call_next(request)
+        if cid:
+            response.headers["X-Correlation-ID"] = cid
+        return response
+    finally:
+        if token:
+            correlation_id.reset(token)
 
 
 @app.get("/")

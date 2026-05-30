@@ -9,6 +9,8 @@ const behavioral_analytics_service_1 = require("../services/behavioral-analytics
 const investigation_correlation_service_1 = require("../services/investigation-correlation.service");
 const models_1 = require("../models");
 const telemetry_event_model_1 = require("../models/telemetry-event.model");
+const services_1 = require("../services");
+const services_2 = require("../services");
 const MITRE_BY_CATEGORY = {
     process: { id: 'T1059', name: 'Command and Scripting Interpreter', tactic: 'Execution', description: 'Suspicious process or command execution activity.' },
     file: { id: 'T1005', name: 'Data from Local System', tactic: 'Collection', description: 'File system activity relevant to data collection or modification.' },
@@ -42,6 +44,21 @@ class AnalyticsController {
         const normalized = events.map((event) => this.normalizeEvent(event));
         if (normalized.length > 0)
             return normalized;
+        // Fallback: try fetching events directly from the sandbox agent runtime
+        try {
+            const agentData = await services_1.sandboxRuntimeService.getSessionEvents(sessionId);
+            if (agentData.events && agentData.events.length > 0) {
+                // Persist to TelemetryEvent collection so future analyses don't need the agent
+                await services_2.sandboxSyncService.receiveForensicEvents({
+                    sessionId,
+                    events: agentData.events,
+                });
+                return agentData.events.map((event) => this.normalizeEvent(event));
+            }
+        }
+        catch {
+            // Agent unavailable — fall through to recentEvents
+        }
         const recentEvents = (session?.recentEvents || []).map((event) => this.normalizeEvent(event));
         return recentEvents;
     }

@@ -12,7 +12,7 @@ import { config, validateConfig } from './config';
 import logger from './config/logger';
 import { connectToDatabase, checkDatabaseHealth, closeDatabase } from './config/database';
 import routes from './routes';
-import { errorHandler, notFoundHandler, sanitizeRequest, validateRequestIntegrity, logSecurityEvent } from './middleware';
+import { errorHandler, notFoundHandler, sanitizeRequest, validateRequestIntegrity, logSecurityEvent, correlationIdMiddleware, tracingMiddleware, requestContextMiddleware } from './middleware';
 import fs from 'fs';
 import { evidenceService, analysisService } from './services';
 import { websocketService } from './services/websocket.service';
@@ -44,6 +44,12 @@ app.use(cors({
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Correlation IDs and tracing — must run before any handler that might log,
+// so X-Correlation-ID is available end-to-end.
+app.use(correlationIdMiddleware);
+app.use(requestContextMiddleware);
+app.use(tracingMiddleware);
 
 // Rate limiting — consistent across all environments
 const limiter = rateLimit({

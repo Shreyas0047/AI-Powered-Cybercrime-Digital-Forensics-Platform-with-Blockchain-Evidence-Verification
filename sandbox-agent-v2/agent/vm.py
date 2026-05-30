@@ -21,11 +21,11 @@ from typing import Optional
 
 log = logging.getLogger("agent.vm")
 
-# Config
-VM_NAME = "ForensicsSandbox"
-SNAPSHOT = "CleanBaselinePython"
-GUEST_USER = "guestuser"
-GUEST_PASS = "guest"
+# Config — overridable via environment for non-default deployments
+VM_NAME = os.environ.get("SANDBOX_VM_NAME", "ForensicsSandbox")
+SNAPSHOT = os.environ.get("SANDBOX_VM_SNAPSHOT", "CleanBaselinePython")
+GUEST_USER = os.environ.get("SANDBOX_GUEST_USER", "guestuser")
+GUEST_PASS = os.environ.get("SANDBOX_GUEST_PASS", "guest")
 GUEST_BASE = r"C:\sandbox"
 GUEST_SIMULATORS = r"C:\sandbox\simulators"
 GUEST_MARKER = r"C:\sandbox\guest.marker"

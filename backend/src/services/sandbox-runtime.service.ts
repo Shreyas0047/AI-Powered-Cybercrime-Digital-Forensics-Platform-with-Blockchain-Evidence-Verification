@@ -5,6 +5,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { AppError } from '../middleware';
+import { getCorrelationId } from '../middleware/request-context';
 
 export interface RuntimeHealth {
   status: string;
@@ -56,6 +57,16 @@ export class SandboxRuntimeService {
         'Content-Type': 'application/json',
         'X-Agent-Secret': process.env.SANDBOX_AGENT_SECRET || '',
       },
+    });
+
+    // Forward the current request's correlation ID so sandbox-agent logs
+    // can be joined with backend + frontend logs for end-to-end tracing.
+    this.client.interceptors.request.use((cfg) => {
+      const correlationId = getCorrelationId();
+      if (correlationId) {
+        cfg.headers.set('X-Correlation-ID', correlationId);
+      }
+      return cfg;
     });
 
     // Response interceptor: track connectivity and reset on success

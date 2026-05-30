@@ -214,7 +214,7 @@ export class ReportsService {
     return null;
   }
 
-  async exportReport(id: string, format: 'json' | 'text' = 'json'): Promise<{ content: string; contentType: string; filename: string } | null> {
+  async exportReport(id: string, format: 'json' | 'text' | 'pdf' = 'json'): Promise<{ content: string | Buffer; contentType: string; filename: string } | null> {
     const report = await this.getReportById(id);
     if (!report) return null;
 
@@ -226,6 +226,15 @@ export class ReportsService {
         content: JSON.stringify(report, null, 2),
         contentType: 'application/json',
         filename: `forensic_report_${safeName}_${timestamp}.json`,
+      };
+    }
+
+    if (format === 'pdf') {
+      const pdfBuffer = await this.generatePdf(report);
+      return {
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+        filename: `forensic_report_${safeName}_${timestamp}.pdf`,
       };
     }
 
@@ -286,6 +295,152 @@ export class ReportsService {
       contentType: 'text/plain',
       filename: `forensic_report_${safeName}_${timestamp}.txt`,
     };
+  }
+
+  /**
+   * Generate a PDF representation of a forensic report using PDFKit.
+   * Sections: Header, Severity, Categories, Execution, Behavior, Suspicious Activities.
+   */
+  private async generatePdf(report: ForensicReportDetail): Promise<Buffer> {
+    // Lazy import so module loading doesn't fail in environments without PDFKit
+    const PDFDocument = (await import('pdfkit')).default;
+
+    return new Promise<Buffer>((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: 'A4', margin: 50, info: {
+          Title: `Forensic Report - ${report.simulatorName}`,
+          Author: 'NyxTrace',
+          Subject: 'Forensic Analysis Report',
+          CreationDate: new Date(),
+        }});
+        const chunks: Buffer[] = [];
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        // Header
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(20).text('FORENSIC ANALYSIS REPORT', { align: 'center' });
+        doc.moveDown(0.3);
+        doc.fillColor('#475569').font('Helvetica').fontSize(10).text('NyxTrace Cybercrime Digital Forensics Platform', { align: 'center' });
+        doc.moveDown(1);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cbd5e1').stroke();
+        doc.moveDown(0.5);
+
+        // Metadata
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Report Metadata');
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(10).fillColor('#334155');
+        const meta = [
+          ['Simulator:', report.simulatorName],
+          ['Session ID:', report.sessionId],
+          ['Generated:', report.generatedAt],
+          ['Execution Time:', `${report.executionTime}s`],
+          ['Total Events:', String(report.totalEvents)],
+        ];
+        for (const [label, value] of meta) {
+          doc.font('Helvetica-Bold').text(label, { continued: true, width: 120 });
+          doc.font('Helvetica').text(` ${value}`);
+        }
+        doc.moveDown(0.8);
+
+        // Severity Summary
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Severity Distribution');
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(10).fillColor('#334155');
+        const sevs: Array<[string, number, string]> = [
+          ['Critical', report.severityCounts.critical, '#dc2626'],
+          ['High', report.severityCounts.high, '#ea580c'],
+          ['Medium', report.severityCounts.medium, '#d97706'],
+          ['Low', report.severityCounts.low, '#16a34a'],
+          ['Info', report.severityCounts.info, '#475569'],
+        ];
+        for (const [label, count, color] of sevs) {
+          doc.fillColor(color).font('Helvetica-Bold').text(`■  ${label}:`, { continued: true, width: 120 });
+          doc.fillColor('#334155').font('Helvetica').text(` ${count}`);
+        }
+        doc.moveDown(0.8);
+
+        // Category Summary
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Event Categories');
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(10).fillColor('#334155');
+        const cats = [
+          ['Process Activity:', report.categoryCounts.process],
+          ['File Activity:', report.categoryCounts.file],
+          ['Registry Activity:', report.categoryCounts.registry],
+          ['Network Activity:', report.categoryCounts.network],
+        ];
+        for (const [label, count] of cats) {
+          doc.font('Helvetica-Bold').text(label as string, { continued: true, width: 150 });
+          doc.font('Helvetica').text(` ${count}`);
+        }
+        doc.moveDown(0.8);
+
+        // Execution Summary
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Execution Summary');
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(10).fillColor('#334155');
+        const execLines: Array<[string, string | number]> = [
+          ['Status:', report.executionSummary?.completionStatus || 'unknown'],
+          ['Duration:', `${report.executionSummary?.duration ?? 0}s`],
+          ['Events Collected:', report.executionSummary?.eventsCollected ?? 0],
+        ];
+        for (const [label, value] of execLines) {
+          doc.font('Helvetica-Bold').text(label, { continued: true, width: 150 });
+          doc.font('Helvetica').text(` ${value}`);
+        }
+        doc.moveDown(0.8);
+
+        // Behavior Summary
+        if (report.behaviorSummary && report.behaviorSummary.overallRiskScore !== undefined) {
+          doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Behavioral Analysis');
+          doc.moveDown(0.3);
+          doc.font('Helvetica').fontSize(10).fillColor('#334155');
+          doc.font('Helvetica-Bold').text('Risk Score:', { continued: true, width: 150 });
+          doc.font('Helvetica').text(` ${report.behaviorSummary.overallRiskScore}`);
+          if (report.behaviorSummary.detectedPatterns?.length) {
+            doc.font('Helvetica-Bold').text('Detected Patterns:');
+            doc.font('Helvetica').list(report.behaviorSummary.detectedPatterns, { bulletRadius: 1.5 });
+          }
+          doc.moveDown(0.8);
+        }
+
+        // Suspicious Activities
+        if (report.suspiciousActivities && report.suspiciousActivities.length > 0) {
+          doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Suspicious Activities');
+          doc.moveDown(0.3);
+          doc.font('Helvetica').fontSize(9).fillColor('#334155');
+          for (const act of report.suspiciousActivities.slice(0, 30)) {
+            const sev = (act.severity || 'medium').toLowerCase();
+            const color =
+              sev === 'critical' ? '#dc2626' :
+              sev === 'high' ? '#ea580c' :
+              sev === 'medium' ? '#d97706' : '#16a34a';
+            doc.fillColor(color).font('Helvetica-Bold').text(`[${(act.severity || 'medium').toUpperCase()}]`, { continued: true });
+            doc.fillColor('#334155').font('Helvetica').text(` ${act.timestamp || ''} — ${act.description || ''}`);
+            doc.moveDown(0.15);
+          }
+          if (report.suspiciousActivities.length > 30) {
+            doc.fillColor('#64748b').font('Helvetica-Oblique').fontSize(9).text(`(${report.suspiciousActivities.length - 30} more activities truncated)`);
+          }
+          doc.moveDown(0.8);
+        }
+
+        // Footer
+        if (doc.y > 720) doc.addPage();
+        doc.moveDown(1);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cbd5e1').stroke();
+        doc.moveDown(0.4);
+        doc.fillColor('#94a3b8').font('Helvetica').fontSize(8).text(
+          `Report generated by NyxTrace · ${new Date().toISOString()}`,
+          { align: 'center' },
+        );
+
+        doc.end();
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 }
 

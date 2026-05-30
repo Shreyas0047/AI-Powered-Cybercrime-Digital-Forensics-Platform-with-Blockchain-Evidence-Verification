@@ -20,6 +20,7 @@ import { DashboardCard, DashboardStat } from '../components/enterprise/Dashboard
 import { cn } from '../design-system';
 import { useSandboxStore } from '../stores/sandboxStore';
 import api from '../services/api';
+import { config } from '../config';
 
 interface ServiceStatus {
   name: string;
@@ -79,10 +80,48 @@ export function SystemHealthPage() {
           status: backendResp.data?.status === 'healthy' ? 'healthy' : 'degraded',
           responseTime: backendTime,
           lastCheck: now,
-          details: `Express.js on port 3001`,
+          details: `Express.js on port 3000`,
         });
+
+        // Use the same operations/health response to derive MongoDB and Blockchain
+        // statuses (no extra calls needed). The backend's healthCheckHandler probes
+        // each critical service via mongoose.connection.readyState and the
+        // blockchain service health check.
+        const services = backendResp.data?.services || {};
+
+        const dbSvc = services.database;
+        if (dbSvc) {
+          newServices.push({
+            name: 'MongoDB',
+            status: dbSvc.status === 'healthy' ? 'healthy' : dbSvc.status === 'down' ? 'offline' : 'degraded',
+            responseTime: dbSvc.responseTime,
+            lastCheck: dbSvc.lastCheck || now,
+            details: dbSvc.message || 'Primary database',
+          });
+        } else {
+          // Fallback: probe directly if the backend response did not include database info
+          newServices.push({
+            name: 'MongoDB',
+            status: 'degraded',
+            lastCheck: now,
+            details: 'Status unavailable',
+          });
+        }
+
+        const bcSvc = services.blockchain;
+        if (bcSvc) {
+          newServices.push({
+            name: 'Blockchain',
+            status: bcSvc.status === 'healthy' ? 'healthy' : bcSvc.status === 'down' ? 'offline' : 'degraded',
+            responseTime: bcSvc.responseTime,
+            lastCheck: bcSvc.lastCheck || now,
+            details: bcSvc.message || 'Evidence integrity ledger',
+          });
+        }
       } catch {
         newServices.push({ name: 'Backend API', status: 'offline', lastCheck: now, details: 'Connection failed' });
+        newServices.push({ name: 'MongoDB', status: 'offline', lastCheck: now, details: 'Backend unreachable' });
+        newServices.push({ name: 'Blockchain', status: 'offline', lastCheck: now, details: 'Backend unreachable' });
       }
 
       try {
@@ -112,34 +151,33 @@ export function SystemHealthPage() {
         newServices.push({ name: 'Simulator Catalog', status: 'degraded', lastCheck: now, details: 'Catalog unavailable' });
       }
 
-      newServices.push({
-        name: 'MongoDB',
-        status: 'healthy',
-        lastCheck: now,
-        details: 'Primary database',
-      });
-
       setServices(newServices);
-
-      if (health) {
-        const uptimeSec = health.uptime_seconds || 0;
-        const days = Math.floor(uptimeSec / 86400);
-        const hours = Math.floor((uptimeSec % 86400) / 3600);
-        const mins = Math.floor((uptimeSec % 3600) / 60);
-        setSystemMetrics(prev => ({
-          ...prev,
-          uptime: `${days}d ${hours}h ${mins}m`,
-          activeConnections: health.telemetry_connections || 0,
-        }));
-      }
     } finally {
       setIsLoading(false);
       setLastRefresh(new Date());
     }
-  }, [fetchHealth, fetchMonitoringStatus, fetchExecutionStatus, health]);
+  }, [fetchHealth, fetchMonitoringStatus, fetchExecutionStatus]);
 
+  // Derive system metrics from health whenever it changes (decoupled from fetch)
+  useEffect(() => {
+    if (health) {
+      const uptimeSec = health.uptime_seconds || 0;
+      const days = Math.floor(uptimeSec / 86400);
+      const hours = Math.floor((uptimeSec % 86400) / 3600);
+      const mins = Math.floor((uptimeSec % 3600) / 60);
+      setSystemMetrics(prev => ({
+        ...prev,
+        uptime: `${days}d ${hours}h ${mins}m`,
+        activeConnections: health.telemetry_connections || 0,
+      }));
+    }
+  }, [health]);
+
+  // Initial fetch + periodic refresh
   useEffect(() => {
     fetchHealthData();
+    const interval = setInterval(fetchHealthData, config.polling.systemHealthMs);
+    return () => clearInterval(interval);
   }, [fetchHealthData]);
 
   const healthyCount = services.filter(s => s.status === 'healthy').length;
