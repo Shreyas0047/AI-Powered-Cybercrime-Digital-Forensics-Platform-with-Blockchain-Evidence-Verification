@@ -18,8 +18,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build artifacts (keep dist/ - contains executables)
-# build/ - removed (PyInstaller intermediates)
+# Build artifacts
+build/
 *.spec.bak
 *.egg-info/
 

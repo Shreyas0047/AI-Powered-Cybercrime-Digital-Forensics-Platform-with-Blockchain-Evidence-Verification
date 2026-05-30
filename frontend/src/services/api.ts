@@ -44,8 +44,30 @@ function processQueue(error: unknown, token: string | null = null) {
   failedQueue = [];
 }
 
+// Service connectivity state
+let _backendDown = false;
+let _lastConnectivityChange = 0;
+const SERVICE_DOWN_EVENT = 'forensics:service_down';
+const SERVICE_UP_EVENT = 'forensics:service_up';
+
+export function isBackendDown(): boolean {
+  return _backendDown;
+}
+
+function setBackendStatus(down: boolean) {
+  if (_backendDown === down) return;
+  _backendDown = down;
+  _lastConnectivityChange = Date.now();
+  window.dispatchEvent(new CustomEvent(down ? SERVICE_DOWN_EVENT : SERVICE_UP_EVENT));
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 class ApiService {
   private client: AxiosInstance;
+  private maxRetries = 2;
 
   constructor() {
     this.client = axios.create({
@@ -65,12 +87,34 @@ class ApiService {
       return config;
     });
 
-    // Response interceptor with refresh token logic
+    // Response interceptor — retry on network errors, track connectivity
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        setBackendStatus(false);
+        return response;
+      },
       async (error: AxiosError) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
 
+        // Network error or 5xx — retry with backoff (skip auth refresh path)
+        const isNetworkError = !error.response && (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || error.message === 'Network Error');
+        const isServerError = error.response && error.response.status >= 500;
+
+        if ((isNetworkError || isServerError) && !originalRequest._retry) {
+          const retryCount = originalRequest._retryCount || 0;
+          if (retryCount < this.maxRetries) {
+            originalRequest._retryCount = retryCount + 1;
+            await delay(1000 * (retryCount + 1)); // 1s, 2s backoff
+            return this.client(originalRequest);
+          }
+          // All retries exhausted
+          if (isNetworkError) {
+            setBackendStatus(true);
+            return Promise.reject(new Error('Backend service is unreachable. Please check that the server is running.'));
+          }
+        }
+
+        // 401 — token refresh logic
         if (error.response?.status !== 401 || originalRequest._retry) {
           return Promise.reject(error);
         }
@@ -383,8 +427,8 @@ class ApiService {
     return response.data;
   }
 
-  async launchSandboxAgent(): Promise<ApiResponse<{ agentPath: string }>> {
-    const response = await this.client.post('/sandbox/launch-agent');
+  async clearSandboxSessions(): Promise<ApiResponse<{ deleted: number }>> {
+    const response = await this.client.delete('/sandbox/sessions');
     return response.data;
   }
 

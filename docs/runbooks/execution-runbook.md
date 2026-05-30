@@ -2,17 +2,16 @@
 
 ## Overview
 
-This runbook provides operational procedures for the Forensics Sandbox Agent platform, covering VM setup, execution workflows, rollback procedures, and troubleshooting.
+This runbook covers operating the `sandbox-agent-v2` FastAPI runtime: VM setup, session execution, rollback, and troubleshooting. The agent runs directly from source — there is no PyInstaller packaging step.
 
 ## Prerequisites
 
 - VirtualBox installed (v6.1+)
 - Windows VM with:
-  - Guest additions installed
+  - Guest Additions installed
   - Network configured (NAT or Host-only)
-  - Marker file at `C:/sandbox/guest.marker`
+  - Marker file at `C:\sandbox\guest.marker`
 - Python 3.11+
-- PyInstaller for building executables
 
 ## VM Setup
 
@@ -41,79 +40,95 @@ VBoxManage snapshot "ForensicsSandbox" take "CleanBaseline"
 ### 4. Create VM Marker
 
 Inside the VM, create:
+
 ```
 C:\sandbox\guest.marker
 ```
 
 Content:
+
 ```
 Forensics Sandbox VM
 This file indicates the VM is approved for sandbox execution.
 ```
 
-## Build Procedures
+## Starting the Agent
 
-### Build Agent Executable
+The sandbox agent is a FastAPI application that runs directly from source on `127.0.0.1:8765`.
 
-```bash
-cd /path/to/project
-python build.py agent
+```powershell
+cd sandbox-agent-v2
+py -3.11 -m pip install -r requirements.txt
+py -3.11 main.py
 ```
 
-Output: `dist/sandbox-agent/ForensicsSandboxAgent.exe`
+To start it together with backend, AI service, and frontend, use the project root orchestrator:
 
-### Build Simulator Executables
-
-```bash
-# Build all simulators
-python build.py simulator
-
-# Or build individual
-python build.py simulator --simulator ransomware-simulator
+```powershell
+.\start-all.ps1
 ```
 
-Output: `dist/simulators/[SimulatorName]Simulator.exe`
+The backend can also launch the agent on demand via `POST /api/v1/sandbox/runtime/start` (admin-only).
+
+## Available Simulators
+
+The agent ships six safe educational simulators in `sandbox-agent-v2/simulators/`. Their IDs as exposed by `GET /simulators`:
+
+| Simulator ID | Behavior |
+| --- | --- |
+| `system-service-alpha` | File system operations, encryption routines, system modification |
+| `system-service-beta` | Network connections, persistence, child process spawning |
+| `system-service-gamma` | Credential store access, sensitive registry hive reads, data staging |
+| `system-service-delta` | User activity monitoring, screen data capture, document scanning |
+| `system-service-epsilon` | Deep persistence install, boot configuration changes, process injection |
+| `system-service-lateral` | Network discovery, SMB enumeration, pass-the-hash, remote execution |
 
 ## Execution Workflows
 
-### Standard Execution
+### Standard Execution (via UI)
 
-1. Start the sandbox agent
-2. Navigate to Sandbox Control page
-3. Click "Start VM"
-4. Click "Restore Snapshot" to reset to CleanBaseline
-5. Select a simulator from the list
-6. Click "Execute Selected"
-7. Monitor execution in the log panel
-8. View results in the Monitoring page
+1. Start the platform with `start-all.ps1`.
+2. Open the frontend at `http://localhost:5173` and sign in.
+3. Navigate to the Sandbox dashboard.
+4. If the runtime panel reports the agent is offline, click "Start Runtime".
+5. Select a simulator from the dropdown and click "New Session".
+6. Observe live telemetry and log streams while the session runs.
+7. Review the completed session, telemetry events, and rollback status.
 
-### Programmatic Execution
+### Direct API Execution
 
-```python
-from forensics_sandbox_agent.app.config.loader import load_settings
-from forensics_sandbox_agent.app.logging.logger import configure_logging
-from forensics_sandbox_agent.app.services.service_registry import ServiceRegistry
+Start a session directly against the agent (bypassing the backend):
 
-# Initialize
-settings = load_settings()
-logger = configure_logging(settings)
-services = ServiceRegistry.bootstrap(settings, logger)
+```powershell
+$body = @{ simulator_id = "system-service-alpha"; timeout = 300 } | ConvertTo-Json
+Invoke-RestMethod -Method POST -Uri http://127.0.0.1:8765/sessions/start -Body $body -ContentType application/json
+```
 
-# Execute
-session = services.session_orchestrator.execute_simulator(simulator)
+Then poll session state and events:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8765/sessions/<session_id>
+Invoke-RestMethod http://127.0.0.1:8765/sessions/<session_id>/events
+```
+
+Stop or terminate a session:
+
+```powershell
+Invoke-RestMethod -Method POST http://127.0.0.1:8765/sessions/<session_id>/stop
+Invoke-RestMethod -Method POST http://127.0.0.1:8765/sessions/<session_id>/terminate
 ```
 
 ## Rollback Procedures
 
 ### Automatic Rollback
 
-The system automatically rolls back after execution if configured:
-```yaml
-execution_policy:
-  rollback_policy:
-    enabled: true
-    always_rollback_on_completion: true
+The pipeline reverts the VM to `CleanBaseline` on session completion or termination. The pipeline stages are:
+
 ```
+REVERT  → STAGE → EXECUTE → OBSERVE → COMPLETE/FAILED
+```
+
+Both completion and failure paths force-kill the VM and restore the snapshot before transitioning to a terminal state.
 
 ### Manual Rollback
 
@@ -125,82 +140,89 @@ VBoxManage snapshot "ForensicsSandbox" restore "CleanBaseline"
 ### Verification
 
 After rollback, verify:
+
 1. VM state is "Powered Off"
 2. Created files are removed
 3. Registry changes are reverted
+
+```powershell
+VBoxManage showvminfo "ForensicsSandbox" --machinereadable | findstr "VMState="
+```
 
 ## Troubleshooting
 
 ### VM Won't Start
 
-- Check VirtualBox installation
-- Verify VM configuration
-- Check for conflicting processes
+- Check VirtualBox installation: `VBoxManage --version`
+- Verify the VM exists: `VBoxManage list vms`
+- Check for conflicting processes (e.g., a stuck `VBoxHeadless`)
 
 ### Snapshot Restore Fails
 
-- Verify snapshot exists: `VBoxManage snapshot "ForensicsSandbox" list`
+- Verify the snapshot exists: `VBoxManage snapshot "ForensicsSandbox" list`
 - Check disk space
 - Try powered-off state first
 
 ### Simulator Execution Timeout
 
-- Increase timeout in config
-- Check VM resources
-- Review simulator logs
+- Increase `timeout` in the `POST /sessions/start` request (default 300s)
+- Check VM resources (CPU/memory)
+- Review agent logs at `logs\agent.log`
 
-### Monitoring Not Collecting Events
+### Monitoring Not Streaming
 
-- Verify VM is running
-- Check monitoring is enabled in config
-- Review monitoring logs
+- Verify the VM is running and Guest Additions are loaded
+- Confirm WebSocket connectivity to `ws://127.0.0.1:8765/telemetry/live`
+- Check `logs\agent.log` for pipeline errors
+
+### Agent Won't Start
+
+- Confirm port 8765 is free: `netstat -ano | findstr :8765`
+- Confirm Python 3.11+ is on PATH or set `PYTHON_PATH`
+- Reinstall dependencies: `py -3.11 -m pip install -r sandbox-agent-v2\requirements.txt`
 
 ## Safety Procedures
 
 ### VM-Only Execution
 
-All simulator execution MUST occur inside the sandbox VM. The system validates:
-- VM marker file presence
-- VirtualBox installation
-- Safe directory restrictions
+All simulator execution happens inside the sandbox VM. The agent enforces:
 
-### Execution Prevention
-
-If validation fails:
-1. Execution is blocked
-2. Error is logged
-3. User is notified
+- VM marker file presence (`C:\sandbox\guest.marker`)
+- VirtualBox availability on the host
+- Snapshot revert before every session
+- Force rollback on completion or failure
 
 ### Emergency Stop
 
-To immediately stop execution:
-1. Power off VM: `VBoxManage controlvm "ForensicsSandbox" poweroff`
-2. Restore snapshot: `VBoxManage snapshot "ForensicsSandbox" restore "CleanBaseline"`
+To immediately stop execution and reset:
+
+```powershell
+VBoxManage controlvm "ForensicsSandbox" poweroff
+VBoxManage snapshot "ForensicsSandbox" restore "CleanBaseline"
+```
 
 ## Maintenance
 
 ### Log Rotation
 
-Logs are stored in `logs/` directory. Implement rotation:
+Agent logs are written to `logs\` at the project root. Recommended retention:
+
 - Keep last 30 days
 - Compress after 7 days
 - Remove after 90 days
 
+Routine logs are operational output. Preserve only logs that are intentionally part of an evidence package.
+
 ### Snapshot Management
 
 List snapshots:
+
 ```powershell
 VBoxManage snapshot "ForensicsSandbox" list
 ```
 
 Delete old snapshots:
+
 ```powershell
 VBoxManage snapshot "ForensicsSandbox" delete "SnapshotName"
-```
-
-### Configuration Backup
-
-Backup configuration:
-```powershell
-Copy-Item "sandbox-agent/config/default.yaml" "config_backup.yaml"
 ```

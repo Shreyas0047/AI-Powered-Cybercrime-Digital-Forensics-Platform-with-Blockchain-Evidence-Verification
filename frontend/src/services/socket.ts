@@ -130,7 +130,7 @@ class SocketService {
 
   // Connect to WebSocket server
   connect(): void {
-    if (this.socket?.connected || this.socket?.connecting) {
+    if (this.socket?.connected || this.socket?.active) {
       debugSocket('[Socket] Already connected or connecting');
       return;
     }

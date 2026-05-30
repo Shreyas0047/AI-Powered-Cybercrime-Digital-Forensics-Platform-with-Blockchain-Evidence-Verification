@@ -64,7 +64,7 @@ export class AIAnalysisService {
   private timeout: number;
 
   constructor() {
-    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8001';
+    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
     this.timeout = parseInt(process.env.AI_SERVICE_TIMEOUT || '60000', 10);
 
     this.client = axios.create({

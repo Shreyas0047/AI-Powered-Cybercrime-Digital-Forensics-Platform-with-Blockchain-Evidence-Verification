@@ -258,6 +258,9 @@ export type SandboxSessionStatus =
 
 // Telemetry Types
 export interface TelemetryEvent {
+  id?: string;
+  type?: string;
+  details?: string;
   session_id: string;
   timestamp: string;
   event_type: string;

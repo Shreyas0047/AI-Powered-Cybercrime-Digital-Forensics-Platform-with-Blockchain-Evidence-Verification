@@ -1,0 +1,326 @@
+"""FastAPI Application — the HTTP/WebSocket interface.
+
+Implements every endpoint the Node.js backend calls:
+  GET  /health
+  GET  /simulators
+  POST /sessions/start
+  GET  /sessions/{id}
+  GET  /sessions/{id}/events
+  GET  /sessions
+  POST /sessions/{id}/stop
+  POST /sessions/{id}/terminate
+  POST /vm/reset
+  GET  /vm/status
+  GET  /monitoring/status
+  GET  /execution/status
+  GET  /logs
+  WS   /telemetry/live
+  WS   /logs/live
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import time
+from collections import deque
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Optional
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+from agent.models import (
+    HealthResponse, SimulatorInfo, StartSessionRequest,
+    RuntimeSession, SessionState, MonitoringStatus, ExecutionStatus,
+)
+from agent.vm import VMManager, VMError
+from agent.pipeline import SessionPipeline
+
+log = logging.getLogger("agent.app")
+
+# =============================================================================
+# GLOBALS
+# =============================================================================
+
+_vm: Optional[VMManager] = None
+_pipeline: Optional[SessionPipeline] = None
+_start_time: float = 0
+_telemetry_clients: set[WebSocket] = set()
+_log_clients: set[WebSocket] = set()
+_event_queue: asyncio.Queue = asyncio.Queue(maxsize=10000)
+_log_buffer: deque = deque(maxlen=1000)
+
+# Simulator registry
+SIMULATORS = [
+    SimulatorInfo(id="system-service-alpha", display_name="System Service Alpha", description="Performs file system operations, encryption routines, and system modification behaviors", category="system"),
+    SimulatorInfo(id="system-service-beta", display_name="System Service Beta", description="Establishes network connections, creates persistence mechanisms, and spawns child processes", category="system"),
+    SimulatorInfo(id="system-service-gamma", display_name="System Service Gamma", description="Accesses credential stores, reads sensitive registry hives, and stages data for transfer", category="system"),
+    SimulatorInfo(id="system-service-delta", display_name="System Service Delta", description="Monitors user activity, captures screen data, and scans for sensitive documents", category="system"),
+    SimulatorInfo(id="system-service-epsilon", display_name="System Service Epsilon", description="Installs deep persistence, modifies boot configuration, and performs process injection", category="system"),
+    SimulatorInfo(id="system-service-lateral", display_name="System Service Lateral", description="Performs network discovery, SMB enumeration, pass-the-hash, and remote execution for lateral movement", category="system"),
+]
+
+
+def _broadcast(event: dict) -> None:
+    """Thread-safe broadcast — enqueues for async delivery."""
+    try:
+        _event_queue.put_nowait(event)
+    except asyncio.QueueFull:
+        pass
+
+
+def _add_log(level: str, message: str, session_id: Optional[str] = None) -> None:
+    """Add to log buffer and broadcast."""
+    from datetime import datetime, timezone
+    entry = {"timestamp": datetime.now(timezone.utc).isoformat(), "level": level, "message": message, "session_id": session_id}
+    _log_buffer.append(entry)
+    _broadcast({"type": "log", **entry})
+
+
+# =============================================================================
+# LIFESPAN
+# =============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _vm, _pipeline, _start_time
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+    _start_time = time.time()
+
+    log.info("=== Sandbox Agent v2.0.0 starting ===")
+    _add_log("INFO", "Sandbox Agent v2.0.0 starting")
+
+    _vm = VMManager()
+    _pipeline = SessionPipeline(vm=_vm, simulators_dir=Path(__file__).parent.parent / "simulators")
+    _pipeline.set_broadcast(_broadcast)
+
+    _add_log("INFO", "VM Manager initialized")
+    _add_log("INFO", "Pipeline ready")
+
+    # Background broadcaster
+    task = asyncio.create_task(_ws_broadcaster())
+
+    yield
+
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+async def _ws_broadcaster() -> None:
+    """Drain event queue and broadcast to all WebSocket clients."""
+    while True:
+        event = await _event_queue.get()
+        is_log = event.get("type") == "log"
+
+        # Send to appropriate clients
+        targets = _log_clients if is_log else _telemetry_clients
+        dead: set[WebSocket] = set()
+        for ws in list(targets):
+            try:
+                await asyncio.wait_for(ws.send_json(event), timeout=5)
+            except Exception:
+                dead.add(ws)
+        targets.difference_update(dead)
+
+        # Telemetry events also go to telemetry clients
+        if not is_log:
+            dead2: set[WebSocket] = set()
+            for ws in list(_telemetry_clients):
+                try:
+                    await asyncio.wait_for(ws.send_json(event), timeout=5)
+                except Exception:
+                    dead2.add(ws)
+            _telemetry_clients.difference_update(dead2)
+
+
+# =============================================================================
+# APP FACTORY
+# =============================================================================
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Forensics Sandbox Agent", version="2.0.0", lifespan=lifespan)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # -------------------------------------------------------------------------
+    # HEALTH
+    # -------------------------------------------------------------------------
+
+    @app.get("/health")
+    async def health() -> HealthResponse:
+        vm_status = {}
+        try:
+            state = _vm.get_state()
+            vm_status = {"vm_name": "ForensicsSandbox", "vm_status": state}
+        except Exception as e:
+            vm_status = {"error": str(e)}
+
+        active = _pipeline.active_session
+        return HealthResponse(
+            uptime_seconds=time.time() - _start_time,
+            vm_status=vm_status,
+            active_sessions=1 if active and active.state not in (SessionState.COMPLETED, SessionState.FAILED) else 0,
+            telemetry_connections=len(_telemetry_clients),
+        )
+
+    # -------------------------------------------------------------------------
+    # SIMULATORS
+    # -------------------------------------------------------------------------
+
+    @app.get("/simulators")
+    async def simulators() -> list[SimulatorInfo]:
+        return SIMULATORS
+
+    # -------------------------------------------------------------------------
+    # SESSIONS
+    # -------------------------------------------------------------------------
+
+    @app.post("/sessions/start")
+    async def start_session(req: StartSessionRequest) -> dict:
+        try:
+            session = await _pipeline.start(req.simulator_id, req.timeout_seconds)
+            _add_log("INFO", f"Session started: {session.session_id} ({req.simulator_id})", session.session_id)
+            return session.model_dump()
+        except RuntimeError as e:
+            raise HTTPException(409, str(e))
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    @app.get("/sessions/{session_id}")
+    async def get_session(session_id: str) -> dict:
+        s = _pipeline.get_session(session_id)
+        if not s:
+            raise HTTPException(404, "Session not found")
+        return s.model_dump()
+
+    @app.get("/sessions/{session_id}/events")
+    async def get_events(session_id: str) -> dict:
+        return {"events": _pipeline.get_events(session_id)}
+
+    @app.get("/sessions")
+    async def list_sessions() -> list[dict]:
+        return [s.model_dump() for s in _pipeline.get_all_sessions()]
+
+    @app.post("/sessions/{session_id}/stop")
+    async def stop_session(session_id: str) -> dict:
+        try:
+            s = await _pipeline.stop(session_id)
+            return s.model_dump()
+        except KeyError:
+            raise HTTPException(404, "Session not found")
+
+    @app.post("/sessions/{session_id}/terminate")
+    async def terminate_session(session_id: str) -> dict:
+        try:
+            s = await _pipeline.stop(session_id)
+            return s.model_dump()
+        except KeyError:
+            raise HTTPException(404, "Session not found")
+
+    # -------------------------------------------------------------------------
+    # VM
+    # -------------------------------------------------------------------------
+
+    @app.post("/vm/reset")
+    async def reset_vm() -> dict:
+        try:
+            await asyncio.to_thread(_vm.revert_to_snapshot)
+            return {"status": "success", "message": "VM reset to clean snapshot"}
+        except VMError as e:
+            raise HTTPException(500, str(e))
+
+    @app.get("/vm/status")
+    async def vm_status() -> dict:
+        info = _vm.get_info()
+        return {"vm_name": "ForensicsSandbox", "vm_status": _vm.get_state(), **info}
+
+    # -------------------------------------------------------------------------
+    # MONITORING / EXECUTION STATUS
+    # -------------------------------------------------------------------------
+
+    @app.get("/monitoring/status")
+    async def monitoring_status() -> dict:
+        return _pipeline.get_monitoring().model_dump()
+
+    @app.get("/execution/status")
+    async def execution_status() -> dict:
+        active = _pipeline.active_session
+        current = None
+        if active:
+            current = {
+                "session_id": active.session_id,
+                "state": active.state.value,
+                "simulator_id": active.simulator_id,
+                "created_at": active.created_at,
+                "updated_at": active.updated_at,
+                "error": active.error,
+            }
+        sessions = _pipeline.get_all_sessions()
+        return ExecutionStatus(
+            history_count=len(sessions),
+            current_session=current,
+            recent_sessions=[
+                {"session_id": s.session_id, "status": s.state.value, "simulator_id": s.simulator_id}
+                for s in sessions[-10:]
+            ],
+        ).model_dump()
+
+    # -------------------------------------------------------------------------
+    # LOGS
+    # -------------------------------------------------------------------------
+
+    @app.get("/logs")
+    async def get_logs(limit: int = Query(100), level: Optional[str] = Query(None)) -> dict:
+        logs = list(_log_buffer)
+        if level:
+            logs = [l for l in logs if l.get("level", "").upper() == level.upper()]
+        return {"logs": logs[-limit:]}
+
+    # -------------------------------------------------------------------------
+    # WEBSOCKETS
+    # -------------------------------------------------------------------------
+
+    @app.websocket("/telemetry/live")
+    async def telemetry_ws(ws: WebSocket):
+        await ws.accept()
+        _telemetry_clients.add(ws)
+        log.info("Telemetry WS connected (%d)", len(_telemetry_clients))
+        try:
+            async for _ in ws.iter_text():
+                pass
+        except WebSocketDisconnect:
+            pass
+        finally:
+            _telemetry_clients.discard(ws)
+
+    @app.websocket("/logs/live")
+    async def logs_ws(ws: WebSocket):
+        await ws.accept()
+        _log_clients.add(ws)
+        # Send recent logs on connect
+        for entry in list(_log_buffer)[-50:]:
+            try:
+                await ws.send_json(entry)
+            except Exception:
+                break
+        try:
+            async for _ in ws.iter_text():
+                pass
+        except WebSocketDisconnect:
+            pass
+        finally:
+            _log_clients.discard(ws)
+
+    return app

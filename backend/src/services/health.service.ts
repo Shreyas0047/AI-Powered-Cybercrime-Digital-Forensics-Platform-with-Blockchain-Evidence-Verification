@@ -85,8 +85,6 @@ class HealthMonitor {
    * Check service health
    */
   async checkServiceHealth(serviceName: string): Promise<ServiceHealthStatus> {
-    const start = Date.now();
-
     try {
       switch (serviceName) {
         case 'database':
@@ -97,6 +95,16 @@ class HealthMonitor {
           return await this.checkBlockchainHealth();
         case 'queue':
           return await this.checkQueueHealth();
+        case 'aiService':
+          return await this.checkExternalService(
+            process.env.AI_SERVICE_URL || 'http://localhost:8000',
+            '/health'
+          );
+        case 'sandboxAgent':
+          return await this.checkExternalService(
+            process.env.SANDBOX_RUNTIME_URL || 'http://127.0.0.1:8765',
+            '/health'
+          );
         default:
           return {
             status: 'healthy',
@@ -108,6 +116,30 @@ class HealthMonitor {
         status: 'down',
         lastCheck: new Date().toISOString(),
         message: (error as Error).message,
+      };
+    }
+  }
+
+  /**
+   * Probe an external HTTP service health endpoint
+   */
+  private async checkExternalService(baseUrl: string, path: string): Promise<ServiceHealthStatus> {
+    const start = Date.now();
+    try {
+      const axios = (await import('axios')).default;
+      const resp = await axios.get(`${baseUrl}${path}`, { timeout: 3000 });
+      const latency = Date.now() - start;
+      return {
+        status: resp.status === 200 ? (latency < 500 ? 'healthy' : 'degraded') : 'degraded',
+        latency,
+        lastCheck: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      return {
+        status: 'down',
+        latency: Date.now() - start,
+        lastCheck: new Date().toISOString(),
+        message: error.code === 'ECONNREFUSED' ? 'Service not running' : (error.message || 'Unreachable'),
       };
     }
   }
@@ -262,6 +294,8 @@ class HealthMonitor {
       'websocket',
       'blockchain',
       'queue',
+      'aiService',
+      'sandboxAgent',
     ];
 
     for (const service of criticalServices) {

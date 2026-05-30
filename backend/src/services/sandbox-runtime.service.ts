@@ -44,6 +44,8 @@ export class SandboxRuntimeService {
   private client: AxiosInstance;
   private baseUrl: string;
   private sessionMonitors: Map<string, boolean> = new Map();
+  private consecutiveFailures = 0;
+  private readonly maxConsecutiveFailures = 3;
 
   constructor() {
     this.baseUrl = process.env.SANDBOX_RUNTIME_URL || 'http://127.0.0.1:8765';
@@ -55,6 +57,24 @@ export class SandboxRuntimeService {
         'X-Agent-Secret': process.env.SANDBOX_AGENT_SECRET || '',
       },
     });
+
+    // Response interceptor: track connectivity and reset on success
+    this.client.interceptors.response.use(
+      (response) => {
+        this.consecutiveFailures = 0;
+        runtimeStarted = true;
+        return response;
+      },
+      (error) => {
+        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+          this.consecutiveFailures++;
+          if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+            runtimeStarted = false;
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   async monitorSessionCompletion(
@@ -63,6 +83,8 @@ export class SandboxRuntimeService {
   ): Promise<void> {
     if (this.sessionMonitors.has(sessionId)) return;
     this.sessionMonitors.set(sessionId, true);
+
+    let lastState = '';
 
     const poll = async (attempts: number) => {
       if (!this.sessionMonitors.has(sessionId)) return;
@@ -73,13 +95,34 @@ export class SandboxRuntimeService {
       try {
         const session = await this.getSession(sessionId);
         const state = session.state.toUpperCase();
+
+        // Emit intermediate state changes via WebSocket so frontend stays in sync
+        if (session.state !== lastState) {
+          lastState = session.state;
+          const { websocketService } = await import('./websocket.service');
+          websocketService.emitSandboxSessionUpdate(sessionId, session);
+        }
+
         if (state === 'COMPLETED' || state === 'FAILED') {
           this.sessionMonitors.delete(sessionId);
+          // Emit structured error via WebSocket when session fails
+          if (state === 'FAILED') {
+            const { websocketService: ws } = await import('./websocket.service');
+            ws.emitSandboxError(sessionId, {
+              code: 'SESSION_FAILED',
+              message: session.error || 'Session execution failed',
+              stage: session.state,
+            });
+          }
           await onComplete(session);
           return;
         }
-      } catch {
-        // retry
+      } catch (err: any) {
+        // Stop polling if session doesn't exist (404) — runtime was restarted
+        if (err?.statusCode === 404 || err?.status === 404 || err?.message?.includes('404')) {
+          this.sessionMonitors.delete(sessionId);
+          return;
+        }
       }
       setTimeout(() => poll(attempts + 1), 3000);
     };

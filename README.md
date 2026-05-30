@@ -9,7 +9,8 @@ This is an educational cybersecurity platform for malware behavior simulation an
 - React + TypeScript frontend for dashboards, investigations, evidence, alerts, telemetry, blockchain operations, threat intelligence, and forensic analytics.
 - Express + TypeScript backend API with JWT/RBAC, MongoDB, WebSocket telemetry, enterprise security middleware, health checks, queue services, and analytics.
 - FastAPI AI service for threat classification, severity scoring, anomaly detection, and summaries.
-- PyQt6 desktop sandbox agent and five safe educational malware simulators.
+- FastAPI sandbox agent (`sandbox-agent-v2`) that orchestrates the VirtualBox sandbox VM, runs the simulator pipeline, and streams telemetry/log events over WebSocket.
+- Six safe educational malware simulators (alpha, beta, gamma, delta, epsilon, lateral) bundled inside the sandbox agent.
 - Blockchain evidence verification, chain of custody, IOC, and correlation services.
 
 ## Prerequisites
@@ -36,15 +37,14 @@ MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/forensics_pl
 JWT_SECRET=<32-character-minimum-secret>
 JWT_REFRESH_SECRET=<32-character-minimum-secret>
 SANDBOX_AGENT_SECRET=<shared-secret-for-agent-auth>
+SANDBOX_RUNTIME_URL=http://127.0.0.1:8765
 AI_SERVICE_ENABLED=false
 AI_SERVICE_URL=http://localhost:8000
 AI_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 BLOCKCHAIN_ENABLED=false
 ```
 
-2. (Removed: Start MongoDB locally).
-
-3. Start the backend:
+2. Start the backend:
 
 ```powershell
 cd backend
@@ -54,7 +54,7 @@ npm run dev
 
 The backend runs at `http://localhost:3000/api/v1`.
 
-4. Start the frontend in a second terminal:
+3. Start the frontend in a second terminal:
 
 ```powershell
 cd frontend
@@ -64,7 +64,7 @@ npm run dev
 
 The frontend runs at `http://localhost:5173`.
 
-5. Start the AI service in a third terminal when AI features are needed:
+4. Start the AI service in a third terminal when AI features are needed:
 
 ```powershell
 cd ai-service
@@ -74,24 +74,22 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-6. Run the desktop sandbox agent when sandbox workflows are needed:
+5. Start the sandbox agent when sandbox workflows are needed:
 
 ```powershell
-cd sandbox-agent
-py -3.11 -m pip install -e .
-py -3.11 -m forensics_sandbox_agent.main
+cd sandbox-agent-v2
+py -3.11 -m pip install -r requirements.txt
+py -3.11 main.py
 ```
 
-Packaged executables are also kept under `dist\`.
+The agent listens on `http://127.0.0.1:8765` and exposes the runtime REST + WebSocket API consumed by the backend.
 
-## Build Commands
+### One-shot orchestrated startup
+
+`start-all.ps1` launches backend, AI service, sandbox agent, and frontend in dependency order with health-check polling:
 
 ```powershell
-python build.py all
-python build.py agent
-python build.py simulator
-python build.py validate
-python build.py clean
+.\start-all.ps1
 ```
 
 ## Useful URLs
@@ -103,18 +101,21 @@ python build.py clean
 - Backend liveness: `http://localhost:3000/api/v1/operations/live`
 - Backend metrics: `http://localhost:3000/api/v1/operations/metrics`
 - AI service: `http://localhost:8000`
+- Sandbox agent: `http://127.0.0.1:8765`
 
 ## Project Structure
 
 ```text
-backend/         Express.js API server
-frontend/        React frontend application
-ai-service/      FastAPI AI microservice
-sandbox-agent/   PyQt6 desktop sandbox application
-simulators/      Safe educational malware simulators
-shared/          Shared schemas and contracts
-docs/            Architecture notes and operational runbooks
-dist/            Packaged desktop and simulator executables
+backend/             Express.js API server (TypeScript)
+frontend/            React + TypeScript frontend (Vite)
+ai-service/          FastAPI AI microservice (Python)
+sandbox-agent-v2/    FastAPI sandbox runtime + simulators (Python)
+  main.py            Uvicorn entrypoint, listens on :8765
+  agent/             FastAPI app, session pipeline, VM manager, models
+  simulators/        Six safe educational simulators (run inside the VM)
+shared/              Shared schemas, contracts, and service config
+docs/                Architecture notes and operational runbooks
+logs/                Local agent + monitoring logs
 ```
 
 ## Documentation

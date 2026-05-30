@@ -180,6 +180,15 @@ export class SandboxSyncService {
       avgDuration: avgDuration[0]?.avg || 0,
     };
   }
+
+  /**
+   * Clear all sessions
+   */
+  async clearAll(): Promise<{ deleted: number }> {
+    const result = await SandboxSession.deleteMany({});
+    await TelemetryEvent.deleteMany({});
+    return { deleted: result.deletedCount || 0 };
+  }
 }
 
 export const sandboxSyncService = new SandboxSyncService();

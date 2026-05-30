@@ -65,6 +65,12 @@ const statusConfig = {
     border: 'border-rose-500/30',
     dot: 'bg-rose-500',
   },
+  pending: {
+    color: 'text-slate-400',
+    bg: 'bg-slate-500/10',
+    border: 'border-slate-500/30',
+    dot: 'bg-slate-400',
+  },
 };
 
 const iconMap: Record<string, typeof Shield> = {

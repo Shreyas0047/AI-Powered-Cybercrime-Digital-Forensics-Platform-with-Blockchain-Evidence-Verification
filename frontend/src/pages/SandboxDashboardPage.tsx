@@ -44,6 +44,8 @@ import { useTelemetryStore } from '../stores/telemetryStore';
 import { useLogsStore } from '../stores/logsStore';
 import { useStatusStore } from '../stores/statusStore';
 import { useRealtimeStore } from '../stores/realtimeStore';
+import { socketService, SocketEvent } from '../services/socket';
+import api from '../services/api';
 import { cn } from '../design-system';
 
 type TabType = 'sessions' | 'monitoring' | 'telemetry' | 'logs';
@@ -116,6 +118,7 @@ export function SandboxDashboardPage() {
   const [selectedSimulator, setSelectedSimulator] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('sessions');
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  const [, setTick] = useState(0);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const telemetryEndRef = useRef<HTMLDivElement>(null);
@@ -139,7 +142,7 @@ export function SandboxDashboardPage() {
     };
   }, [fetchSessions, fetchStats, fetchSimulators, fetchHealth, fetchMonitoringStatus, fetchExecutionStatus]);
 
-  // Poll at 5s when active session, 10s otherwise; always poll even with Socket.IO
+  // Poll at 3s when active session, 10s otherwise; always poll even with Socket.IO
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isSocketConnected || activeSession) {
@@ -147,16 +150,45 @@ export function SandboxDashboardPage() {
         fetchMonitoringStatus();
         fetchExecutionStatus();
       }
-    }, activeSession ? 5000 : 10000);
+    }, activeSession ? 3000 : 10000);
 
     return () => clearInterval(interval);
   }, [isSocketConnected, activeSession?.session_id, activeSession?.state, fetchHealth, fetchMonitoringStatus, fetchExecutionStatus]);
+
+  // Listen for real-time sandbox session updates via Socket.IO
+  useEffect(() => {
+    const unsub = socketService.on<any>(SocketEvent.SANDBOX_SESSION_UPDATE, (data) => {
+      if (!data) return;
+      const sessionId = data.session_id || data.sessionId;
+      const state = data.state || data.status;
+      if (sessionId && state) {
+        useSandboxStore.setState({
+          activeSession: {
+            session_id: sessionId,
+            state,
+            simulator_id: data.simulator_id || data.simulatorId || activeSession?.simulator_id || '',
+            created_at: data.created_at || activeSession?.created_at || new Date().toISOString(),
+            updated_at: data.updated_at || new Date().toISOString(),
+            error: data.error,
+          },
+        });
+      }
+    });
+    return unsub;
+  }, [activeSession?.simulator_id, activeSession?.created_at]);
 
   useEffect(() => {
     if (activeSession && activeSession.state !== 'completed' && activeSession.state !== 'failed') {
       setSessionStartTime(new Date());
     }
   }, [activeSession]);
+
+  // Tick every second to update elapsed time display
+  useEffect(() => {
+    if (!sessionStartTime || !activeSession || ['completed', 'failed', 'timeout', 'rolled_back'].includes(activeSession.state)) return;
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, [sessionStartTime, activeSession]);
 
   // When runtime comes online, fetch simulators if list is empty
   useEffect(() => {
@@ -508,6 +540,24 @@ export function SandboxDashboardPage() {
                 ]}
                 className="w-48"
               />
+              <div className="ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await api.clearSandboxSessions();
+                    useSandboxStore.setState({ sessions: [], activeSession: null, stats: null });
+                    setSelectedSession(null);
+                    fetchSessions({ page: 1, limit: 50 });
+                    fetchStats();
+                    showStatus('success', 'Sessions cleared', 'All session history has been removed');
+                  }}
+                  className="text-red-600 dark:text-red-400 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear Sessions
+                </Button>
+              </div>
             </div>
 
             <Card>
@@ -534,13 +584,15 @@ export function SandboxDashboardPage() {
                             session.status === 'running' && 'bg-cyan-100 dark:bg-cyan-900/20',
                             session.status === 'completed' && 'bg-emerald-100 dark:bg-emerald-900/20',
                             session.status === 'failed' && 'bg-red-100 dark:bg-red-900/20',
-                            session.status === 'timeout' && 'bg-amber-100 dark:bg-amber-900/20'
+                            session.status === 'timeout' && 'bg-amber-100 dark:bg-amber-900/20',
+                            !['running', 'completed', 'failed', 'timeout'].includes(session.status) && 'bg-slate-100 dark:bg-slate-800'
                           )}
                         >
                           {session.status === 'running' && <Play className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />}
                           {session.status === 'completed' && <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
                           {session.status === 'failed' && <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />}
                           {session.status === 'timeout' && <Timer className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+                          {!['running', 'completed', 'failed', 'timeout'].includes(session.status) && <Loader2 className="w-5 h-5 text-slate-500 animate-spin" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -694,7 +746,17 @@ export function SandboxDashboardPage() {
         </PageGrid>
       )}
 
-      {activeTab === 'monitoring' && (
+      {activeTab === 'monitoring' && !monitoringStatus && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-16">
+            <Activity className="w-12 h-12 text-slate-400 mb-3" />
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No monitoring data available</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Start the runtime and run a session to see live monitoring data</p>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'monitoring' && monitoringStatus && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <div className="p-4 border-b border-slate-100 dark:border-slate-700/50">
@@ -861,7 +923,13 @@ export function SandboxDashboardPage() {
                   transition={{ duration: 0.15 }}
                   className={cn(
                     'flex items-start gap-2 p-2 rounded border-l-2 bg-slate-800/50',
-                    categoryColors[event.category] ? `border-l-${event.category === 'process' ? 'cyan' : event.category === 'file' ? 'violet' : event.category === 'registry' ? 'amber' : event.category === 'network' ? 'blue' : event.category === 'threat' ? 'red' : 'orange'}-500` : 'border-l-slate-500'
+                    event.category === 'process' ? 'border-l-cyan-500' :
+                    event.category === 'file' ? 'border-l-violet-500' :
+                    event.category === 'registry' ? 'border-l-amber-500' :
+                    event.category === 'network' ? 'border-l-blue-500' :
+                    event.category === 'threat' ? 'border-l-red-500' :
+                    event.category === 'anomaly' ? 'border-l-orange-500' :
+                    'border-l-slate-500'
                   )}
                 >
                   <span className="text-slate-600 shrink-0 w-20">

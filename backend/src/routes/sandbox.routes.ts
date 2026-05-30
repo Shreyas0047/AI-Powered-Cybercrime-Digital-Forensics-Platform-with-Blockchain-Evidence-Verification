@@ -60,6 +60,12 @@ router.get(
   asyncHandler(sandboxController.getStats)
 );
 
+router.delete(
+  '/sessions',
+  authorize(UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  asyncHandler(sandboxController.clearSessions)
+);
+
 router.get(
   '/telemetry-url',
   authorize(UserRole.FORENSIC_ANALYST, UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
@@ -124,12 +130,6 @@ router.post(
   '/sessions/:sessionId/events',
   authorize(UserRole.SANDBOX_OPERATOR, UserRole.FORENSIC_ANALYST, UserRole.ADMIN, UserRole.SUPER_ADMIN),
   asyncHandler(sandboxController.receiveEvents)
-);
-
-router.post(
-  '/launch-agent',
-  authorize(UserRole.SANDBOX_OPERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  asyncHandler(sandboxController.launchAgent)
 );
 
 export default router;

@@ -10,8 +10,8 @@ The **ForensicsAI Platform** is an integrated ecosystem for simulating malware b
 | **Frontend** | React, TypeScript, Vite | Investigation dashboard, telemetry visualization, and reporting. |
 | **Backend** | Node.js, Express, MongoDB Atlas | API Gateway, WebSocket orchestration, and business logic. |
 | **AI Service** | Python, FastAPI, Scikit-learn | Threat classification, anomaly detection, and severity scoring. |
-| **Sandbox Agent** | Python, PyQt6 | Local orchestration of simulators and telemetry collection. |
-| **Simulators** | Python | Modular "safe" malware behavior models (Ransomware, Spyware, etc.). |
+| **Sandbox Agent** | Python, FastAPI | VM orchestration, simulator pipeline, telemetry streaming over REST + WebSocket. |
+| **Simulators** | Python | Modular "safe" malware behavior models (alpha, beta, gamma, delta, epsilon, lateral). |
 | **Blockchain** | Solidity, Ethereum | Immutable evidence hashing and Chain of Custody tracking. |
 
 ## Operational Workflow

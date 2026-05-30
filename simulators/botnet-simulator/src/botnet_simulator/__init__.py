@@ -1,1 +1,0 @@
-"""Botnet simulator package placeholder."""

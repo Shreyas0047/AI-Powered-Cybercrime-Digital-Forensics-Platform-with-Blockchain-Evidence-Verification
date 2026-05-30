@@ -3,6 +3,39 @@
  * Health Monitoring Service
  * Platform-wide health checks and metrics
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -44,7 +77,6 @@ class HealthMonitor {
      * Check service health
      */
     async checkServiceHealth(serviceName) {
-        const start = Date.now();
         try {
             switch (serviceName) {
                 case 'database':
@@ -55,6 +87,10 @@ class HealthMonitor {
                     return await this.checkBlockchainHealth();
                 case 'queue':
                     return await this.checkQueueHealth();
+                case 'aiService':
+                    return await this.checkExternalService(process.env.AI_SERVICE_URL || 'http://localhost:8000', '/health');
+                case 'sandboxAgent':
+                    return await this.checkExternalService(process.env.SANDBOX_RUNTIME_URL || 'http://127.0.0.1:8765', '/health');
                 default:
                     return {
                         status: 'healthy',
@@ -67,6 +103,30 @@ class HealthMonitor {
                 status: 'down',
                 lastCheck: new Date().toISOString(),
                 message: error.message,
+            };
+        }
+    }
+    /**
+     * Probe an external HTTP service health endpoint
+     */
+    async checkExternalService(baseUrl, path) {
+        const start = Date.now();
+        try {
+            const axios = (await Promise.resolve().then(() => __importStar(require('axios')))).default;
+            const resp = await axios.get(`${baseUrl}${path}`, { timeout: 3000 });
+            const latency = Date.now() - start;
+            return {
+                status: resp.status === 200 ? (latency < 500 ? 'healthy' : 'degraded') : 'degraded',
+                latency,
+                lastCheck: new Date().toISOString(),
+            };
+        }
+        catch (error) {
+            return {
+                status: 'down',
+                latency: Date.now() - start,
+                lastCheck: new Date().toISOString(),
+                message: error.code === 'ECONNREFUSED' ? 'Service not running' : (error.message || 'Unreachable'),
             };
         }
     }
@@ -199,6 +259,8 @@ class HealthMonitor {
             'websocket',
             'blockchain',
             'queue',
+            'aiService',
+            'sandboxAgent',
         ];
         for (const service of criticalServices) {
             services[service] = await this.checkServiceHealth(service);

@@ -48,10 +48,9 @@ const websocket_service_1 = require("../services/websocket.service");
 /**
  * Simulator display-name mapping.
  *
- * SOURCE OF TRUTH: `sandbox-agent/.../domain/simulator_mapping.py`
- * (SIMULATOR_REGISTRY).  Keep the two files in sync when adding/renaming
- * simulators.  In the future this should be served from a GET /simulators
- * endpoint exposed by the sandbox agent runtime.
+ * SOURCE OF TRUTH: `sandbox-agent-v2/agent/app.py` (SIMULATORS list) and
+ * `sandbox-agent-v2/agent/pipeline.py` (script_map).  Keep these files in
+ * sync when adding/renaming simulators.
  */
 const SIMULATOR_DISPLAY_NAMES = {
     'system_service_1': 'Sample Alpha',
@@ -181,6 +180,11 @@ class SandboxController {
             res.status(201).json(response);
         }
         catch (error) {
+            websocket_service_1.websocketService.emitSandboxError('', {
+                code: error.code || 'START_FAILED',
+                message: error.message || 'Failed to start session',
+                stage: 'START',
+            });
             res.status(500).json({
                 success: false,
                 message: error.message || 'Failed to start session',
@@ -294,6 +298,14 @@ class SandboxController {
             data: { stats },
         };
         res.json(response);
+    }
+    /**
+     * DELETE /api/v1/sandbox/sessions
+     * Clear all session history
+     */
+    async clearSessions(req, res) {
+        const result = await services_1.sandboxSyncService.clearAll();
+        res.json({ success: true, message: 'Sessions cleared', data: result });
     }
     /**
      * GET /api/v1/sandbox/telemetry-url
@@ -458,13 +470,13 @@ class SandboxController {
         const util = await Promise.resolve().then(() => __importStar(require('util')));
         const execPromise = util.promisify(exec);
         // Resolve project root: if SANDBOX_PROJECT_ROOT is set use it,
-        // else walk up from cwd to find the directory containing 'sandbox-agent'
+        // else walk up from cwd to find the directory containing 'sandbox-agent-v2'
         let projectRoot = process.env.SANDBOX_PROJECT_ROOT || process.cwd();
-        if (!fs.existsSync(join(projectRoot, 'sandbox-agent'))) {
-            // Walk up directories looking for the sandbox-agent folder
+        if (!fs.existsSync(join(projectRoot, 'sandbox-agent-v2'))) {
+            // Walk up directories looking for the sandbox-agent-v2 folder
             let candidate = process.cwd();
             for (let i = 0; i < 5; i++) {
-                if (fs.existsSync(join(candidate, 'sandbox-agent'))) {
+                if (fs.existsSync(join(candidate, 'sandbox-agent-v2'))) {
                     projectRoot = candidate;
                     break;
                 }
@@ -474,7 +486,7 @@ class SandboxController {
                 candidate = parent;
             }
         }
-        const runtimeFilePath = join(projectRoot, 'sandbox-agent', 'src', 'forensics_sandbox_agent', 'infrastructure', 'runtime_api.py');
+        const runtimeFilePath = join(projectRoot, 'sandbox-agent-v2', 'main.py');
         if (!fs.existsSync(runtimeFilePath)) {
             res.status(404).json({
                 success: false,
@@ -500,7 +512,7 @@ class SandboxController {
             }
             else {
                 try {
-                    const { stdout } = await execPromise(`where ${candidate}`);
+                    const { stdout } = await execPromise(`where ${candidate}`, { windowsHide: true });
                     const paths = stdout.trim().split('\r\n').filter(p => p.toLowerCase().endsWith('.exe'));
                     if (paths.length > 0) {
                         pythonPath = paths[0];
@@ -522,20 +534,20 @@ class SandboxController {
         }
         try {
             runtimeStarting = true;
-            const logDir = join(projectRoot, 'sandbox-agent');
+            const logDir = join(projectRoot, 'sandbox-agent-v2');
             const logFile = join(logDir, 'runtime.log');
             if (!fs.existsSync(logDir)) {
                 fs.mkdirSync(logDir, { recursive: true });
             }
             try {
-                const { stdout: netstatOut } = await execPromise('netstat -ano | findstr :8765');
+                const { stdout: netstatOut } = await execPromise('netstat -ano | findstr :8765', { windowsHide: true });
                 const lines = netstatOut.trim().split('\n').filter(l => l.includes('LISTENING'));
                 for (const line of lines) {
                     const parts = line.trim().split(/\s+/);
                     const pid = parts[parts.length - 1];
                     if (pid && pid !== '0') {
                         try {
-                            await execPromise(`taskkill /F /PID ${pid}`);
+                            await execPromise(`taskkill /F /PID ${pid}`, { windowsHide: true });
                         }
                         catch { /* process may already be dead */ }
                     }
@@ -546,12 +558,11 @@ class SandboxController {
             const logFd = fs.openSync(logFile, 'a');
             const child = spawn(pythonPath, [
                 '-u', runtimeFilePath,
-                '--port', '8765',
             ], {
                 detached: true,
                 stdio: ['ignore', logFd, logFd],
-                cwd: join(projectRoot, 'sandbox-agent', 'src'),
-                env: { ...process.env, PYTHONPATH: join(projectRoot, 'sandbox-agent', 'src') },
+                cwd: join(projectRoot, 'sandbox-agent-v2'),
+                env: { ...process.env, PYTHONPATH: join(projectRoot, 'sandbox-agent-v2') },
                 windowsHide: true,
             });
             // Close parent's fd; child has its own copy now
@@ -628,84 +639,6 @@ class SandboxController {
             data: result,
         };
         res.json(response);
-    }
-    /**
-     * POST /api/v1/sandbox/launch-agent
-     * Legacy: Launch the desktop sandbox agent application
-     */
-    async launchAgent(req, res) {
-        const { spawn } = await Promise.resolve().then(() => __importStar(require('child_process')));
-        const fs = await Promise.resolve().then(() => __importStar(require('fs')));
-        const { join, dirname } = await Promise.resolve().then(() => __importStar(require('path')));
-        // Resolve project root same as runtime/start
-        let projectRoot = process.env.SANDBOX_PROJECT_ROOT || process.cwd();
-        if (!fs.existsSync(join(projectRoot, 'sandbox-agent'))) {
-            let candidate = process.cwd();
-            for (let i = 0; i < 5; i++) {
-                if (fs.existsSync(join(candidate, 'sandbox-agent'))) {
-                    projectRoot = candidate;
-                    break;
-                }
-                const parent = dirname(candidate);
-                if (parent === candidate)
-                    break;
-                candidate = parent;
-            }
-        }
-        const possiblePaths = [
-            process.env.SANDBOX_AGENT_PATH,
-            join(projectRoot, 'dist', 'sandbox-agent', 'ForensicsSandboxAgent.exe'),
-        ].filter(Boolean);
-        let agentPath;
-        let foundPath = false;
-        for (const path of possiblePaths) {
-            if (path && fs.existsSync(path)) {
-                agentPath = path;
-                foundPath = true;
-                break;
-            }
-        }
-        if (!foundPath || !agentPath) {
-            logger_1.default.error('Sandbox agent not found. Searched paths:', possiblePaths);
-            res.status(404).json({
-                success: false,
-                message: 'Sandbox agent not found. Please build the agent first using: python build.py agent',
-                searchedPaths: possiblePaths,
-            });
-            return;
-        }
-        logger_1.default.info('Launching sandbox agent from:', agentPath);
-        try {
-            const isWindows = process.platform === 'win32';
-            if (isWindows) {
-                const psCommand = `Start-Process -FilePath "${agentPath.replace(/\\/g, '\\\\')}" -WindowStyle Normal`;
-                spawn('powershell', ['-Command', psCommand], {
-                    detached: true,
-                    stdio: 'ignore',
-                    shell: false,
-                    windowsHide: false
-                });
-            }
-            else {
-                spawn(agentPath, [], {
-                    detached: true,
-                    stdio: 'ignore'
-                });
-            }
-            res.json({
-                success: true,
-                message: 'Sandbox agent launched',
-                data: { agentPath },
-            });
-        }
-        catch (error) {
-            logger_1.default.error('Failed to launch sandbox agent:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to launch sandbox agent',
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-        }
     }
 }
 exports.SandboxController = SandboxController;

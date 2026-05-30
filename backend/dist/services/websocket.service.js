@@ -355,10 +355,22 @@ class WebSocketService {
     // Emit sandbox session update
     emitSandboxSessionUpdate(sessionId, update) {
         this.sendToSandboxSession(sessionId, SocketEvent.SANDBOX_SESSION_UPDATE, update);
+        // Also broadcast to all connected clients so dashboard gets updates without subscribing
+        if (this.io) {
+            this.io.emit(SocketEvent.SANDBOX_SESSION_UPDATE, update);
+        }
     }
     // Emit sandbox telemetry
     emitSandboxTelemetry(sessionId, telemetry) {
         this.sendToSandboxSession(sessionId, SocketEvent.SANDBOX_TELEMETRY, telemetry);
+    }
+    // Emit sandbox error with structured detail
+    emitSandboxError(sessionId, error) {
+        const payload = { session_id: sessionId, ...error, timestamp: new Date().toISOString() };
+        this.sendToSandboxSession(sessionId, SocketEvent.SANDBOX_ERROR, payload);
+        if (this.io) {
+            this.io.emit(SocketEvent.SANDBOX_ERROR, payload);
+        }
     }
     // Emit AI analysis complete
     emitAIAnalysisComplete(investigationId, analysis) {

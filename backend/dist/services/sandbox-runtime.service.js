@@ -3,6 +3,39 @@
  * Sandbox Runtime Service
  * Communicates with the headless sandbox runtime API
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,6 +49,8 @@ class SandboxRuntimeService {
     client;
     baseUrl;
     sessionMonitors = new Map();
+    consecutiveFailures = 0;
+    maxConsecutiveFailures = 3;
     constructor() {
         this.baseUrl = process.env.SANDBOX_RUNTIME_URL || 'http://127.0.0.1:8765';
         this.client = axios_1.default.create({
@@ -26,11 +61,26 @@ class SandboxRuntimeService {
                 'X-Agent-Secret': process.env.SANDBOX_AGENT_SECRET || '',
             },
         });
+        // Response interceptor: track connectivity and reset on success
+        this.client.interceptors.response.use((response) => {
+            this.consecutiveFailures = 0;
+            runtimeStarted = true;
+            return response;
+        }, (error) => {
+            if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+                this.consecutiveFailures++;
+                if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+                    runtimeStarted = false;
+                }
+            }
+            return Promise.reject(error);
+        });
     }
     async monitorSessionCompletion(sessionId, onComplete) {
         if (this.sessionMonitors.has(sessionId))
             return;
         this.sessionMonitors.set(sessionId, true);
+        let lastState = '';
         const poll = async (attempts) => {
             if (!this.sessionMonitors.has(sessionId))
                 return;
@@ -41,14 +91,33 @@ class SandboxRuntimeService {
             try {
                 const session = await this.getSession(sessionId);
                 const state = session.state.toUpperCase();
+                // Emit intermediate state changes via WebSocket so frontend stays in sync
+                if (session.state !== lastState) {
+                    lastState = session.state;
+                    const { websocketService } = await Promise.resolve().then(() => __importStar(require('./websocket.service')));
+                    websocketService.emitSandboxSessionUpdate(sessionId, session);
+                }
                 if (state === 'COMPLETED' || state === 'FAILED') {
                     this.sessionMonitors.delete(sessionId);
+                    // Emit structured error via WebSocket when session fails
+                    if (state === 'FAILED') {
+                        const { websocketService: ws } = await Promise.resolve().then(() => __importStar(require('./websocket.service')));
+                        ws.emitSandboxError(sessionId, {
+                            code: 'SESSION_FAILED',
+                            message: session.error || 'Session execution failed',
+                            stage: session.state,
+                        });
+                    }
                     await onComplete(session);
                     return;
                 }
             }
-            catch {
-                // retry
+            catch (err) {
+                // Stop polling if session doesn't exist (404) — runtime was restarted
+                if (err?.statusCode === 404 || err?.status === 404 || err?.message?.includes('404')) {
+                    this.sessionMonitors.delete(sessionId);
+                    return;
+                }
             }
             setTimeout(() => poll(attempts + 1), 3000);
         };

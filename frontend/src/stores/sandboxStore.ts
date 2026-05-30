@@ -84,7 +84,6 @@ interface SandboxState {
   terminateSession: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   resetVm: () => Promise<{ success: boolean; message: string }>;
   startRuntime: () => Promise<{ success: boolean; message: string }>;
-  launchAgent: () => Promise<{ success: boolean; message: string }>;
   clearCurrentSession: () => void;
 }
 
@@ -214,17 +213,27 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
       const response = await api.getSandboxExecutionStatus();
       if (response.success && response.data?.status) {
         const current = (response.data.status as any).current_session;
-        set({
-          executionStatus: response.data.status as ExecutionStatus,
-          activeSession: current ? {
-            session_id: current.session_id || current.sessionId,
-            state: current.state || current.status || 'running',
-            simulator_id: current.simulator_id || current.simulatorId,
-            created_at: current.created_at || current.startTime || new Date().toISOString(),
-            updated_at: current.updated_at || current.updatedAt || new Date().toISOString(),
-            error: current.error,
-          } : get().activeSession,
-        });
+        if (current) {
+          const state = current.state || current.status || 'running';
+          set({
+            executionStatus: response.data.status as ExecutionStatus,
+            activeSession: {
+              session_id: current.session_id || current.sessionId,
+              state,
+              simulator_id: current.simulator_id || current.simulatorId,
+              created_at: current.created_at || current.startTime || new Date().toISOString(),
+              updated_at: current.updated_at || current.updatedAt || new Date().toISOString(),
+              error: current.error,
+            },
+          });
+        } else {
+          // No active session from runtime — clear activeSession if it was in a running state
+          const prev = get().activeSession;
+          set({
+            executionStatus: response.data.status as ExecutionStatus,
+            activeSession: prev && !['completed', 'failed', 'timeout', 'rolled_back'].includes(prev.state) ? null : prev,
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to fetch execution status:', error);
@@ -329,30 +338,13 @@ export const useSandboxStore = create<SandboxState>((set, get) => ({
             return { success: true, message: 'Runtime started successfully' };
           }
         }
-        set({ isLoading: false, error: 'Runtime did not respond after 30s. Check sandbox-agent/runtime.log for errors.' });
+        set({ isLoading: false, error: 'Runtime did not respond after 30s. Check sandbox-agent-v2 console for errors.' });
         return { success: false, message: 'Runtime may have failed to start. Check logs.' };
       }
       set({ isLoading: false, error: response.message || 'Failed to start runtime' });
       return { success: false, message: response.message || 'Failed to start runtime' };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to start runtime';
-      set({ isLoading: false, error: message });
-      return { success: false, message };
-    }
-  },
-
-  launchAgent: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await api.launchSandboxAgent();
-      if (response.success) {
-        set({ isLoading: false });
-        return { success: true, message: 'Sandbox agent launched successfully' };
-      }
-      set({ isLoading: false, error: response.message || 'Failed to launch agent' });
-      return { success: false, message: response.message || 'Failed to launch agent' };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to launch sandbox agent';
       set({ isLoading: false, error: message });
       return { success: false, message };
     }

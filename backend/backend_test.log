@@ -1,0 +1,33 @@
+
+> forensics-platform-backend@2.0.0 dev
+> ts-node-dev --respawn --transpile-only src/index.ts
+
+[INFO] 18:39:34 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+2026-05-29 18:39:37 [[32minfo[39m]: [Sync] Starting automatic queue processing every 5s {
+  "service": "forensics-platform"
+}
+2026-05-29 18:39:38 [[32minfo[39m]: Connecting to MongoDB: forensics_platform {
+  "service": "forensics-platform"
+}
+2026-05-29 18:39:38 [[32minfo[39m]: MongoDB connected successfully {
+  "service": "forensics-platform"
+}
+2026-05-29 18:39:38 [[32minfo[39m]: WebSocket service initialized {
+  "service": "forensics-platform"
+}
+2026-05-29 18:39:38 [[32minfo[39m]: ============================================================
+Forensics Platform Backend
+------------------------------------------------------------
+Environment: production
+Port: 3000
+API Version: v1
+WebSocket: Enabled
+============================================================ {
+  "service": "forensics-platform"
+}
+2026-05-29 18:39:38 [[32minfo[39m]: Backend services initialized successfully {
+  "service": "forensics-platform"
+}
+2026-05-29 18:39:43 [[32minfo[39m]: ::1 - - [29/May/2026:13:09:43 +0000] "GET /api/v1/operations/health HTTP/1.1" 503 1263 "-" "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.8521" {
+  "service": "forensics-platform"
+}

@@ -735,7 +735,7 @@ export function AIAnalysisPage() {
                     <div>
                       <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Classification Reasons</h4>
                       <div className="space-y-2">
-                        {threatClassification.reasons.map((reason: string, idx: number) => (
+                        {(threatClassification.reasons || []).map((reason: string, idx: number) => (
                           <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                             <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
                               <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{idx + 1}</span>

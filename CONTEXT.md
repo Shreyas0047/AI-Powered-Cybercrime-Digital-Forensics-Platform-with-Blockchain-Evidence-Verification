@@ -16,55 +16,57 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        Frontend (React + TypeScript + Vite)          │
-│  src/                                                                 │
-│  ├── pages/        Dashboard, Sandbox, Investigations, Evidence    │
-│  ├── stores/       Zustand state (auth, sandbox, realtime)           │
-│  ├── services/     API client, WebSocket client                       │
-│  ├── components/   UI components, enterprise, blockchain             │
-│  └── router/       React Router configuration                        │
+│                     Frontend (React + TypeScript + Vite)               │
+│  src/                                                                  │
+│  ├── pages/        Dashboard, Sandbox, Investigations, Evidence        │
+│  ├── stores/       Zustand state (auth, sandbox, realtime)             │
+│  ├── services/     API client, WebSocket client                        │
+│  ├── components/   UI components, enterprise, blockchain               │
+│  └── router/       React Router configuration                          │
 └────────────────────────────────────────────────────────────────────────┘
             ↓↑ REST/WebSocket
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        Backend API (Express.js + TypeScript)         │
-│  src/                                                                 │
-│  ├── controllers/    Sandbox, Investigation, Evidence, Alert, AI    │
-│  ├── services/       SandboxRuntimeService, SandboxSyncService       │
-│  ├── routes/        API v1 endpoints                                 │
-│  ├── models/        MongoDB schemas                                  │
-│  └── middleware/    Auth, Security, Validation                        │
+│                     Backend API (Express.js + TypeScript)              │
+│  src/                                                                  │
+│  ├── controllers/    Sandbox, Investigation, Evidence, Alert, AI       │
+│  ├── services/       SandboxRuntimeService, SandboxSyncService         │
+│  ├── routes/         API v1 endpoints                                  │
+│  ├── models/         MongoDB schemas                                   │
+│  └── middleware/     Auth, Security, Validation                        │
 └────────────────────────────────────────────────────────────────────────┘
-            ↓↑ HTTP
+            ↓↑ HTTP + WebSocket
 ┌────────────────────────────────────────────────────────────────────────┐
-│              Sandbox Runtime API (FastAPI - Python)                  │
-│  sandbox-agent/src/forensics_sandbox_agent/infrastructure/          │
-│  ├── runtime_api.py         - Headless REST API service             │
-│  ├── vm/                    - VirtualBox VM control                  │
-│  ├── execution/             - Simulator execution                    │
-│  ├── monitoring/           - Forensic monitoring                     │
-│  └── reporting/             - Report generation                       │
+│              Sandbox Runtime API (FastAPI - Python)                    │
+│  sandbox-agent-v2/                                                     │
+│  ├── main.py            Uvicorn entrypoint, listens on :8765           │
+│  ├── agent/                                                            │
+│  │   ├── app.py         FastAPI routes + WebSocket broadcasters        │
+│  │   ├── pipeline.py    Session state machine (REVERT→STAGE→...)       │
+│  │   ├── vm.py          VirtualBox VM manager                          │
+│  │   └── models.py      Pydantic models                                │
+│  └── simulators/        Six safe educational simulator modules         │
 └────────────────────────────────────────────────────────────────────────┘
             ↓
 ┌────────────────────────────────────────────────────────────────────────┐
-│                     VirtualBox VM (Windows 11)                        │
-│  - Snapshot: CleanBaseline                                           │
-│  - Execution: Headless mode                                           │
-│  - Guest Additions: Required                                          │
+│                     VirtualBox VM (Windows 11)                         │
+│  - Snapshot: CleanBaseline                                             │
+│  - Execution: Headless mode                                            │
+│  - Guest Additions: Required                                           │
 └────────────────────────────────────────────────────────────────────────┘
+```
 
-ai-service/              # FastAPI AI microservice (Python)
-├── app/
-│   ├── main.py         API endpoints
-│   └── analysis/       AI analysis modules
-└── requirements.txt
+---
 
-simulators/             # 5 SAFE educational malware simulators
-├── common/              Shared framework
-├── ransomware-simulator/
-├── spyware-simulator/
-├── trojan-simulator/
-├── botnet-simulator/
-└── credential-stealer-simulator/
+## Repository Layout
+
+```
+backend/             Express.js API (TypeScript)
+frontend/            React + TypeScript (Vite)
+ai-service/          FastAPI AI microservice (Python)
+sandbox-agent-v2/    FastAPI sandbox runtime + simulators (Python)
+shared/              Shared schemas, contracts, services config
+docs/                Runbooks and architecture notes
+logs/                Local agent + monitoring logs
 ```
 
 ---
@@ -74,6 +76,7 @@ simulators/             # 5 SAFE educational malware simulators
 ### Platform Status: Enterprise Ready
 
 All phases complete:
+
 - Phase 1-3: Core platform with blockchain verification
 - Phase 3.5-3.7: Chain of custody, threat intelligence, forensic analytics
 - Phase 4: Enterprise hardening, resilience, health monitoring
@@ -85,12 +88,13 @@ All phases complete:
 
 ### Starting the Runtime
 
-```bash
-cd sandbox-agent
-python start_runtime.py
-# Or: python -m forensics_sandbox_agent.infrastructure.runtime_api
-# Default port: 8765
+```powershell
+cd sandbox-agent-v2
+py -3.11 -m pip install -r requirements.txt
+py -3.11 main.py
 ```
+
+Default port: `8765`. The backend can also start it via `POST /api/v1/sandbox/runtime/start` (admin-only).
 
 ### Runtime API Endpoints
 
@@ -101,6 +105,7 @@ python start_runtime.py
 | `/sessions` | GET | List all sessions |
 | `/sessions/start` | POST | Start new session |
 | `/sessions/{id}` | GET | Get session status |
+| `/sessions/{id}/events` | GET | Get session telemetry events |
 | `/sessions/{id}/stop` | POST | Stop session gracefully |
 | `/sessions/{id}/terminate` | POST | Force terminate with rollback |
 | `/vm/status` | GET | VM status |
@@ -109,6 +114,7 @@ python start_runtime.py
 | `/execution/status` | GET | Execution history |
 | `/logs` | GET | Runtime logs |
 | `/telemetry/live` | WS | WebSocket telemetry stream |
+| `/logs/live` | WS | WebSocket log stream |
 
 ---
 
@@ -135,15 +141,18 @@ python start_runtime.py
 
 ## Simulator IDs (Internal)
 
-| Internal ID | Display Name | Category | Description |
-|-------------|--------------|----------|-------------|
-| `system_service_1` | Ransomware Simulator | ransomware | File encryption simulation |
-| `system_service_2` | Spyware Simulator | spyware | Data exfiltration simulation |
-| `system_service_3` | Trojan Simulator | trojan | Backdoor persistence simulation |
-| `system_service_4` | Botnet Simulator | botnet | C2 communication simulation |
-| `system_service_5` | Credential Stealer | credential-stealer | Credential harvesting simulation |
+Source of truth: `sandbox-agent-v2/agent/app.py` (`SIMULATORS` list) and `sandbox-agent-v2/agent/pipeline.py` (`script_map`).
 
-**Note:** These are the internal obfuscated IDs used for privacy. The UI displays friendly names.
+| Internal ID | Category | Behavior |
+|-------------|----------|----------|
+| `system-service-alpha` | system | File system operations, encryption routines, system modification |
+| `system-service-beta` | system | Network connections, persistence, child process spawning |
+| `system-service-gamma` | system | Credential store access, sensitive registry hive reads, data staging |
+| `system-service-delta` | system | User activity monitoring, screen data capture, document scanning |
+| `system-service-epsilon` | system | Deep persistence install, boot configuration changes, process injection |
+| `system-service-lateral` | system | Network discovery, SMB enumeration, pass-the-hash, remote execution |
+
+**Note:** Internal IDs are deliberately neutral. The UI displays friendly names from the same registry.
 
 ---
 
@@ -153,7 +162,7 @@ python start_runtime.py
 
 | Service | Purpose |
 |---------|---------|
-| **SandboxRuntimeService** | Communicates with headless runtime API |
+| **SandboxRuntimeService** | Communicates with the FastAPI runtime API |
 | **SandboxSyncService** | MongoDB session persistence |
 | **AuthService** | JWT token management |
 | **InvestigationService** | Case CRUD, status workflows |
@@ -198,30 +207,55 @@ python start_runtime.py
 
 ## Running the Project
 
-### 1. Start Sandbox Runtime
-```bash
-cd sandbox-agent
-python start_runtime.py
+Use the orchestrator at the repo root:
+
+```powershell
+.\start-all.ps1
 ```
 
-### 2. Start Backend
-```bash
+It launches backend → AI service → sandbox agent → frontend with health-check polling.
+
+To run components individually:
+
+### Backend
+
+```powershell
 cd backend
 npm install
 npm run dev
 ```
 
-### 3. Start Frontend
-```bash
+### Frontend
+
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-### 4. Use Sandbox Dashboard
+### Sandbox Agent
+
+```powershell
+cd sandbox-agent-v2
+py -3.11 -m pip install -r requirements.txt
+py -3.11 main.py
+```
+
+### AI Service
+
+```powershell
+cd ai-service
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### Sandbox Dashboard
+
 - Navigate to Dashboard → Sandbox
-- Click "Start Runtime" (if offline)
-- Select a simulator from dropdown
+- Click "Start Runtime" if the agent is offline
+- Select a simulator from the dropdown
 - Click "New Session" to begin analysis
 
 ---
@@ -246,11 +280,11 @@ npm run dev
 ## Safety Features (Enforced)
 
 - ✅ VM-only execution (marker validation)
-- ✅ Runtime limits (max 300s)
+- ✅ Runtime limits (max 300s default)
 - ✅ Safe directory restrictions
 - ✅ Synthetic data only
 - ✅ Localhost-only networking
-- ✅ Automatic rollback on completion
+- ✅ Automatic rollback on completion or failure
 - ✅ RBAC access control
 - ✅ Input validation
 - ✅ Enterprise security hardening
@@ -260,6 +294,7 @@ npm run dev
 ## API Endpoints Summary
 
 ### Core API
+
 | Prefix | Description |
 |--------|-------------|
 | `/api/v1/auth` | Authentication |
@@ -270,6 +305,7 @@ npm run dev
 | `/api/v1/ai` | AI analysis |
 
 ### Blockchain API
+
 | Prefix | Description |
 |--------|-------------|
 | `/api/v1/blockchain` | Blockchain operations |
@@ -277,6 +313,7 @@ npm run dev
 | `/api/v1/threat` | Threat intelligence |
 
 ### Analytics & Operations
+
 | Prefix | Description |
 |--------|-------------|
 | `/api/v1/analytics` | Behavioral analytics |
@@ -292,129 +329,15 @@ JWT_REFRESH_SECRET=<32-char-minimum>
 MONGODB_URI=mongodb://...
 BLOCKCHAIN_ENABLED=false
 SANDBOX_RUNTIME_URL=http://127.0.0.1:8765
+SANDBOX_AGENT_SECRET=<shared-secret>
+AI_SERVICE_ENABLED=false
+AI_SERVICE_URL=http://localhost:8000
 ```
-
----
-
-## Build Commands
-
-```bash
-# Build everything
-python build.py all
-
-# Build agent only
-python build.py agent
-
-# Build simulators
-python build.py simulator
-
-# Validate builds
-python build.py validate
-
-# Clean
-python build.py clean
-```
-
----
-
-## Project Structure
-
-```
-/
-├── backend/                  # Express.js API (TypeScript)
-├── frontend/                 # React + TypeScript (Vite)
-├── sandbox-agent/            # Desktop PyQt6 + Headless Runtime
-├── ai-service/              # FastAPI AI microservice
-├── simulators/              # 5 educational simulators
-├── build/                   # Build artifacts (84 files)
-├── dist/                    # Distribution (8 files)
-├── docs/                    # Runbooks and documentation
-└── logs/                    # Application logs
-```
-
----
-
-## Agency Agents (OpenCode)
-
-The following specialized AI agents are available in `.opencode/agents/` to accelerate development:
-
-| Agent | Purpose |
-|-------|---------|
-| **Codebase Onboarding Engineer** | Understand project structure fast - trace code paths, explain architecture |
-| **Frontend Developer** | React/TypeScript + Vite UI development, component design, performance |
-| **Backend Architect** | Express.js API design, MongoDB architecture, scalability |
-| **Security Engineer** | Threat modeling, security review, vulnerability assessment |
-| **API Tester** | Endpoint testing, integration QA, validation |
-
-**Usage**: When working on tasks, reference these agents for:
-- Explaining how code works → Codebase Onboarding Engineer
-- Building UI components → Frontend Developer
-- Designing API endpoints → Backend Architect
-- Security review → Security Engineer
-- Testing endpoints → API Tester
 
 ---
 
 ## Current Date
 
-2026-05-21
+2026-05-29
 
-(Last updated: Frontend blank page debug & fix + AI Analysis page implementation)
-
----
-
-## Session History & Known Issues
-
-### Session: 2026-05-21 - Frontend Blank Page Fix
-
-**Problem:** Entire frontend UI showed a blank white page at `http://localhost:5173/`.
-
-**Root Causes Found:**
-1. **Axios had NO timeout** (`frontend/src/services/api.ts`) — When the backend wasn't running, `checkAuth()` hung indefinitely, causing a permanent blank page.
-2. **ProtectedRoute returned `null` during auth check** (`frontend/src/router/AppRoutes.tsx`) — During auth initialization, it rendered nothing instead of a loading state.
-3. **Duplicate route definitions** — `settings`, `audit`, `blockchain-operations`, `threat-intelligence`, `forensic-analytics`, and `users` were each defined 2–3 times in the route tree with conflicting wrappers.
-
-**Fixes Applied:**
-| File | Change |
-|------|--------|
-| `frontend/src/services/api.ts` | Added `timeout: 10000` to axios instance |
-| `frontend/src/router/AppRoutes.tsx` | Removed duplicate routes; added `AuthLoadingScreen` spinner during auth check; `ProtectedRoute` now calls `checkAuth()` on mount |
-| `frontend/src/main.tsx` | Removed unused `AuthInitializer` import; simplified `App` wrapper |
-
-**Files Changed:**
-- `frontend/src/router/AppRoutes.tsx` — Clean route tree, no duplicates, auth loading screen
-- `frontend/src/services/api.ts` — 10s timeout on all API calls
-- `frontend/src/main.tsx` — Clean entry point
-- `frontend/src/pages/AIAnalysisPage.tsx` — New comprehensive AI analysis page (7 tabs: Overview, Threat Classification, MITRE ATT&CK, Attack Chain, Heuristics, Anomalies, Comparison)
-- `frontend/src/components/ErrorBoundary.tsx` — New error boundary to catch React errors
-- `frontend/src/App.tsx` — Dead code (AuthInitializer, LoadingScreen) — NOT imported anywhere, kept for reference
-
-**Verification:**
-- Frontend build: ✅ Passes (2282 modules, 900kB JS)
-- Backend build: ✅ Passes
-- Backend starts: ✅ Port 3000, MongoDB connected
-- Frontend serves HTML: ✅ 200 OK at localhost:5173
-
-**Still Needs Verification:**
-- Browser console errors (F12) — not captured yet
-- Full end-to-end flow in browser with both servers running
-- Login → Dashboard → AI Analysis page navigation
-
-### Session: AI Analysis Page Implementation
-
-**Created:** `frontend/src/pages/AIAnalysisPage.tsx` (1362 lines)
-
-**Features:**
-- 7 tabs: Overview, Threat Classification, MITRE ATT&CK, Attack Chain, Heuristics, Anomalies, Comparison
-- Live session intelligence (connects to sandbox sessions)
-- Real-time threat scoring, attack chain visualization, MITRE ATT&CK heatmap
-- Anomaly detection display, behavioral pattern comparison
-- Connected to backend APIs with proper loading/error states
-- Uses `analysisStore` for state management with mock data fallbacks
-
-**Dependencies:**
-- `frontend/src/stores/analysisStore.ts` — Analysis state management
-- `frontend/src/components/visualizations/AttackChain.tsx`
-- `frontend/src/components/visualizations/EvidenceGraph.tsx`
-- `frontend/src/components/visualizations/MITREHeatmap.tsx`
-- `frontend/src/components/visualizations/RiskScoreGauge.tsx`
+(Last updated: Cleaned dead references after sandbox-agent-v2 migration)

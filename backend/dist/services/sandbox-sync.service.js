@@ -132,6 +132,14 @@ class SandboxSyncService {
             avgDuration: avgDuration[0]?.avg || 0,
         };
     }
+    /**
+     * Clear all sessions
+     */
+    async clearAll() {
+        const result = await models_1.SandboxSession.deleteMany({});
+        await telemetry_event_model_1.TelemetryEvent.deleteMany({});
+        return { deleted: result.deletedCount || 0 };
+    }
 }
 exports.SandboxSyncService = SandboxSyncService;
 exports.sandboxSyncService = new SandboxSyncService();

@@ -13,13 +13,9 @@ const PASSWORD_ERROR = 'Password must be at least 8 characters and include upper
 type Step = 'role' | 'email' | 'otp' | 'password';
 type RegistrationRole = 'analyst' | 'admin';
 
-interface RegisterResponse {
-  success: boolean;
-  message: string;
-  data?: {
-    user: { id: string; email: string; role: string };
-    tokens: { accessToken: string; refreshToken: string };
-  };
+interface RegisterData {
+  user: { id: string; email: string; role: string };
+  tokens: { accessToken: string; refreshToken: string };
 }
 
 interface VerifyOtpResponse {
@@ -181,7 +177,7 @@ export function RegisterPage() {
     clearError();
 
     try {
-      const response = await api.post<RegisterResponse>('/auth/register', {
+      const response = await api.post<RegisterData>('/auth/register', {
         email: email.trim().toLowerCase(),
         password,
         role: role === 'analyst' ? 'forensic_analyst' : 'admin',

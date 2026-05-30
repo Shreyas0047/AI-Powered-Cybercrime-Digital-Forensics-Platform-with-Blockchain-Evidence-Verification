@@ -69,22 +69,15 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Desktop agent:
+Sandbox agent (`sandbox-agent-v2`):
 
 ```powershell
-cd sandbox-agent
-py -3.11 -m pip install -e .
-py -3.11 -m forensics_sandbox_agent.main
+cd sandbox-agent-v2
+py -3.11 -m pip install -r requirements.txt
+py -3.11 main.py
 ```
 
-## Build For Local Release
-
-```powershell
-python build.py all
-python build.py validate
-```
-
-Compiled desktop artifacts are written to `dist\`.
+The agent serves the runtime REST + WebSocket API on `http://127.0.0.1:8765`.
 
 ## Health Checks
 
@@ -110,7 +103,7 @@ mongorestore --uri "mongodb://localhost:27017/forensics_platform" --archive=back
 ## Logs
 
 - Backend logs: `backend\logs\`
-- Agent logs: `logs\` or packaged runtime log location
+- Sandbox agent logs: `logs\`
 - AI service logs: terminal output unless redirected by the local operator
 
 Do not retain routine logs in source control. Keep only forensic evidence examples that are intentionally part of a scenario.

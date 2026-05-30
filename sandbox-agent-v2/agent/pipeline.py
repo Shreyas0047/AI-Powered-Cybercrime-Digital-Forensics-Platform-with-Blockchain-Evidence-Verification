@@ -1,0 +1,276 @@
+"""Session Pipeline — state-machine orchestrator for sandbox execution.
+
+Pipeline stages:
+  REVERT  → Force-kill VM, restore CleanBaseline snapshot
+  STAGE   → Transfer simulator + monitor stub to guest
+  EXECUTE → Run simulator via guestcontrol, capture output
+  OBSERVE → Parse telemetry from stdout/log, broadcast via WebSocket
+  COMPLETE/FAILED → Terminal states
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Callable, Optional
+
+from agent.models import (
+    RuntimeSession, SessionState, ForensicEvent,
+    EventCategory, EventSeverity, MonitoringStatus,
+)
+from agent.vm import VMManager, VMError, GUEST_SIMULATORS
+
+log = logging.getLogger("agent.pipeline")
+
+# Callback type for broadcasting events to WebSocket clients
+BroadcastFn = Callable[[dict], None]
+
+
+class SessionPipeline:
+    """Manages the full lifecycle of sandbox sessions."""
+
+    def __init__(self, vm: VMManager, simulators_dir: Path) -> None:
+        self._vm = vm
+        self._simulators_dir = simulators_dir
+        self._sessions: dict[str, RuntimeSession] = {}
+        self._events: dict[str, list[dict]] = {}  # session_id -> events
+        self._active_id: Optional[str] = None
+        self._broadcast: Optional[BroadcastFn] = None
+        self._monitoring = MonitoringStatus()
+
+    def set_broadcast(self, fn: BroadcastFn) -> None:
+        self._broadcast = fn
+
+    @property
+    def active_session(self) -> Optional[RuntimeSession]:
+        if self._active_id:
+            return self._sessions.get(self._active_id)
+        return None
+
+    def get_session(self, sid: str) -> Optional[RuntimeSession]:
+        return self._sessions.get(sid)
+
+    def get_all_sessions(self) -> list[RuntimeSession]:
+        return list(self._sessions.values())
+
+    def get_events(self, sid: str) -> list[dict]:
+        return self._events.get(sid, [])
+
+    def get_monitoring(self) -> MonitoringStatus:
+        return self._monitoring
+
+    # =========================================================================
+    # PUBLIC: Start a new session
+    # =========================================================================
+
+    async def start(self, simulator_id: str, timeout: int = 300) -> RuntimeSession:
+        """Create and launch a session. Returns immediately; pipeline runs in background."""
+        if self._active_id:
+            active = self._sessions[self._active_id]
+            if active.state not in (SessionState.COMPLETED, SessionState.FAILED):
+                raise RuntimeError("A session is already running")
+
+        session = RuntimeSession(simulator_id=simulator_id)
+        self._sessions[session.session_id] = session
+        self._events[session.session_id] = []
+        self._active_id = session.session_id
+        self._monitoring = MonitoringStatus(is_active=True, session_id=session.session_id)
+
+        asyncio.create_task(self._run_pipeline(session, timeout))
+        return session
+
+    async def stop(self, sid: str) -> RuntimeSession:
+        """Stop a running session."""
+        session = self._sessions.get(sid)
+        if not session:
+            raise KeyError(f"Session {sid} not found")
+        session.transition(SessionState.FAILED, "Stopped by user")
+        self._monitoring.is_active = False
+        try:
+            await asyncio.to_thread(self._vm.kill_all_vbox_processes)
+        except Exception:
+            pass
+        return session
+
+    # =========================================================================
+    # PIPELINE EXECUTION
+    # =========================================================================
+
+    async def _run_pipeline(self, session: RuntimeSession, timeout: int) -> None:
+        """The full REVERT → STAGE → EXECUTE → OBSERVE → COMPLETE pipeline."""
+        try:
+            await asyncio.wait_for(
+                self._execute_stages(session),
+                timeout=timeout + 60,
+            )
+        except asyncio.TimeoutError:
+            session.transition(SessionState.FAILED, f"Pipeline timed out after {timeout}s")
+            self._emit_log("ERROR", f"Session timed out after {timeout}s", session.session_id)
+        except Exception as e:
+            session.transition(SessionState.FAILED, str(e))
+            self._emit_log("ERROR", f"Pipeline failed: {e}", session.session_id)
+            log.exception("Pipeline error for session %s", session.session_id)
+        finally:
+            self._monitoring.is_active = False
+
+    async def _execute_stages(self, session: RuntimeSession) -> None:
+        """Execute each pipeline stage sequentially."""
+        sid = session.session_id
+
+        # --- REVERT ---
+        session.transition(SessionState.REVERTING)
+        self._emit_log("INFO", "Reverting VM to clean snapshot", sid)
+        await asyncio.to_thread(self._vm.revert_to_snapshot)
+        self._emit_log("INFO", "Snapshot restored successfully", sid)
+
+        # --- BOOT ---
+        session.transition(SessionState.STAGING)
+        self._emit_log("INFO", "Booting VM", sid)
+        await asyncio.to_thread(self._vm.boot_vm, False)  # GUI mode — visible
+
+        # Wait for Guest Additions
+        self._emit_log("INFO", "Waiting for Guest OS to become ready", sid)
+        ready = await asyncio.to_thread(self._vm.wait_for_guest, 120)
+        if not ready:
+            raise VMError("Guest Additions did not become ready — VM may have aborted")
+
+        # Verify guest marker (safety)
+        marker_ok = await asyncio.to_thread(self._vm.verify_guest_marker)
+        if not marker_ok:
+            log.warning("Guest marker not found — proceeding anyway (dev mode)")
+
+        # --- STAGE ---
+        self._emit_log("INFO", f"Staging simulator: {session.simulator_id}", sid)
+        guest_script = await asyncio.to_thread(self._stage_simulator, session.simulator_id)
+
+        # --- EXECUTE ---
+        session.transition(SessionState.EXECUTING)
+        self._emit_log("INFO", "Executing simulator in guest VM", sid)
+        result = await asyncio.to_thread(
+            self._vm.guest_exec,
+            r"C:\Windows\System32\cmd.exe",
+            ["/c", "python", guest_script],
+            timeout=300,
+            cwd=GUEST_SIMULATORS,
+        )
+
+        # --- OBSERVE ---
+        session.transition(SessionState.OBSERVING)
+        self._emit_log("INFO", "Collecting forensic telemetry", sid)
+        self._parse_telemetry(sid, result.stdout)
+
+        if result.code != 0:
+            log.warning("Simulator exited with code %d: %s", result.code, result.stderr[:200])
+
+        # --- COMPLETE ---
+        session.transition(SessionState.COMPLETED)
+        total = len(self._events.get(sid, []))
+        self._emit_log("INFO", f"Session completed — {total} events collected", sid)
+        self._update_monitoring(sid)
+
+    # =========================================================================
+    # STAGE: Transfer simulator to guest
+    # =========================================================================
+
+    def _stage_simulator(self, simulator_id: str) -> str:
+        """Transfer the simulator script to the guest. Returns guest path."""
+        script_map = {
+            "system-service-alpha": "ransomware_sim.py",
+            "system-service-beta": "botnet_sim.py",
+            "system-service-gamma": "credential_stealer_sim.py",
+            "system-service-delta": "sim_delta.py",
+            "system-service-epsilon": "sim_epsilon.py",
+            "system-service-lateral": "sim_lateral.py",
+        }
+        filename = script_map.get(simulator_id)
+        if not filename:
+            raise ValueError(f"Unknown simulator: {simulator_id}")
+
+        host_path = self._simulators_dir / filename
+        if not host_path.exists():
+            raise FileNotFoundError(f"Simulator not found: {host_path}")
+
+        self._vm.ensure_guest_dir(GUEST_SIMULATORS)
+
+        # Always copy the shared telemetry helper
+        helper_path = self._simulators_dir / "telemetry_helper.py"
+        if helper_path.exists():
+            self._vm.copy_to_guest(str(helper_path), f"{GUEST_SIMULATORS}\\telemetry_helper.py")
+
+        guest_dest = f"{GUEST_SIMULATORS}\\{filename}"
+        self._vm.copy_to_guest(str(host_path), guest_dest)
+        return guest_dest
+
+    # =========================================================================
+    # OBSERVE: Parse telemetry from simulator output
+    # =========================================================================
+
+    def _parse_telemetry(self, sid: str, stdout: str) -> None:
+        """Parse JSON-lines telemetry from simulator stdout."""
+        events = self._events.setdefault(sid, [])
+        for line in stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+                events.append(event)
+                # Broadcast to WebSocket clients
+                if self._broadcast:
+                    self._broadcast({
+                        "session_id": sid,
+                        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
+                        "event_type": "forensic_event",
+                        "category": event.get("category", "PROCESS"),
+                        "data": event,
+                    })
+            except json.JSONDecodeError:
+                log.debug("Non-JSON output: %s", line[:80])
+
+    def _update_monitoring(self, sid: str) -> None:
+        """Update monitoring counters from collected events."""
+        events = self._events.get(sid, [])
+        proc = file = reg = net = alerts = 0
+        for e in events:
+            cat = e.get("category", "").upper()
+            sev = e.get("severity", "").upper()
+            if cat == "PROCESS":
+                proc += 1
+            elif cat == "FILE":
+                file += 1
+            elif cat == "REGISTRY":
+                reg += 1
+            elif cat == "NETWORK":
+                net += 1
+            if sev == "CRITICAL":
+                alerts += 1
+
+        self._monitoring = MonitoringStatus(
+            total_events=len(events),
+            process_count=proc,
+            file_operations_count=file,
+            registry_operations_count=reg,
+            network_operations_count=net,
+            behavior_alerts=alerts,
+            is_active=False,
+            session_id=sid,
+        )
+
+    # =========================================================================
+    # LOGGING (broadcasts to /logs/live WebSocket)
+    # =========================================================================
+
+    def _emit_log(self, level: str, message: str, session_id: Optional[str] = None) -> None:
+        """Emit a system log entry for the /logs/live WebSocket."""
+        if self._broadcast:
+            self._broadcast({
+                "type": "log",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "level": level,
+                "message": message,
+                "session_id": session_id,
+                "source": "pipeline",
+            })
